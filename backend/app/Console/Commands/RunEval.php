@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Ai\PromptClock;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Services\Claude\ClaudeChat;
@@ -10,6 +11,8 @@ use App\Services\Settings\AppSettings;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 
 #[Signature('fortis:eval {--only= : Sadece bu soru id\'leri (virgülle)} {--path= : Soru dosyası (varsayılan tests/eval/questions.json)}')]
@@ -31,8 +34,16 @@ class RunEval extends Command
 
         $results = [];
         foreach ($questions as $question) {
-            $this->line("→ {$question['id']}: {$question['question']}");
-            $results[] = $result = $this->askQuestion($question);
+            $this->line("→ {$question['id']}: {$question['question']}".(isset($question['now']) ? " (şimdi: {$question['now']})" : ''));
+            // Gece yarısı gibi saat testleri: soru sabit bir "şimdi" ile sorulur.
+            if (isset($question['now'])) {
+                Carbon::setTestNow(Carbon::parse($question['now']));
+            }
+            try {
+                $results[] = $result = $this->askQuestion($question);
+            } finally {
+                Carbon::setTestNow();
+            }
             $this->line(sprintf('   %s  araçlar: %s  maliyet: $%.3f', $result['pass'] ? 'GEÇTİ' : 'KALDI', implode(', ', $result['tools']) ?: '-', $result['cost_usd']));
             foreach ($result['failures'] as $failure) {
                 $this->line("   · {$failure}");
@@ -93,10 +104,12 @@ class RunEval extends Command
             'no_table' => ! empty($question['expect_no_table']) ? ! self::hasTable($answer) : null,
             'citation' => ! empty($question['expect_citation']) ? (bool) preg_match('/\[\^q:[A-Za-z0-9_]+\]/', $answer) : null,
             'source' => ! empty($question['expect_source']) ? (bool) preg_match('/Kaynak\s*:/iu', $answer) : null,
+            'date' => isset($question['expect_date']) ? self::mentionsDate($answer, $question['expect_date']) : null,
+            'utc_range' => ! empty($question['expect_utc_from']) && isset($question['expect_date']) ? self::queriedFrom($messages, $question['expect_date']) : null,
             'no_error' => $error === null,
         ], fn ($check) => $check !== null);
 
-        $labels = ['tool' => 'Beklenen araç kullanılmadı', 'no_flow' => 'Gereksiz akış önerildi', 'flow' => 'Akış önerilmedi', 'table' => 'Tablo yok', 'no_table' => 'Gereksiz tablo', 'citation' => 'Kaynak numarası yok', 'source' => 'Kaynak satırı yok', 'no_error' => "Hata: {$error}"];
+        $labels = ['tool' => 'Beklenen araç kullanılmadı', 'no_flow' => 'Gereksiz akış önerildi', 'flow' => 'Akış önerilmedi', 'table' => 'Tablo yok', 'no_table' => 'Gereksiz tablo', 'citation' => 'Kaynak numarası yok', 'date' => 'Cevapta doğru tarih (Türkiye) yok', 'utc_range' => 'Sorguda doğru tarih aralığı yok (APM: UTC başlangıcı, IBS: Türkiye tarihi)', 'source' => 'Kaynak satırı yok', 'no_error' => "Hata: {$error}"];
 
         return [
             'id' => $question['id'],
@@ -114,5 +127,32 @@ class RunEval extends Command
     private static function hasTable(string $answer): bool
     {
         return (bool) preg_match('/^\s*\|.*\|\s*$\n^\s*\|[\s:|-]+\|\s*$/m', $answer);
+    }
+
+    /** Cevap beklenen göreli tarihi (Türkiye saatine göre) gün ve ay adıyla anıyor mu; aralıkta son gün. */
+    private static function mentionsDate(string $answer, string $relative): bool
+    {
+        [$from, $to] = PromptClock::ranges()[$relative];
+        $day = $to->subDay();
+        $month = mb_substr(PromptClock::date($day), mb_strlen((string) $day->day) + 1, 3);
+
+        return (bool) preg_match('/\b'.$day->day.'(\s*'.preg_quote($month, '/').'|\.'.str_pad((string) $day->month, 2, '0', STR_PAD_LEFT).')/iu', $answer);
+    }
+
+    /**
+     * Bir veri sorgusu beklenen aralığı doğru başlatıyor mu: APM'de dateFrom = aralığın UTC başlangıcı, IBS'te
+     * (tarih sütunu) Türkiye'deki ilk gün.
+     */
+    private static function queriedFrom(Collection $messages, string $relative): bool
+    {
+        $from = PromptClock::ranges()[$relative][0];
+        $apm = '/dateFrom='.preg_quote($from->utc()->format('Y-m-d\TH:i'), '/').'(:00)?(\.0+)?Z/';
+        $ibsDay = $from->format('Y-m-d');
+
+        return $messages->flatMap(fn (Message $m) => collect($m->content)->where('type', 'tool_use'))->contains(fn (array $b) => match ($b['name']) {
+            'query_apm' => preg_match($apm, urldecode((string) ($b['input']['path'] ?? ''))) === 1,
+            'query_warehouse' => str_contains((string) json_encode($b['input']), $ibsDay),
+            default => false,
+        });
     }
 }

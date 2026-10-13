@@ -1209,6 +1209,38 @@ Vitest 65 (yeni `connectors.test.tsx` 3: liste rozetleri/kapsam/sekmeler/MCP; de
 - `.env` "tanımlı mı" bilgisi config'teki etkin değere bakıyor: varsayılanı olan değişkenler (ör. `APM_GRANT_TYPE`, `MAIL_PORT`) `.env`'de yazmasa da tanımlı görünür.
 - Bağlantıyı kapatmak zamanlanmış kontrolleri durdurmuyor (sağlık bilgisi görünmeye devam etsin diye); sadece kullanım kapanıyor.
 
+## "Dün" tarih düzeltmesi (2026-10-13)
+
+**Sorun:** Sohbet promptunda şimdiki zaman yoktu; model tarihi veriden veya tahminle çıkarıyordu. Önceki eval'de 13 Ekim'de sorulan "Dün AYT'den zamanında kalkış oranı" sorusu "Dünkü (11 Ekim 2026)" diye cevaplanmıştı. Sadece agent bölümünde "Bugün: …" satırı vardı.
+
+**Düzeltme:**
+- **`App\Ai\PromptClock`:** sistem promptunun **en sonunda** "Şimdiki zaman" bloğu.
+  - Türkiye saatiyle şu an (gün adıyla) ve UTC karşılığı.
+  - Göreli tarihler Türkiye saatine göre: bugün, dün, yarın, bu hafta (Pzt–Paz), geçen hafta, bu ay, geçen ay. Her biri için Türkçe tarih ve sorguda kullanılacak UTC aralığı [başlangıç, bitiş).
+  - Kurallar: APM `dateFrom`/`dateTo` bu UTC aralıklarıyla; IBS ve SuccessFactors'ta gün sütunlarında Türkiye tarihi, zaman damgasında UTC; cevapta tarih açıkça ("Dün (12 Ekim 2026)").
+- **Promptta yeri:** Sistem promptu iki blok olarak gidiyor. Sabit kısım `cache_control` ile önbelleğe alınıyor; saat bloğu en sonda.
+  - Blok tur başında bir kez üretiliyor: aynı turdaki araç döngüsünde değişmiyor, önbellek bozulmuyor.
+  - Sohbet, agent ve Architect aynı yoldan geçiyor. Agent bölümündeki "Bugün:" satırı kaldırıldı; agent da aynı bloğu alıyor.
+- `system.md`'deki APM tarih kuralı "UTC aralıklarını Şimdiki zaman bölümünden al, kendin hesaplama" olarak güncellendi.
+- **Eval:**
+  - Soru başına sabit "şimdi" (`now`) desteği.
+  - Yeni kontroller: cevapta beklenen Türkiye tarihi (`expect_date`); sorguda doğru aralık (`expect_utc_from`: APM'de UTC başlangıcı, IBS'te Türkiye'deki ilk gün).
+  - 4 yeni soru: `date-yesterday-ayt`, `date-today`, `date-last-week-cancels`, `date-midnight-yesterday` (şimdi = 13 Ekim 00:30 TR).
+- **Sonuç (gerçek model):** 4/4.
+  - Gece 00:30 sorusu "Dün (12 Ekim 2026)" dedi ve `2026-10-11T21:00Z` başlangıcıyla sorguladı.
+  - "Geçen hafta" sorusu IBS'ten `flight_date` 5–11 Ekim ile cevapladı. İlk çalıştırmada beklenen araç sadece APM olduğu için kalmıştı; kontrol IBS'teki Türkiye tarihini de kabul edecek şekilde genişletildi.
+  - Bir çalıştırma, düzenleme betiği yarıda kalınca eski kontrolle tekrarlandı (0,13 $ boşa).
+  - Maliyet: 0,52 + 0,13 + 0,14 = 0,79 $.
+  - Raporlar: `backend/storage/app/private/eval/2026-10-13_084655.json`, `…_084823.json`.
+- İki bloklu sistem promptu ve önbellek ayarı gerçek API'de sorunsuz çalıştı.
+
+**Testler:** backend 443 (hepsi geçti). Yeni `PromptClockTest` 3:
+- Gece 00:30'da "dün" Türkiye'deki önceki gün ve doğru UTC aralığı (23:59 da aynı gün).
+- Ay ve hafta sınırları (1 Aralık 00:10).
+- Saat bloğu sohbet ve agent isteklerinde son sistem bloğu, sabit blokta `cache_control`.
+
+`RunEvalTest` +2: sabit 00:30 saatle doğru tarih/aralık geçer, UTC'ye göre "dün" kalır; saat sabitlemesi soru sonrası kalkar.
+
 ## Çalıştırma
 
 ```sh

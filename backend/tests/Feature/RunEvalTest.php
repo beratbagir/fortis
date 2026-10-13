@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Services\Settings\AppSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\FakesDataSources;
 use Tests\TestCase;
@@ -49,5 +50,38 @@ class RunEvalTest extends TestCase
         $report = json_decode(Storage::disk('local')->get(Storage::disk('local')->files('eval')[0]), true);
         $this->assertSame(['Beklenen araç kullanılmadı', 'Akış önerilmedi'], $report['results'][0]['failures']);
         $this->assertSame(0.0, (float) $report['summary']['correct_tool_ratio']);
+    }
+
+    public function test_date_questions_check_turkey_date_and_utc_range_with_a_fixed_midnight_clock(): void
+    {
+        Storage::fake('local');
+        $this->fakeDataSources(AppSettings::DATA_ACCESS_MASKED);
+        $this->fakeClaude()
+            ->toolCalls([['name' => 'query_apm', 'input' => ['path' => '/api/legs?dateFrom=2026-10-11T21:00:00Z&dateTo=2026-10-12T21:00:00Z', 'purpose' => 'Dünkü uçuşlar']]])
+            ->text('Dün (12 Ekim 2026) **2 sefer** vardı [^q:q_x].');
+
+        $this->artisan('fortis:eval', ['--only' => 'date-midnight-yesterday'])->expectsOutputToContain('1/1 geçti')->assertSuccessful();
+
+        $report = json_decode(Storage::disk('local')->get(Storage::disk('local')->files('eval')[0]), true);
+        $this->assertTrue($report['results'][0]['checks']['date']);
+        $this->assertTrue($report['results'][0]['checks']['utc_range']);
+        // Saat sabitlemesi soru bitince kalkar.
+        $this->assertFalse(Carbon::hasTestNow());
+    }
+
+    public function test_wrong_utc_day_fails_the_date_checks(): void
+    {
+        Storage::fake('local');
+        $this->fakeDataSources(AppSettings::DATA_ACCESS_MASKED);
+        // UTC'ye göre "dün" (11 Ekim) sorgulanmış ve yazılmış: iki kontrol de kalır.
+        $this->fakeClaude()
+            ->toolCalls([['name' => 'query_apm', 'input' => ['path' => '/api/legs?dateFrom=2026-10-11T00:00:00Z&dateTo=2026-10-12T00:00:00Z', 'purpose' => 'Dünkü uçuşlar']]])
+            ->text('Dün (11 Ekim 2026) **2 sefer** vardı [^q:q_x].');
+
+        $this->artisan('fortis:eval', ['--only' => 'date-midnight-yesterday'])->expectsOutputToContain('0/1 geçti')->assertSuccessful();
+
+        $report = json_decode(Storage::disk('local')->get(Storage::disk('local')->files('eval')[0]), true);
+        $this->assertContains('Cevapta doğru tarih (Türkiye) yok', $report['results'][0]['failures']);
+        $this->assertContains('Sorguda doğru tarih aralığı yok (APM: UTC başlangıcı, IBS: Türkiye tarihi)', $report['results'][0]['failures']);
     }
 }

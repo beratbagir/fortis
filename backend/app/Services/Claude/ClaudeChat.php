@@ -20,6 +20,7 @@ use App\Agents\Architect;
 use App\Ai\AnswerTrace;
 use App\Ai\DataQueryTools;
 use App\Ai\ModelRouter;
+use App\Ai\PromptClock;
 use App\Models\Agent;
 use App\Models\AiCall;
 use App\Models\Artifact;
@@ -55,6 +56,9 @@ class ClaudeChat
     private ?string $turnModel = null;
 
     private AnswerTrace $trace;
+
+    /** Tur başında bir kez üretilen "şimdiki zaman" bloğu (promptun sonunda; turdaki her istekte aynı). */
+    private string $clock = '';
 
     /** Agent kipi (AgentRunner): sadece agent'ın araçları, yazma araçları agent_actions üzerinden, sınırlar. */
     private ?AgentSession $agent = null;
@@ -105,6 +109,7 @@ class ClaudeChat
     {
         $this->tools->startTurn($conversation);
         $this->dataQuestion = false;
+        $this->clock = PromptClock::block();
         $this->trace = new AnswerTrace($emit, auth()->user());
 
         // Soru kartının cevabıyla devam: önceki adımlar ve sorgular bu cevabın parçası.
@@ -353,11 +358,15 @@ class ClaudeChat
                 cacheControl: ['type' => 'ephemeral'],
                 fallbacks: $this->fallbacks ? 'default' : null,
                 outputConfig: ['effort' => $this->effort],
-                system: match (true) {
-                    $this->agent !== null => $this->systemPrompt."\n\n".$this->agent->promptSection(),
-                    $this->architect !== null => $this->systemPrompt."\n\n".app(Architect::class)->promptSection($this->architect),
-                    default => $this->systemPrompt,
-                },
+                // Sabit kısım önbelleğe alınır; şimdiki zaman bloğu her zaman en sonda.
+                system: [
+                    ['type' => 'text', 'text' => match (true) {
+                        $this->agent !== null => $this->systemPrompt."\n\n".$this->agent->promptSection(),
+                        $this->architect !== null => $this->systemPrompt."\n\n".app(Architect::class)->promptSection($this->architect),
+                        default => $this->systemPrompt,
+                    }, 'cacheControl' => ['type' => 'ephemeral']],
+                    ['type' => 'text', 'text' => $this->clock],
+                ],
                 thinking: ['type' => 'adaptive'],
                 tools: $this->tools->definitions(),
                 betas: $this->fallbacks ? [self::FALLBACK_BETA] : null,

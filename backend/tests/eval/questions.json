@@ -187,6 +187,55 @@
         "list_report_sources"
       ],
       "expect_no_flow": true
+    },
+    {
+      "id": "date-yesterday-ayt",
+      "question": "Dün AYT'den kaç sefer kalktı?",
+      "expect_tools": [
+        "query_apm"
+      ],
+      "expect_no_flow": true,
+      "expect_no_table": true,
+      "expect_citation": true,
+      "expect_date": "dün",
+      "expect_utc_from": true
+    },
+    {
+      "id": "date-today",
+      "question": "Bugün kaç sefer planlı?",
+      "expect_tools": [
+        "query_apm"
+      ],
+      "expect_no_flow": true,
+      "expect_no_table": true,
+      "expect_citation": true,
+      "expect_date": "bugün",
+      "expect_utc_from": true
+    },
+    {
+      "id": "date-last-week-cancels",
+      "question": "Geçen hafta kaç sefer iptal edildi?",
+      "expect_tools": [
+        "query_apm",
+        "query_warehouse"
+      ],
+      "expect_no_flow": true,
+      "expect_citation": true,
+      "expect_date": "geçen hafta",
+      "expect_utc_from": true
+    },
+    {
+      "id": "date-midnight-yesterday",
+      "question": "Dün kaç sefer vardı?",
+      "now": "2026-10-13T00:30:00+03:00",
+      "expect_tools": [
+        "query_apm"
+      ],
+      "expect_no_flow": true,
+      "expect_no_table": true,
+      "expect_citation": true,
+      "expect_date": "dün",
+      "expect_utc_from": true
     }
   ]
 }
