@@ -113,13 +113,13 @@ export function ModelPicker({ value, onChange }: { value: string; onChange: (mod
 }
 
 
-const STATUS_TEXT: Record<ConnectorStatus['status'], string> = { connected: 'Bağlı', attention: 'Dikkat', not_configured: 'Kurulum bekliyor' }
+const STATUS_TEXT: Record<ConnectorStatus['status'], string> = { connected: 'Bağlı', attention: 'Dikkat', not_configured: 'Kurulum bekliyor', disabled: 'Yönetici kapattı' }
 
 export function SourcePicker({ disabled, onChange }: { disabled: string[]; onChange: (disabled: string[]) => void }) {
   const [open, setOpen] = useState(false)
   const connectors = useQuery({ queryKey: ['connectors'], queryFn: api.connectors, staleTime: 60_000 })
   const sources = (connectors.data ?? []).filter((c) => DATA_SOURCES.includes(c.key))
-  const available = sources.filter((c) => c.status !== 'not_configured')
+  const available = sources.filter((c) => c.status !== 'not_configured' && c.status !== 'disabled')
   const active = available.filter((c) => !disabled.includes(c.key)).length
 
   const toggle = (key: string) => onChange(disabled.includes(key) ? disabled.filter((k) => k !== key) : [...disabled, key])
@@ -133,7 +133,7 @@ export function SourcePicker({ disabled, onChange }: { disabled: string[]; onCha
       <Popover open={open} onClose={() => setOpen(false)} label="Kaynaklar" align="left">
         <ul className="m-0 flex w-64 list-none flex-col gap-0.5 p-2">
           {sources.map((c) => {
-            const configured = c.status !== 'not_configured'
+            const configured = c.status !== 'not_configured' && c.status !== 'disabled'
             return (
               <li key={c.key}>
                 <label className={`flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-[13px] ${configured ? 'cursor-pointer hover:bg-raised' : 'opacity-60'}`}>

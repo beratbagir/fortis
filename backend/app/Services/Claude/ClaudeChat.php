@@ -27,6 +27,7 @@ use App\Models\Conversation;
 use App\Models\FlowVersion;
 use App\Models\Message;
 use App\Models\Report;
+use App\Services\Connectors\ConnectorRegistry;
 use App\Services\Connectors\Connectors;
 use App\Services\Settings\AppSettings;
 use Closure;
@@ -320,7 +321,7 @@ class ClaudeChat
     {
         $connectors = app(Connectors::class);
         $dataOn = app(AppSettings::class)->dataAccessEnabled();
-        $disabled = $conversation->disabledSources();
+        $disabled = [...$conversation->disabledSources(), ...app(ConnectorRegistry::class)->disabledKeys()];
 
         return collect(config('connectors.sources'))
             ->filter(fn (array $source) => $source['tools'] !== [])

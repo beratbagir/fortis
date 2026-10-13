@@ -24,6 +24,9 @@ class Connectors
 
     public const NOT_CONFIGURED = 'not_configured';
 
+    /** Yönetici şirket genelinde kapattı (A4.1). */
+    public const DISABLED = 'disabled';
+
     public function __construct(
         private readonly Warehouse $warehouse,
         private readonly ApmApi $apm,
@@ -36,7 +39,9 @@ class Connectors
             'ibs' => $this->warehouse->enabled(),
             'apm' => $this->apm->isConfigured(),
             'successfactors' => $this->successFactors->enabled(),
-            'teams' => in_array('TEAMS_WEBHOOK_URL', (array) config('kestra.secrets'), true),
+            'teams' => config('agents.teams_channels') !== [] || in_array('TEAMS_WEBHOOK_URL', (array) config('kestra.secrets'), true),
+            // log/array sürücüsünde e-posta gönderilmez (yerel geliştirme): kurulum gerekli sayılır.
+            'email' => ! in_array(config('mail.default'), ['log', 'array', null, ''], true),
             default => false,
         };
     }
@@ -56,38 +61,58 @@ class Connectors
     {
         $checks = [];
         foreach (array_keys(config('connectors.sources')) as $key) {
-            if (! $this->isConfigured($key) || ! $this->isCheckable($key)) {
-                continue;
+            if (($check = $this->check($key)) !== null) {
+                $checks[] = $check;
             }
-
-            $startedAt = hrtime(true);
-            $error = null;
-            try {
-                match ($key) {
-                    'ibs' => $this->warehouse->ping(),
-                    'apm' => $this->apm->ping(),
-                    'successfactors' => $this->successFactors->ping(),
-                };
-            } catch (Throwable $e) {
-                $error = mb_substr(class_basename($e).': '.$e->getMessage(), 0, 250);
-            }
-
-            $checks[] = ConnectorCheck::create([
-                'connector' => $key,
-                'ok' => $error === null,
-                'error' => $error,
-                'duration_ms' => (int) ((hrtime(true) - $startedAt) / 1_000_000),
-                'checked_at' => now(),
-            ]);
         }
 
         return $checks;
     }
 
+    /** Tek bağlantıyı dener ve kaydeder; yapılandırılmamış veya canlı kontrol edilemiyorsa null. */
+    public function check(string $key): ?ConnectorCheck
+    {
+        if (! $this->isConfigured($key) || ! $this->isCheckable($key)) {
+            return null;
+        }
+
+        $startedAt = hrtime(true);
+        $error = null;
+        try {
+            match ($key) {
+                'ibs' => $this->warehouse->ping(),
+                'apm' => $this->apm->ping(),
+                'successfactors' => $this->successFactors->ping(),
+            };
+        } catch (Throwable $e) {
+            $error = mb_substr(Secrets::scrub(class_basename($e).': '.$e->getMessage()), 0, 250);
+        }
+
+        return ConnectorCheck::create([
+            'connector' => $key,
+            'ok' => $error === null,
+            'error' => $error,
+            'duration_ms' => (int) ((hrtime(true) - $startedAt) / 1_000_000),
+            'checked_at' => now(),
+        ]);
+    }
+
     /**
+     * Home çipleri ve kaynak seçici (sadece chip = true olanlar).
+     *
      * @return list<array{key: string, label: string, abbr: string, status: string, detail: string|null}>
      */
     public function status(): array
+    {
+        return array_values(array_filter($this->all(), fn (array $c) => config('connectors.sources')[$c['key']]['chip'] ?? false));
+    }
+
+    /**
+     * Bütün bağlantıların durumu (Bağlantılar ekranı).
+     *
+     * @return list<array{key: string, label: string, abbr: string, status: string, detail: string|null}>
+     */
+    public function all(): array
     {
         $latest = ConnectorCheck::query()
             ->whereIn('id', ConnectorCheck::query()->selectRaw('max(id)')->groupBy('connector'))
@@ -107,6 +132,14 @@ class Connectors
     /** @return array{0: string, 1: string|null} */
     private function resolve(string $key, ?ConnectorCheck $latest, mixed $lastOkAt): array
     {
+        if (app(ConnectorRegistry::class)->isDisabled($key)) {
+            return [self::DISABLED, 'Yönetici tarafından şirket genelinde kapatıldı.'];
+        }
+
+        if ($key === 'email' && in_array(config('mail.default'), ['log', 'array'], true)) {
+            return [self::NOT_CONFIGURED, 'E-postalar gönderilmiyor; MAIL_MAILER='.config('mail.default').' (yerel geliştirme).'];
+        }
+
         if (! $this->isConfigured($key)) {
             return [self::NOT_CONFIGURED, null];
         }

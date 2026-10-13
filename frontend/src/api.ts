@@ -465,7 +465,7 @@ export interface ConnectorStatus {
   key: string
   label: string
   abbr: string
-  status: 'connected' | 'attention' | 'not_configured'
+  status: 'connected' | 'attention' | 'not_configured' | 'disabled'
   detail: string | null
 }
 
@@ -958,4 +958,51 @@ export const agentsApi = {
   evaluation: (id: number) => sendAgent<AgentEvaluationInfo>(`/agents/${id}/evaluation`),
   saveEvaluation: (id: number, criteria: string[], enabled: boolean) => sendAgent<AgentEvaluationInfo>(`/agents/${id}/evaluation`, 'PUT', { criteria, enabled }),
   score: (runId: number) => sendAgent<AgentRunDetail>(`/agent-runs/${runId}/score`, 'POST'),
+}
+
+/* ---------- Bağlantılar (Faz A4.1) ---------- */
+
+export type ConnectorScope = 'read' | 'write·approval' | 'events'
+
+export interface ConnectorCard {
+  key: string
+  label: string
+  abbr: string
+  category: 'data' | 'channel' | 'setup'
+  description: string | null
+  status: ConnectorStatus['status']
+  detail: string | null
+  enabled: boolean
+  scopes: ConnectorScope[]
+  last_checked_at: string | null
+  uses_this_week: number
+}
+
+export interface ConnectorDetail extends ConnectorCard {
+  disabled: { reason: string | null; by: string | null; at: string | null } | null
+  checks: { ok: boolean; at: string; duration_ms: number | null }[]
+  avg_duration_ms: number | null
+  last_error: { message: string | null; at: string } | null
+  checkable: boolean
+  tools: { name: string; kind: 'read' | 'write'; label: string; description: string }[]
+  used_by: { id: number; name: string; status: AgentStatus; owner: string | null }[]
+  chat_queries_7d: number
+  protection: { masked_groups: string[]; rules: string[] }
+  needs: string[]
+  /** Sadece admin: .env değişken adları ve tanımlı mı (değer asla). */
+  env: { name: string; defined: boolean }[] | null
+  affected_agents: number
+}
+
+export const connectorsApi = {
+  list: () => sendAgent<ConnectorCard[]>('/connectors'),
+  summary: async () => {
+    const response = await apiFetch('/api/connectors', { headers: { Accept: 'application/json' } })
+    const json = await response.json()
+    return { data: json.data as ConnectorCard[], summary: json.summary as { connected: number; attention: number; needs_setup: number; disabled: number } }
+  },
+  get: (key: string) => sendAgent<ConnectorDetail>(`/connectors/${key}`),
+  check: (key: string) => sendAgent<ConnectorDetail>(`/connectors/${key}/check`, 'POST'),
+  disable: (key: string, reason: string) => sendAgent<ConnectorDetail>(`/connectors/${key}/disable`, 'POST', { reason }),
+  enable: (key: string) => sendAgent<ConnectorDetail>(`/connectors/${key}/enable`, 'POST'),
 }

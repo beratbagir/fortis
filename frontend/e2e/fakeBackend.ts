@@ -36,6 +36,7 @@ export function installFakeBackend(page: Page, { signedIn = true, theme = 'light
     approved: false,
     agent: null as null | { status: string; tested: boolean },
     manualRun: false,
+    apmDisabled: false,
     useful: false,
     graph: {
       flow_id: 'long-delay-notice',
@@ -139,6 +140,37 @@ export function installFakeBackend(page: Page, { signedIn = true, theme = 'light
     summary: 'Dün 142 uçuş, %84 zamanında kalkış.', output: 'Dün **142 uçuş** yapıldı, kalkışta zamanındalık **%84**.\n\n| Sefer | Rötar |\n|---|---:|\n| FH1256 | 142 dk |',
     error: null, cost_usd: 0.214, conversation_id: 80, started_at: now.toISOString(), finished_at: now.toISOString(),
     actions: [{ id: 1, type: 'send_email', status: 'preview', requires_approval: true, payload: { to: ['kerem@freebird.com.tr'], subject: 'Operasyon özeti · 11 Eki' }, reason: null }],
+  })
+  const connector = (key: string, label: string, abbr: string, category: string, status: string, scopes: string[], description: string, extra: Record<string, unknown> = {}) => ({
+    key, label, abbr, category, description, status, detail: null, enabled: true, scopes, last_checked_at: category === 'setup' || status === 'not_configured' ? null : new Date(now.getTime() - 3 * 60_000).toISOString(), uses_this_week: 0, ...extra,
+  })
+  const connectorList = () => [
+    connector('ibs', 'IBS', 'IB', 'data', 'connected', ['read'], 'Rezervasyon, satış, sefer ve kapasite verisi (veri ambarı, salt okunur).', { uses_this_week: 41 }),
+    connector('apm', 'APM', 'AP', 'data', state.apmDisabled ? 'disabled' : 'connected', ['read', 'events'], 'Uçuşlar, rötarlar, uçaklar ve zamanındalık (REST API, salt okunur).', { uses_this_week: 87, enabled: !state.apmDisabled }),
+    connector('successfactors', 'SuccessFactors', 'SF', 'data', 'attention', ['read'], 'Çalışan, departman, pozisyon ve lokasyon (OData, salt okunur).', { uses_this_week: 9 }),
+    connector('outlook', 'Outlook', 'OL', 'setup', 'not_configured', [], 'Kişisel posta kutusundan okuma ve gönderme (Microsoft Graph).'),
+    connector('email', 'E-posta', 'EP', 'channel', 'not_configured', ['write·approval'], 'Agent e-postaları ve rapor teslimi (onaydan sonra).'),
+    connector('teams', 'Teams', 'TM', 'channel', 'attention', ['write·approval'], 'İzinli kanallara mesaj (gelen webhook, onaydan sonra).'),
+    connector('sharepoint', 'SharePoint', 'SP', 'setup', 'not_configured', [], 'Sigorta, sözleşme ve finans dokümanları.'),
+    connector('airrm', 'AirRM', 'RM', 'setup', 'not_configured', [], 'Gelir yönetimi tahminleri ve fiyat sınıfları.'),
+    connector('oracle', 'Oracle', 'OR', 'setup', 'not_configured', [], 'Finans, bütçe ve tedarikçi verisi.'),
+  ]
+  const apmDetail = () => ({
+    ...connectorList()[1],
+    disabled: state.apmDisabled ? { reason: 'APM bakımda', by: 'Kerem B.', at: now.toISOString() } : null,
+    checks: Array.from({ length: 96 }, (_, i) => ({ ok: i !== 40, at: new Date(now.getTime() - (96 - i) * 15 * 60_000).toISOString(), duration_ms: 180 })),
+    avg_duration_ms: 182, last_error: { message: 'RuntimeException: APM\'ye ulaşılamadı.', at: new Date(now.getTime() - 14 * 3600_000).toISOString() }, checkable: true,
+    tools: [
+      { name: 'query_apm', kind: 'read', label: 'APM sorgusu', description: 'Uçuşlar, rötarlar, zamanındalık.' },
+      { name: 'describe_apm', kind: 'read', label: 'APM uç bilgisi', description: 'APM işlemleri ve alanları.' },
+      { name: 'preview_apm', kind: 'read', label: 'preview_apm', description: 'APM isteğini akış kurmadan önce denemek (örnek kayıtlar maskeli).' },
+    ],
+    used_by: [{ id: 7, name: 'Sabah Operasyon Özeti', status: 'live', owner: 'Kerem B.' }, { id: 8, name: 'Uzun Rötar Bildirimi', status: 'pilot', owner: 'Kerem B.' }],
+    chat_queries_7d: 52,
+    protection: { masked_groups: ['Ad ve soyad', 'İletişim bilgileri', 'Rezervasyon ve bilet kimlikleri', 'Kimlik belgeleri ve doğum tarihi', 'Adres, ödeme ve maaş', 'Serbest metin (not, açıklama)'], rules: ['Sadece 6 okuma ucu sorgulanabilir; yanıt izinli alanlara indirilir.', 'Mürettebat adları ve iletişim bilgileri hiç okunmaz.', "Claude'a en fazla 200 satır gider; kişisel veri içerik taramasıyla da maskelenir."] },
+    needs: [],
+    env: ['APM_BASE_URL', 'APM_KESTRA_BASE_URL', 'APM_GRANT_TYPE', 'APM_CLIENT_ID', 'APM_CLIENT_SECRET'].map((name) => ({ name, defined: true })).concat([{ name: 'APM_USERNAME', defined: false }, { name: 'APM_PASSWORD', defined: false }]),
+    affected_agents: 2,
   })
   const card = (id: number, name: string, status: string, icon: string, systems: string[], extra: Record<string, unknown> = {}) => ({
     id, slug: `a${id}`, name, description: 'Dünkü uçuş sayısını, zamanında kalkışı, iptalleri ve en uzun rötarları nedenleriyle özetler.', status, icon, tools: [], systems,
@@ -251,12 +283,22 @@ export function installFakeBackend(page: Page, { signedIn = true, theme = 'light
     if (path === '/connectors/status') {
       return json(route, { data: [
         { key: 'ibs', label: 'IBS', abbr: 'IB', status: 'connected', detail: null },
-        { key: 'apm', label: 'APM', abbr: 'AP', status: 'connected', detail: null },
+        { key: 'apm', label: 'APM', abbr: 'AP', status: state.apmDisabled ? 'disabled' : 'connected', detail: state.apmDisabled ? 'Yönetici tarafından şirket genelinde kapatıldı.' : null },
         { key: 'successfactors', label: 'SuccessFactors', abbr: 'SF', status: 'attention', detail: 'Son kontrol başarısız.' },
         { key: 'outlook', label: 'Outlook', abbr: 'OL', status: 'not_configured', detail: null },
         { key: 'teams', label: 'Teams', abbr: 'TM', status: 'not_configured', detail: null },
       ] })
     }
+    if (path === '/connectors') return json(route, { data: connectorList(), summary: { connected: 2, attention: 1, needs_setup: 6, disabled: state.apmDisabled ? 1 : 0 } })
+    if (path === '/connectors/apm/disable') {
+      state.apmDisabled = true
+      return json(route, { data: apmDetail() })
+    }
+    if (path === '/connectors/apm/enable') {
+      state.apmDisabled = false
+      return json(route, { data: apmDetail() })
+    }
+    if (path === '/connectors/apm') return json(route, { data: apmDetail() })
     if (/^\/messages\/\d+\/feedback$/.test(path)) {
       state.feedback.push(route.request().postDataJSON())
       return json(route, { data: route.request().postDataJSON() })

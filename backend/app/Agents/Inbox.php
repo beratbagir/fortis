@@ -5,6 +5,7 @@ namespace App\Agents;
 use App\Models\AgentAction;
 use App\Models\AgentRun;
 use App\Models\AgentTrigger;
+use App\Models\Connector;
 use App\Models\Execution;
 use App\Models\InboxItem;
 use App\Models\User;
@@ -21,6 +22,8 @@ class Inbox
     public const SUBJECT_EXECUTION = 'execution';
 
     public const SUBJECT_TRIGGER = 'agent_trigger';
+
+    public const SUBJECT_CONNECTOR = 'connector';
 
     public function approval(User $user, AgentAction $action): InboxItem
     {
@@ -125,6 +128,30 @@ class Inbox
             'subject_id' => $trigger->id,
             'source_label' => trim($agent->name.($agent->department ? ' · '.$agent->department->name : '')),
             'icon' => $agent->icon,
+        ]);
+    }
+
+    /** Bağlantı şirket genelinde kapatıldı: etkilenen agentların sahibine uyarı (sahip ve bağlantı başına tek açık uyarı). */
+    public function connectorAlert(User $owner, Connector $connector, string $title, string $body): InboxItem
+    {
+        $open = InboxItem::query()->where('subject_type', self::SUBJECT_CONNECTOR)->where('subject_id', $connector->id)->where('user_id', $owner->id)->whereIn('status', [InboxItem::OPEN, InboxItem::SNOOZED])->first();
+        if ($open !== null) {
+            $open->update(['title' => $title, 'body' => $body, 'read_at' => null]);
+
+            return $open;
+        }
+
+        $source = config('connectors.sources')[$connector->key] ?? ['label' => $connector->key, 'abbr' => '??'];
+
+        return InboxItem::create([
+            'user_id' => $owner->id,
+            'type' => InboxItem::ALERT,
+            'title' => $title,
+            'body' => $body,
+            'subject_type' => self::SUBJECT_CONNECTOR,
+            'subject_id' => $connector->id,
+            'source_label' => 'Bağlantılar · '.$source['label'],
+            'icon' => $source['abbr'],
         ]);
     }
 

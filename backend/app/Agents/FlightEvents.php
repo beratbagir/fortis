@@ -8,6 +8,7 @@ use App\Models\AgentRun;
 use App\Models\AgentTrigger;
 use App\Models\FlightWatch;
 use App\Services\Apm\ApmApi;
+use App\Services\Connectors\ConnectorRegistry;
 use Illuminate\Support\Collection;
 use RuntimeException;
 
@@ -49,7 +50,8 @@ class FlightEvents
         $triggers = $this->activeTriggers();
         $summary = ['legs' => 0, 'events' => [], 'runs' => 0, 'skipped' => 0];
 
-        if ($triggers->isEmpty()) {
+        // APM şirket genelinde kapatıldıysa olaylar da üretilmez.
+        if ($triggers->isEmpty() || app(ConnectorRegistry::class)->isDisabled('apm')) {
             return $summary;
         }
 

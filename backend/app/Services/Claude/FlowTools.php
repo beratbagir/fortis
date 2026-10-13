@@ -20,6 +20,7 @@ use App\Services\Apm\ApmApi;
 use App\Services\Artifacts\ArtifactException;
 use App\Services\Artifacts\ArtifactService;
 use App\Services\Auth\Audit;
+use App\Services\Connectors\ConnectorRegistry;
 use App\Services\Flows\Catalog;
 use App\Services\Flows\ExecutionException;
 use App\Services\Flows\ExecutionService;
@@ -133,10 +134,11 @@ class FlowTools
     {
         $sources = config('connectors.sources');
 
-        return array_values(array_merge([], ...array_map(
+        // Sohbette kullanıcının kapattıkları + yöneticinin şirket genelinde kapattıkları (A4.1).
+        return array_values(array_unique(array_merge(app(ConnectorRegistry::class)->disabledTools(), ...array_map(
             fn (string $key) => $sources[$key]['tools'] ?? [],
             $this->conversation?->disabledSources() ?? [],
-        )));
+        ))));
     }
 
     /**
@@ -467,6 +469,15 @@ class FlowTools
     /** @param  array<string, mixed>  $input */
     private function run(string $name, array $input): ToolResult
     {
+        // Şirket genelinde kapatılan bağlantının aracı: agent'ta da sohbette de reddedilir.
+        if (($source = app(ConnectorRegistry::class)->disabledSourceOf($name)) !== null) {
+            $label = config('connectors.sources')[$source]['label'] ?? $source;
+            Audit::record('connector.tool_blocked', $this->agent?->run, AuditLog::RESULT_BLOCKED, ['tool' => $name, 'connector' => $source],
+                actorType: $this->agent !== null ? AuditLog::ACTOR_AGENT : null, actorLabel: $this->agent?->agent->name, user: $this->agent?->run->ownerUser());
+
+            return ToolResult::error("{$label} bağlantısı yönetici tarafından şirket genelinde kapatıldı; bu araç kullanılamaz. Kullanıcıya {$label} verisinin şu an kullanılamadığını söyle.");
+        }
+
         if ($this->agent !== null) {
             if (! $this->agent->allows($name)) {
                 Audit::record('agent.tool_blocked', $this->agent->run, AuditLog::RESULT_BLOCKED, ['tool' => $name], actorType: AuditLog::ACTOR_AGENT, actorLabel: $this->agent->agent->name, user: $this->agent->run->ownerUser());

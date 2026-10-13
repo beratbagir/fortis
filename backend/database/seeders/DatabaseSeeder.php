@@ -11,6 +11,6 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->call([DepartmentSeeder::class, AdminSeeder::class, AgentTemplateSeeder::class]);
+        $this->call([DepartmentSeeder::class, AdminSeeder::class, AgentTemplateSeeder::class, ConnectorSeeder::class]);
     }
 }

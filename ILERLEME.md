@@ -1140,6 +1140,75 @@ Agentlar ve Inbox (docs/fortis-aero-faz-a3.md) beş alt fazıyla bitti; git etik
 - APM'nin canlı ortamı: test ortamında gerçekleşen saat ve rötar verisi yok; rötar agentları canlı veride doğrulanmalı.
 - Agent başına aylık maliyet sınırı (A4 kredileriyle).
 
+## Fortis Aero — Faz A4.1: Bağlantılar (2026-10-13)
+
+Plan: [docs/fortis-aero-faz-a4.md](docs/fortis-aero-faz-a4.md) §3, §4, §6, §7 (A4.1). Bitti ölçütü: admin APM'yi kapatınca sohbette APM araçları yok, APM kullanan agentların sahiplerine uyarı düşüyor. Testlerde (`ConnectorsTest`) ve Playwright'ta doğrulandı.
+
+**§11 açık sorularında varsayımlar** (kullanıcı kararıyla varsayımla ilerlendi; A4.3'te uygulanacak):
+1. Başlangıçta sadece şirket bütçesi tanımlı; departman bütçesi yok, `hard_stop` kapalı.
+2. "Departman yöneticisi" kavramı yok: bütçe uyarısı sadece admin(ler)e gider (kullanıcı kararı).
+3. Kredi gösterimi kapalı başlar, sadece dolar.
+
+**Backend**
+- **`connectors` tablosu** (`key`, `enabled`, `scopes`, `disabled_reason/by/at`; kimlik bilgisi yok). `ConnectorRegistry::sync()` katalogdaki her bağlantı için satır açar ve kapsamı günceller; `ConnectorSeeder` (`DatabaseSeeder`'a eklendi) aynı işi yapar. Yerelde yüklendi.
+- **Katalog (`config/connectors.php`):** 11 bağlantı.
+  - Veri: IBS, APM, SuccessFactors.
+  - Kanal: E-posta, Teams.
+  - Kurulum gerekli: Outlook, SharePoint, AirRM, Oracle, SkyBreathe, Octopus.
+  - Her birinde kategori, açıklama, araçlar, agent kataloğundaki sistem adı ve `.env` değişken adı → config anahtarı eşlemesi. Kurulum gerekenlerde "Ne gerekiyor?" listesi.
+  - Home çipleri ve kaynak seçici eskisi gibi beş kaynak (`chip`).
+- **Kapsam etiketleri araç kataloğundan türetiliyor**, elle yazılmıyor:
+  - `read`: okuma aracı var.
+  - `write·approval`: yazma aracı var (e-posta, Teams).
+  - `events`: `config/agents.php` → `events.*.source` (APM).
+- **Durum:**
+  - Önceki `connected` / `attention` / `not_configured` durumlarına `disabled` (yönetici kapattı) eklendi.
+  - E-posta: `MAIL_MAILER` `log`/`array` iken "kurulum gerekli" (yerel; e-postalar log'a yazılıyor), aksi halde canlı kontrol olmadığı için "dikkat". Hiçbir kanal "Connected" görünmüyor.
+  - Teams: kanal webhook'u veya Kestra secret'ı varsa yapılandırılmış sayılıyor.
+- **Şirket genelinde kapatma:**
+  - Kapalı bağlantının araçları (sohbet araçları + agent kataloğundaki aynı sistemin yazma araçları) `FlowTools::disabledTools()`'a eklenir: sohbette, agentta ve Architect'te Claude'a sunulmaz.
+  - Çağrılırsa (agent'ta da) reddedilir ve `connector.tool_blocked` denetim kaydı düşer.
+  - Sohbet izindeki kapsam adımında kaynak kapsam dışı görünür; APM kapalıyken uçuş olayları üretilmez.
+  - Kapalı listesi 1 dk önbellekte; değişince temizlenir.
+- **Uyarı:** kapatınca bağlantıyı kullanan agentların (şablonlar hariç, taslaklar dahil) sahiplerine sahip başına tek Inbox uyarısı (etkilenen agentların adlarıyla). Tekrar kapatmak yeni uyarı açmaz; açınca uyarılar kapanır. `connector.disable` / `connector.enable` denetim kaydı önceki/yeni değer ve gerekçeyle.
+- **Gizli bilgi:**
+  - Yanıtlarda `.env` için sadece değişken adı ve "tanımlı mı" var; sadece admin'e, config'ten bakılarak (config önbelleğinde `env()` boş döner).
+  - Kontrol hataları `Secrets::scrub` ile temizleniyor: katalogdaki bütün `.env` değerleri, Anthropic anahtarı, iç anahtar, adres içindeki kullanıcı:şifre, Bearer/Basic başlıkları → `[gizli]`. Hata kaydedilirken ve gösterilirken iki kez temizleniyor.
+- **API:**
+  - `GET /api/connectors` (herkes): durum, kapsam, son kontrol, bu hafta kullanım = `ai.query` kayıtları + gönderilen aksiyonlar; özet sayılar.
+  - `GET /api/connectors/{key}`: 24 saatlik kontrol geçmişi, ortalama yanıt, son hata, araçlar ve açıklamaları, kullanan agentlar, son 7 gün sohbet sorgusu, veri koruması, `.env` adları (admin), "Ne gerekiyor?", etkilenecek agent sayısı.
+  - Veri koruması: `config/ai-data.php` → `masked_groups` grup adları ve kaynağa özel kurallar; değer yok.
+  - Sadece admin: `POST …/check` (bağlantı başına dakikada 1, 429 + kalan süre; `connector.check` kaydı), `POST …/disable` (gerekçe zorunlu), `POST …/enable`.
+- `Connectors::check($key)` tek bağlantı kontrolü (zamanlayıcıdaki `checkAll` bunu kullanıyor).
+
+**Arayüz**
+- **`#/connectors`** ("Yakında" listesinden çıktı):
+  - Başlık ve açıklama, "N bağlı · N dikkat · N kurulum gerekli (· N kapalı)".
+  - Sekmeler Tümü / Veri kaynakları / Kanallar / MCP; arama.
+  - Gruplar: Havayolu sistemleri, Teslim kanalları, Kurulabilir.
+  - Kart: 2 harf ikon, ad, açıklama, durum rozeti (Bağlı / Dikkat / Kurulum gerekli / Kapalı), kapsam etiketleri (okuma, yazma · onaylı, olaylar), son kontrol (göreli, mono), haftalık kullanım.
+  - MCP sekmesi: "A6'da gelecek" boş durumu; sahte bağlantı yok.
+- **`#/connectors/{key}`:**
+  - Durum: 24 saatlik başarılı/başarısız şerit, son kontrol, ortalama yanıt, son hata (temizlenmiş).
+  - Ne yapabilir, Kim kullanıyor (agent bağlantıları), Veri koruması, Yapılandırma (.env adları ✓/✗, sadece admin), Ne gerekiyor + "IT'ye iletmek için kopyala".
+  - Admin: **Şimdi kontrol et**, **Kapat** (diyalog: etkilenecek agent sayısı + zorunlu gerekçe) / **Aç**.
+- Home çiplerinde ve kaynak seçicide kapalı kaynak soluk, "Yönetici kapattı"; çip bağlantının detayına gider.
+
+**Testler:** backend 438 (hepsi geçti). Yeni `ConnectorsTest` 5:
+- Liste, detay ve durum yanıtlarında bilinen 7 gizli değerin hiçbiri yok (kontrol hatasına gömülü şifre dahil); `.env` adları sadece admin'e.
+- Durum, kapsam ve kurulum kartları; yerelde e-posta Connected değil.
+- Sadece admin kapatır/kontrol eder, gerekçe zorunlu.
+- APM kapatılınca sohbette ve agentta araçlar yok, çağrı reddedilip kaydediliyor; sahip başına tek uyarı (şablon hariç); denetim önceki/yeni; açınca geri geliyor.
+- "Şimdi kontrol et" hız sınırı.
+
+Vitest 65 (yeni `connectors.test.tsx` 3: liste rozetleri/kapsam/sekmeler/MCP; detay ve kapatma diyaloğu; kullanıcıda admin düğmesi ve `.env` yok; IT metni). Test kurulumuna jsdom için `<dialog>` dolgusu eklendi. Playwright 12 (yeni: Bağlantılar → APM → Kapat (gerekçe) → Home'da APM çipi soluk → Aç; Bağlantılar ve APM detayı görsel temelleri açık/koyu, görüntülere bakıldı).
+
+**Dokümandan sapmalar ve nedenleri**
+- Kapsam etiketlerinde "widget" yok (tasarımda var): Fortis'te widget/gösterge kavramı yok; etiketler sadece araç kataloğundan türetiliyor.
+- Kurulum gerekli kartlarında tasarımdaki "Crew & ops scheduling, MRO, Baggage" yerine görev dosyasındaki liste (Outlook, SharePoint, AirRM, Oracle, SkyBreathe, Octopus).
+- `.env` "tanımlı mı" bilgisi config'teki etkin değere bakıyor: varsayılanı olan değişkenler (ör. `APM_GRANT_TYPE`, `MAIL_PORT`) `.env`'de yazmasa da tanımlı görünür.
+- Bağlantıyı kapatmak zamanlanmış kontrolleri durdurmuyor (sağlık bilgisi görünmeye devam etsin diye); sadece kullanım kapanıyor.
+
 ## Çalıştırma
 
 ```sh

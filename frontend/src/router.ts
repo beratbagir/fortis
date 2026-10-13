@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 
 /** Henüz yapılmamış ekranlar: menüde görünür, "Yakında" sayfası açar. */
-export const SOON_SCREENS = ['actions', 'connectors', 'artifacts', 'shared', 'memory', 'knowledge', 'skills'] as const
+export const SOON_SCREENS = ['actions', 'artifacts', 'shared', 'memory', 'knowledge', 'skills'] as const
 export type SoonScreen = (typeof SOON_SCREENS)[number]
 
 export const AGENT_TABS = ['overview', 'chat', 'runs', 'config', 'evaluation', 'versions'] as const
@@ -24,6 +24,7 @@ export type Route =
   | { name: 'runs'; executionId: string | null }
   | { name: 'governance' }
   | { name: 'inbox'; itemId: number | null }
+  | { name: 'connectors'; key: string | null }
   | { name: 'soon'; screen: SoonScreen }
   | { name: 'profile' }
   | { name: 'admin-users' }
@@ -59,6 +60,8 @@ export function parseRoute(hash: string): Route {
       return { name: 'runs', executionId: parts[1] ?? null }
     case 'inbox':
       return { name: 'inbox', itemId: id(parts[1]) }
+    case 'connectors':
+      return { name: 'connectors', key: parts[1] && /^[a-z_]+$/.test(parts[1]) ? parts[1] : null }
     case 'governance':
     case 'usage':
       return { name: 'governance' }
@@ -99,6 +102,8 @@ export function href(route: Route): string {
       return '#/governance'
     case 'inbox':
       return route.itemId ? `#/inbox/${route.itemId}` : '#/inbox'
+    case 'connectors':
+      return route.key ? `#/connectors/${route.key}` : '#/connectors'
     case 'soon':
       return `#/${route.screen}`
     case 'profile':

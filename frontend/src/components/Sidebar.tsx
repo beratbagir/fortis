@@ -52,7 +52,7 @@ function mainItems(canBuild: boolean, inboxCount: number): Item[] {
     { key: 'actions', label: t('nav.actions'), icon: CheckSquareIcon, route: { name: 'soon', screen: 'actions' }, soon: true },
     { key: 'agents', label: t('nav.agents'), icon: GridIcon, route: { name: 'agents' } },
     ...(canBuild ? [{ key: 'build', label: t('nav.build'), icon: HammerIcon, route: { name: 'build' } } as Item] : []),
-    { key: 'connectors', label: t('nav.connectors'), icon: PlugIcon, route: { name: 'soon', screen: 'connectors' }, soon: true },
+    { key: 'connectors', label: t('nav.connectors'), icon: PlugIcon, route: { name: 'connectors', key: null } },
     { key: 'artifacts', label: t('nav.artifacts'), icon: LayersIcon, route: { name: 'soon', screen: 'artifacts' }, soon: true },
   ]
 }

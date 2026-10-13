@@ -153,3 +153,31 @@ test('Agent Kaydı → agent sayfası → Şimdi çalıştır → Çalışmalar:
   await expect(page.getByRole('textbox', { name: 'Kural 3' })).toHaveValue('Rakamlar kaynak sorgularla tutarlı')
   await expect(page.getByRole('region', { name: 'Kural başına geçme' })).toContainText('%73')
 })
+
+test('Admin: Bağlantılar → APM detay → Kapat (gerekçe) → Home ve sohbette APM soluk → Aç', async ({ page }) => {
+  await page.clock.setFixedTime(now)
+  installFakeBackend(page, { now })
+  await page.goto('/#/connectors')
+
+  await expect(page.getByRole('region', { name: 'Havayolu sistemleri' }).getByText('· 2 bağlı')).toBeVisible()
+  await page.getByRole('link', { name: 'APM: Bağlı' }).click()
+  await expect(page).toHaveURL(/#\/connectors\/apm$/)
+  await expect(page.getByRole('region', { name: 'Yapılandırma (.env)' })).toContainText('APM_CLIENT_SECRET')
+  await expect(page.getByRole('region', { name: 'Kim kullanıyor' })).toContainText('Sabah Operasyon Özeti')
+
+  await page.getByRole('button', { name: 'Kapat', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: 'APM kapatılsın mı?' })
+  await expect(dialog.getByText('2 agent')).toBeVisible()
+  await dialog.getByLabel(/Gerekçe/).fill('APM bakımda')
+  await dialog.getByRole('button', { name: 'Bağlantıyı kapat' }).click()
+  await expect(page.getByText(/Şirket genelinde kapalı: APM bakımda/)).toBeVisible()
+
+  await page.goto('/#/chat')
+  const chip = page.getByRole('link', { name: 'APM: kapalı' })
+  await expect(chip).toBeVisible()
+  await expect(chip).toHaveClass(/opacity-50/)
+
+  await page.goto('/#/connectors/apm')
+  await page.getByRole('button', { name: 'Aç', exact: true }).click()
+  await expect(page.getByText('APM açıldı.')).toBeVisible()
+})

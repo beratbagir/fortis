@@ -42,11 +42,11 @@ export function HomeView({ composer, onSend, busy, error }: { composer: ReactNod
           {(connectors.data ?? []).map((c) => (
             <li key={c.key} className="shrink-0">
               <a
-                href="#/connectors"
-                title={c.status === 'not_configured' ? 'Kurulum bekliyor' : (c.detail ?? 'Bağlı')}
-                aria-label={`${c.label}: ${c.status === 'connected' ? 'bağlı' : c.status === 'attention' ? 'dikkat' : 'kurulum bekliyor'}`}
+                href={`#/connectors/${c.key}`}
+                title={c.status === 'not_configured' ? 'Kurulum bekliyor' : c.status === 'disabled' ? 'Yönetici şirket genelinde kapattı' : (c.detail ?? 'Bağlı')}
+                aria-label={`${c.label}: ${c.status === 'connected' ? 'bağlı' : c.status === 'attention' ? 'dikkat' : c.status === 'disabled' ? 'kapalı' : 'kurulum bekliyor'}`}
                 data-status={c.status}
-                className={`flex items-center gap-1.5 rounded-md border border-line px-2 py-1 text-xs text-ink-2 no-underline hover:bg-raised ${c.status === 'not_configured' ? 'opacity-50' : ''}`}
+                className={`flex items-center gap-1.5 rounded-md border border-line px-2 py-1 text-xs text-ink-2 no-underline hover:bg-raised ${c.status === 'not_configured' || c.status === 'disabled' ? 'opacity-50' : ''}`}
               >
                 <span className="rounded bg-raised px-1 font-mono text-[10px] text-muted">{c.abbr}</span>
                 {c.label}

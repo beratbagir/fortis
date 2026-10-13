@@ -133,6 +133,13 @@ Route::middleware(['auth:sanctum', 'active', 'password.changed'])->group(functio
     // Home ve konuşma ekranları
     Route::get('home', HomeController::class)->name('home');
     Route::get('connectors/status', [ConnectorController::class, 'status'])->name('connectors.status');
+    Route::get('connectors', [ConnectorController::class, 'index'])->name('connectors.index');
+    Route::get('connectors/{key}', [ConnectorController::class, 'show'])->where('key', '[a-z_]+')->name('connectors.show');
+    Route::middleware('can:admin')->group(function () {
+        Route::post('connectors/{key}/check', [ConnectorController::class, 'check'])->name('connectors.check');
+        Route::post('connectors/{key}/disable', [ConnectorController::class, 'disable'])->name('connectors.disable');
+        Route::post('connectors/{key}/enable', [ConnectorController::class, 'enable'])->name('connectors.enable');
+    });
     Route::post('messages/{message}/feedback', [MessageController::class, 'feedback'])->name('messages.feedback');
     Route::get('messages/{message}/audit', [MessageController::class, 'audit'])->name('messages.audit');
 

@@ -12,6 +12,7 @@ import { ChatPage } from './pages/ChatPage'
 import { ChatsPage } from './pages/ChatsPage'
 import { ComingSoonPage } from './pages/ComingSoonPage'
 import { FlowsListPage } from './pages/FlowsListPage'
+import { ConnectorsPage } from './pages/ConnectorsPage'
 import { InboxPage } from './pages/InboxPage'
 import { LoginPage } from './pages/LoginPage'
 import { PasswordForm, ProfilePage } from './pages/ProfilePage'
@@ -109,6 +110,8 @@ function Page({ route }: { route: Route }) {
       return <UsagePage />
     case 'inbox':
       return <InboxPage itemId={route.itemId} />
+    case 'connectors':
+      return <ConnectorsPage key={route.key ?? 'list'} connectorKey={route.key} />
     case 'soon':
       return <ComingSoonPage screen={route.screen} />
     case 'profile':

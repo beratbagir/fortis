@@ -48,6 +48,16 @@ return [
         'call_sign', 'callsign', 'aircraft_reg', 'aircraft_registration', 'registration', 'ac_reg', 'tail', 'tail_no', 'tail_number',
     ],
 
+    // Bağlantılar ekranında gösterilen maskelenen alan grupları (sadece grup adları; masked_columns'un özetidir).
+    'masked_groups' => [
+        'Ad ve soyad' => ['first_name', 'last_name', 'full_name', 'pax_name', 'passenger_name'],
+        'İletişim bilgileri' => ['email', 'phone', 'mobile', 'fax'],
+        'Rezervasyon ve bilet kimlikleri' => ['pnr', 'record_locator', 'booking_reference', 'ticket_number', 'eticket'],
+        'Kimlik belgeleri ve doğum tarihi' => ['passport', 'national_id', 'tckn', 'birth_date', 'date_of_birth'],
+        'Adres, ödeme ve maaş' => ['address', 'zip_code', 'iban', 'card_number', 'salary'],
+        'Serbest metin (not, açıklama)' => ['remark', 'comment', 'memo', 'free_text'],
+    ],
+
     // Bu kelimeleri içeren sütunlar sayım/toplamdır, maskelenmez (ör. pnr_count, total_pax).
     'aggregate_column_words' => ['count', 'cnt', 'total', 'sum', 'avg', 'qty', 'number_of', 'ratio', 'pct', 'rate'],
 

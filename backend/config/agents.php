@@ -89,8 +89,8 @@ return [
     | flight.cancelled: sefer iptal olunca. İlk kez görülen uçuş sadece kaydedilir, olay üretmez.
     */
     'events' => [
-        'flight.delayed' => ['label' => 'Uçuş rötarı', 'default_min_delay_minutes' => 60],
-        'flight.cancelled' => ['label' => 'Uçuş iptali'],
+        'flight.delayed' => ['label' => 'Uçuş rötarı', 'default_min_delay_minutes' => 60, 'source' => 'apm'],
+        'flight.cancelled' => ['label' => 'Uçuş iptali', 'source' => 'apm'],
     ],
     'flight_watch_hours_back' => 6,
     'flight_watch_hours_ahead' => 18,
