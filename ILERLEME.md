@@ -1298,6 +1298,61 @@ Vitest 67 (yeni `governance.test.tsx` 2). Playwright 13 (yeni: Yönetişim → s
 - 24 saatlik onay uyarısının "Git" bağlantısı yok: onay, sahibinin Inbox'ında; mesaj kimin onayı olduğunu söylüyor.
 - Canlı listede akışların araç sayısı yok (Kestra adımlarında araç çağrısı kavramı yok).
 
+## Fortis Aero — Faz A4.3: Kullanım ve bütçeler (2026-10-13)
+
+Plan: [docs/fortis-aero-faz-a4.md](docs/fortis-aero-faz-a4.md) (A4.3). Bitti ölçütü: departman bütçesi dolunca o departmandan yeni soru başlamıyor, admin kullanabiliyor. `BudgetTest` (gerçek mesaj ve agent uç noktalarıyla) ve Playwright'ta (bütçe kaydetme) doğrulandı.
+
+**Backend**
+- **`budgets` tablosu** (`App\Models\BudgetLimit`): kapsam şirket/departman/kullanıcı, aylık limit ($), uyarı eşiği (%80), "dolunca durdur" (`hard_stop`), bu ay gönderilen uyarılar. Eski `budget.monthly_usd` ayarı şirket satırına taşındı. Limit varsa `hard_stop` açık geliyor; eskiden şirket bütçesi dolunca sohbet duruyordu, davranış aynı kalıyor.
+- **`ai_calls.department_id`**: çağrı anındaki kullanıcının departmanı. Eski kayıtlar için `fortis:usage:backfill-departments` var (yerelde eski kayıtların hiçbirinde departman yoktu, 0 kayıt güncellendi).
+- **`App\Services\Usage\Budget`** yeniden yazıldı:
+  - Ay Türkiye saatine göre.
+  - Kapsam başına harcama 1 dakika önbellekte; her `AiCall` kaydında önbellek artırılıyor, böylece her soruda toplama sorgusu çalışmıyor.
+  - **Dolunca durdur:** kullanıcının departman, kişisel veya şirket bütçesinden biri dolmuşsa yeni soru 402 ile reddedilir ("Departman bütçesi bu ay doldu; yöneticinize başvurun."). Adminler muaf.
+  - **Agent:** elle başlatma 402. Tetikleyici çalışmayı atlar (`agent.run.skipped`, sebep `budget`). Kuyrukta bekleyen çalışma başlamadan "başarısız" olur. Başlamış çalışma bitirilir. Kimin bütçesine bakılacağı: çalışmayı başlatan; yoksa agent sahibi.
+  - **Akış içindeki AI adımı:** şirket bütçesi dolduysa ve eski ayar açıksa ya da şirket bütçesinde "dolunca durdur" açıksa hata verir.
+  - **Uyarılar:** eşik aşılınca ve bütçe dolunca bütün adminlere Inbox uyarısı gider, her bütçe için ayda bir. Şirket eşiğinde ayrıca eski `BudgetAlert` e-postası gider. Yönetişim'deki bütçe uyarıları artık bütün bütçe satırlarını kapsıyor.
+- **`App\Services\Usage\UsageExplorer`**: filtreler tarih aralığı (Türkiye günü), departman, kullanıcı, model ve tür (sohbet, agent, başlık, puanlama, eval, akış adımı). Çıktısı: toplamlar, gün×tür, tür/departman/model kırılımı, en çok harcayan 10 agent ve 10 kullanıcı, son 200 satır.
+- **Uç noktalar** (hepsi sadece admin):
+  - `GET /api/governance/usage`: rapor. `?format=csv` ile en çok 50.000 satır CSV indirilir (`usage.export` denetim kaydı; kredi tanımlıysa kredi sütunu da eklenir).
+  - `GET/PUT /api/governance/budgets`: bütçeler ve kredi değeri.
+    - Limiti boş bırakılan departman/kullanıcı bütçesi silinir.
+    - Her değişiklik `settings.update` kaydına önceki ve yeni değeriyle yazılır.
+    - Limit veya eşik değişince o ayın uyarıları yeniden gönderilebilir.
+- Ayarlar ekranındaki "aylık bütçe" artık şirket bütçe satırını okuyup yazıyor.
+
+**Arayüz**
+- **Yönetişim > Kullanım** (admin) yeniden yapıldı:
+  - Filtreler: tarih aralığı, departman, kullanıcı, model, tür.
+  - 4 kutu: toplam maliyet (kredi tanımlıysa "≈ N kredi"), çağrı (çağrı başına maliyet), giriş token, çıkış token.
+  - Türe göre yığılmış günlük harcama grafiği.
+  - Departman ve model kırılımı; en çok harcayan 10 agent (agent sayfasına bağlantılı) ve 10 kullanıcı.
+  - Son 200 AI çağrısı tablosu; filtreyle aynı **CSV indir**.
+- **Bütçeler** bölümü (Kullanım'ın altında): şirket ve her departman için bu ayki harcama ve oran (eşikte sarı, dolunca kırmızı), aylık limit, uyarı %, "dolunca durdur", kredi değeri. **Kaydet** önce değişiklik listesini onay diyaloğunda gösterir.
+- Admin olmayan kullanıcı sekmeleri görmez; kendi Kullanım ekranını (eski ekran) görür.
+- Bütçe dolunca sohbet ve agent başlatma ekranlarında sunucunun 402 mesajı gösteriliyor.
+
+**Yerel veriyle kontrol:** bu ayın toplamı Kullanım'da ve Genel bakış'ta aynı: 20,1994 $. Yerelde şirket limiti tanımsız.
+
+**Testler:** backend 456 (hepsi geçti). Yeni `BudgetTest` 5:
+- Eşik ve dolma uyarıları sadece admine, ayda bir.
+- Dolunca durdur: sadece o departmanın soruları ve agent çalışmaları duruyor; diğer departman ve aynı departmandaki admin etkilenmiyor; tetikleyici atlanıp kayda geçiyor.
+- Kuyruktaki çalışma başlamıyor, başlamış çalışma bitiyor.
+- Önbellekteki aylık toplam veritabanıyla aynı (Türkiye ayı sınırı dahil).
+- Bütçe API'si: sadece admin, doğrulama, önceki/yeni değer kaydı, boş limitle silme, kredi değeri.
+
+Yeni `GovernanceUsageTest` 2 (filtreler, kırılımlar, CSV ve denetim kaydı). `UsageTest` ve `GovernanceTest` yeni tabloya uyarlandı.
+
+Vitest 70 (yeni `usage.test.tsx` 3: kutular, kırılımlar, filtrenin sorguya ve CSV'ye geçmesi; kredi gösterimi; bütçe kaydetmenin onaydan sonra gitmesi). Playwright 13: Yönetişim senaryosu Kullanım → departman filtresi → Operasyon'a dolunca duran bütçe → onay → kaydedildi şeklinde uzatıldı; Kullanım görsel temeli açık/koyu yeniden üretildi ve görüntüye bakıldı.
+
+**Dokümandan sapmalar ve nedenleri**
+- Taşınan eski şirket bütçesinde "dolunca durdur" açık geliyor (eski davranış korunsun diye). Yeni bütçelerde varsayılan kapalı.
+- Bütçe uyarısı sadece adminlere gidiyor (§11 varsayımı; departman yöneticisi rolü yok).
+- Kredi gösterimi kapalı başlıyor; admin kredi değerini girince açılıyor. Hesap her zaman dolardan.
+- Departman bütçeleri şimdilik Kullanım sekmesinde yönetiliyor; Politikalar sekmesi A4.4'te. Kişisel (kullanıcı) bütçe API'de ve uygulamada var, arayüzde henüz yok.
+- Bütçe dolunca başlamış agent çalışmaları ve sohbetteki devam eden tur kesilmiyor; sadece yenileri başlamıyor.
+- Önbellek 1 dakika: aynı anda çalışan birkaç sunucu işçisi bütçeyi birkaç sent aşabilir.
+
 ## Çalıştırma
 
 ```sh
@@ -1338,6 +1393,9 @@ cd backend && php artisan fortis:agent:run sabah-operasyon-ozeti --test
 # Zamanlayıcı (bağlantı kontrolü, uçuş olayları, Kestra'ya aktarılamayan zamanlamaların yeniden denenmesi)
 cd backend && php artisan schedule:work
 cd backend && php artisan fortis:agent:sync-triggers --all   # bütün zamanlamaları Kestra'ya yeniden yükle
+
+# Eski ai_calls kayıtlarına departman yaz (A4.3; bir kez)
+cd backend && php artisan fortis:usage:backfill-departments
 cd backend && php artisan governance:scan                    # Yönetişim "Dikkat gerekenler" (zamanlayıcıda 5 dk)
 
 # Sesli komut: Whisper servisi (http://127.0.0.1:9000). İlk açılışta model (~500 MB) iner.

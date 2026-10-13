@@ -19,6 +19,8 @@ use App\Services\Auth\Audit;
 use App\Services\Claude\AskAnswer;
 use App\Services\Claude\ClaudeChat;
 use App\Services\Claude\ClaudeException;
+use App\Services\Usage\Budget;
+use App\Services\Usage\BudgetExceededException;
 use Closure;
 use Illuminate\Support\Facades\Auth;
 
@@ -32,11 +34,18 @@ class AgentRunner
     public function __construct(
         private readonly Inbox $inbox,
         private readonly AgentActions $actions,
+        private readonly Budget $budget,
     ) {}
 
-    /** Çalışmayı açar ve kuyruğa atar. */
+    /**
+     * Çalışmayı açar ve kuyruğa atar.
+     *
+     * @throws BudgetExceededException Başlatanın (yoksa agent sahibinin) bütçesi dolmuş ve "dolunca durdur" açıksa.
+     */
     public function start(Agent $agent, string $input, ?User $user, bool $test = false, ?AgentTrigger $trigger = null): AgentRun
     {
+        $this->budget->assertAgentAllowed($user ?? $agent->owner);
+
         $conversation = Conversation::create([
             'user_id' => $user?->id ?? $agent->owner_id,
             'title' => $agent->name.' · '.now('Europe/Istanbul')->format('d.m H:i'),
@@ -100,6 +109,17 @@ class AgentRunner
     {
         if (! in_array($run->status, [AgentRun::QUEUED, AgentRun::RUNNING], true)) {
             return;
+        }
+
+        // Bütçe: ilk kez başlayacak çalışma bütçe dolduysa başlamaz; devam eden (soru cevaplanmış vb.) çalışma bitirilir.
+        if ($run->started_at === null) {
+            try {
+                $this->budget->assertAgentAllowed($run->ownerUser());
+            } catch (BudgetExceededException $e) {
+                $this->fail($run, $e->getMessage());
+
+                return;
+            }
         }
 
         $run->update(['status' => AgentRun::RUNNING, 'started_at' => $run->started_at ?? now(), 'attempts' => $run->attempts + 1]);

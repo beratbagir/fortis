@@ -2,6 +2,7 @@
 
 namespace App\Services\Settings;
 
+use App\Models\BudgetLimit;
 use App\Models\Setting;
 
 /**
@@ -57,12 +58,12 @@ class AppSettings
         return $this->isAllowedModel($model) ? $model : (string) config('ai.default_model');
     }
 
-    /** Boş: limitsiz. */
+    /** Şirket bütçesi (A4.3'ten beri budgets tablosunda). Boş: limitsiz. */
     public function monthlyBudget(): ?float
     {
-        $budget = $this->get(self::MONTHLY_BUDGET);
+        $budget = BudgetLimit::org()->monthly_limit_usd;
 
-        return is_numeric($budget) && $budget > 0 ? (float) $budget : null;
+        return $budget !== null && $budget > 0 ? (float) $budget : null;
     }
 
     public function blocksFlowAiSteps(): bool

@@ -205,4 +205,18 @@ test('Admin: Yönetişim → sınırı aşan test çalışması dikkat gerekenle
 
   await page.getByRole('link', { name: 'Kullanım' }).click()
   await expect(page.getByRole('heading', { name: 'Kullanım ve maliyet' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Toplam maliyet' })).toContainText('$18,42')
+  await page.getByLabel('Departman', { exact: true }).selectOption('1')
+  await expect(page.getByRole('link', { name: 'CSV indir' })).toHaveAttribute('href', /department_id=1&format=csv$/)
+
+  // Operasyon'a dolunca duran 15 $ bütçe: onaydan sonra kaydedilir, harcama oranı görünür.
+  const budgets = page.getByRole('region', { name: /Bütçeler/ })
+  await budgets.getByLabel('Operasyon aylık limit').fill('15')
+  await budgets.getByLabel('Operasyon dolunca durdur').check()
+  await budgets.getByRole('button', { name: 'Kaydet' }).click()
+  const confirm = page.getByRole('dialog', { name: 'Bütçe değişiklikleri kaydedilsin mi?' })
+  await expect(confirm).toContainText('Operasyon: $15,00 / ay, uyarı %80, dolunca durdur')
+  await confirm.getByRole('button', { name: 'Onayla ve kaydet' }).click()
+  await expect(page.getByText('Bütçeler kaydedildi.')).toBeVisible()
+  await expect(budgets.getByText('%81')).toBeVisible()
 })

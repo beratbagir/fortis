@@ -26,7 +26,7 @@ class AiCall extends Model
 
     protected static function booted(): void
     {
-        static::created(fn () => app(Budget::class)->checkAlert());
+        static::created(fn (AiCall $call) => app(Budget::class)->recorded($call));
     }
 
     /**

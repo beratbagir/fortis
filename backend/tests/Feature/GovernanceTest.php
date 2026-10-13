@@ -10,6 +10,7 @@ use App\Models\AgentRun;
 use App\Models\AgentRunScore;
 use App\Models\AiCall;
 use App\Models\AuditLog;
+use App\Models\BudgetLimit;
 use App\Models\ConnectorCheck;
 use App\Models\Conversation;
 use App\Models\Execution;
@@ -20,7 +21,6 @@ use App\Models\InboxItem;
 use App\Models\User;
 use App\Services\Flows\ExecutionService;
 use App\Services\Governance\GovernanceAlerts;
-use App\Services\Settings\AppSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
@@ -157,7 +157,7 @@ class GovernanceTest extends TestCase
         ConnectorCheck::create(['connector' => 'apm', 'ok' => true, 'checked_at' => now()->subMinutes(40)]);
         ConnectorCheck::create(['connector' => 'apm', 'ok' => false, 'error' => 'x', 'checked_at' => now()]);
         // Bütçe: %90.
-        app(AppSettings::class)->set(AppSettings::MONTHLY_BUDGET, '10');
+        BudgetLimit::org()->update(['monthly_limit_usd' => 10]);
         AiCall::create(['model' => 'm', 'source' => 'chat', 'cost_usd' => 9]);
         // Üst üste 3 başarısız + düşük puan.
         foreach (range(1, 3) as $i) {

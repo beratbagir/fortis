@@ -6,6 +6,7 @@ use App\Models\Agent;
 use App\Models\AgentRun;
 use App\Models\AgentRunScore;
 use App\Models\AuditLog;
+use App\Models\BudgetLimit;
 use App\Models\ConnectorCheck;
 use App\Models\GovernanceAlert;
 use App\Models\InboxItem;
@@ -105,21 +106,25 @@ class GovernanceAlerts
         return ConnectorCheck::query()->where('connector', $key)->where('checked_at', '<', $limit)->exists();
     }
 
+    /** Her tanımlı bütçe (şirket, departman, kullanıcı) için: uyarı eşiği aşıldı → uyarı; doldu → kritik. */
     private function budgetAlerts(): void
     {
-        $status = $this->budget->status();
-        $month = now('Europe/Istanbul')->format('Y-m');
-        $ratio = $status['ratio'];
-        $warnAt = (float) config('ai.budget_alert_ratio');
+        $month = Budget::month()->format('Y-m');
 
-        if ($ratio !== null && $ratio >= 1) {
-            $this->raise(GovernanceAlert::BUDGET_EXHAUSTED, GovernanceAlert::CRITICAL, 'budget', $month, sprintf('Bu ayın AI bütçesi doldu: $%s / $%s.', number_format($status['spent'], 2), number_format((float) $status['limit'], 2)));
-            $this->autoResolve(GovernanceAlert::BUDGET_WARNING, 'budget', $month);
-        } elseif ($ratio !== null && $ratio >= $warnAt) {
-            $this->raise(GovernanceAlert::BUDGET_WARNING, GovernanceAlert::WARNING, 'budget', $month, sprintf('Bu ayın AI bütçesinin %%%d\'i kullanıldı: $%s / $%s.', (int) round($ratio * 100), number_format($status['spent'], 2), number_format((float) $status['limit'], 2)));
-        } else {
-            $this->autoResolve(GovernanceAlert::BUDGET_WARNING, 'budget', $month);
-            $this->autoResolve(GovernanceAlert::BUDGET_EXHAUSTED, 'budget', $month);
+        foreach (BudgetLimit::query()->get() as $budget) {
+            $status = $this->budget->statusFor($budget);
+            $subject = "{$budget->id}:{$month}";
+            $ratio = $status['ratio'];
+
+            if ($ratio !== null && $ratio >= 1) {
+                $this->raise(GovernanceAlert::BUDGET_EXHAUSTED, GovernanceAlert::CRITICAL, 'budget', $subject, sprintf('%s AI bütçesi bu ay doldu: $%s / $%s%s', $budget->label(), number_format($status['spent'], 2), number_format((float) $status['limit'], 2), $budget->hard_stop ? ' (yeni sorular duruyor).' : '.'));
+                $this->autoResolve(GovernanceAlert::BUDGET_WARNING, 'budget', $subject);
+            } elseif ($ratio !== null && $ratio * 100 >= $budget->warn_at_percent) {
+                $this->raise(GovernanceAlert::BUDGET_WARNING, GovernanceAlert::WARNING, 'budget', $subject, sprintf('%s AI bütçesinin %%%d\'i kullanıldı: $%s / $%s.', $budget->label(), (int) round($ratio * 100), number_format($status['spent'], 2), number_format((float) $status['limit'], 2)));
+            } else {
+                $this->autoResolve(GovernanceAlert::BUDGET_WARNING, 'budget', $subject);
+                $this->autoResolve(GovernanceAlert::BUDGET_EXHAUSTED, 'budget', $subject);
+            }
         }
     }
 

@@ -4,11 +4,12 @@ namespace Tests\Feature;
 
 use App\Mail\BudgetAlert;
 use App\Models\AiCall;
+use App\Models\BudgetLimit;
 use App\Models\Conversation;
 use App\Models\Flow;
+use App\Models\User;
 use App\Services\Claude\ClaudeChat;
 use App\Services\Claude\CostCalculator;
-use App\Services\Settings\AppSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
@@ -109,22 +110,23 @@ class UsageTest extends TestCase
 
     public function test_chat_stops_when_budget_is_exhausted(): void
     {
-        $this->app->make(AppSettings::class)->set(AppSettings::MONTHLY_BUDGET, 1.0);
+        BudgetLimit::org()->update(['monthly_limit_usd' => 1.0, 'hard_stop' => true]);
         $this->aiCall(['cost_usd' => 1.0]);
-        $conversation = Conversation::factory()->create();
+        $user = User::factory()->create();
+        $conversation = Conversation::factory()->create(['user_id' => $user->id]);
 
         $this->mock(ClaudeChat::class)->shouldNotReceive('reply');
 
-        $this->postJson("/api/conversations/{$conversation->id}/messages", ['content' => 'Merhaba'])
+        $this->actingAs($user)->postJson("/api/conversations/{$conversation->id}/messages", ['content' => 'Merhaba'])
             ->assertStatus(402)
-            ->assertJsonPath('message', fn (string $message) => str_contains($message, 'bütçesi doldu'));
+            ->assertJsonPath('message', fn (string $message) => str_contains($message, 'AI bütçesi doldu'));
         $this->assertSame(0, $conversation->messages()->count());
     }
 
     public function test_budget_alert_is_sent_once_a_month_at_80_percent(): void
     {
         config(['ai.admin_emails' => ['admin@example.com']]);
-        $this->app->make(AppSettings::class)->set(AppSettings::MONTHLY_BUDGET, 10.0);
+        BudgetLimit::org()->update(['monthly_limit_usd' => 10.0]);
 
         $this->aiCall(['cost_usd' => 7.0]);
         Mail::assertNothingSent();

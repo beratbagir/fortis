@@ -25,6 +25,8 @@ class Inbox
 
     public const SUBJECT_CONNECTOR = 'connector';
 
+    public const SUBJECT_BUDGET = 'budget';
+
     public function approval(User $user, AgentAction $action): InboxItem
     {
         $run = $action->run;

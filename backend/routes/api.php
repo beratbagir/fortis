@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\FlowController;
 use App\Http\Controllers\Api\FlowEditorController;
 use App\Http\Controllers\Api\FlowVersionController;
 use App\Http\Controllers\Api\GovernanceController;
+use App\Http\Controllers\Api\GovernanceUsageController;
 use App\Http\Controllers\Api\HomeController;
 use App\Http\Controllers\Api\InboxController;
 use App\Http\Controllers\Api\Internal\AgentRunController as InternalAgentRunController;
@@ -140,6 +141,9 @@ Route::middleware(['auth:sanctum', 'active', 'password.changed'])->group(functio
         Route::post('runs/{id}/stop', [GovernanceController::class, 'stop'])->name('runs.stop');
         Route::get('alerts', [GovernanceController::class, 'alerts'])->name('alerts.index');
         Route::post('alerts/{alert}/resolve', [GovernanceController::class, 'resolve'])->name('alerts.resolve');
+        Route::get('usage', [GovernanceUsageController::class, 'usage'])->name('usage');
+        Route::get('budgets', [GovernanceUsageController::class, 'budgets'])->name('budgets');
+        Route::put('budgets', [GovernanceUsageController::class, 'updateBudgets'])->name('budgets.update');
     });
     Route::get('connectors', [ConnectorController::class, 'index'])->name('connectors.index');
     Route::get('connectors/{key}', [ConnectorController::class, 'show'])->where('key', '[a-z_]+')->name('connectors.show');

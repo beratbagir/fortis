@@ -39,6 +39,7 @@ export function installFakeBackend(page: Page, { signedIn = true, theme = 'light
     apmDisabled: false,
     stopped: false,
     resolved: false,
+    opsBudget: null as { monthly_limit_usd: number; warn_at_percent: number; hard_stop: boolean } | null,
     useful: false,
     graph: {
       flow_id: 'long-delay-notice',
@@ -142,6 +143,59 @@ export function installFakeBackend(page: Page, { signedIn = true, theme = 'light
     summary: 'Dün 142 uçuş, %84 zamanında kalkış.', output: 'Dün **142 uçuş** yapıldı, kalkışta zamanındalık **%84**.\n\n| Sefer | Rötar |\n|---|---:|\n| FH1256 | 142 dk |',
     error: null, cost_usd: 0.214, conversation_id: 80, started_at: now.toISOString(), finished_at: now.toISOString(),
     actions: [{ id: 1, type: 'send_email', status: 'preview', requires_approval: true, payload: { to: ['kerem@freebird.com.tr'], subject: 'Operasyon özeti · 11 Eki' }, reason: null }],
+  })
+  const zeroTypes = { chat: 0, agent: 0, title: 0, evaluation: 0, eval: 0, flow: 0 }
+  const usageReport = () => ({
+    range: { from: '2026-10-01', to: '2026-10-11' },
+    totals: { calls: 412, cost_usd: 18.42, input_tokens: 2_310_000, output_tokens: 96_400 },
+    daily: Array.from({ length: 11 }, (_, i) => ({ date: `2026-10-${String(i + 1).padStart(2, '0')}`, ...zeroTypes, chat: [0.9, 1.2, 0.4, 0.3, 1.6, 1.1, 1.4, 0.8, 1.3, 1.5, 0.7][i], agent: [0.3, 0.4, 0.1, 0, 0.5, 0.6, 0.4, 0.3, 0.5, 0.6, 0.2][i], eval: i === 6 ? 0.79 : 0 })),
+    by_type: [
+      { type: 'chat', label: 'Sohbet', calls: 318, cost_usd: 11.2 },
+      { type: 'agent', label: 'Agent', calls: 71, cost_usd: 5.94 },
+      { type: 'eval', label: 'Eval', calls: 12, cost_usd: 0.79 },
+      { type: 'title', label: 'Başlık', calls: 11, cost_usd: 0.49 },
+    ],
+    by_department: [
+      { id: 1, name: 'Operasyon', calls: 270, cost_usd: 12.1 },
+      { id: 2, name: 'Ticari', calls: 120, cost_usd: 5.6 },
+      { id: null, name: 'Departmansız', calls: 22, cost_usd: 0.72 },
+    ],
+    by_model: [
+      { model: 'claude-sonnet-5-5', label: 'Sonnet 5.5', calls: 380, cost_usd: 15.9 },
+      { model: 'claude-haiku-5-5', label: 'Haiku 5.5', calls: 32, cost_usd: 2.52 },
+    ],
+    top_agents: [
+      { id: 7, name: 'Sabah Operasyon Özeti', runs: 11, cost_usd: 3.1 },
+      { id: 8, name: 'Uzun Rötar Bildirimi', runs: 24, cost_usd: 2.84 },
+    ],
+    top_users: [
+      { id: 1, name: 'Kerem B.', department: 'Ticari', calls: 120, cost_usd: 5.6 },
+      { id: 3, name: 'Selin A.', department: 'Operasyon', calls: 98, cost_usd: 4.2 },
+    ],
+    rows_total: 412,
+    rows: [
+      { id: 412, at: '2026-10-11T08:40:00+00:00', user: 'Selin A.', department: 'Operasyon', type: 'chat', purpose: null, model: 'claude-sonnet-5-5', input_tokens: 6120, output_tokens: 340, cost_usd: 0.0235 },
+      { id: 411, at: '2026-10-11T06:00:00+00:00', user: 'Kerem B.', department: 'Ticari', type: 'agent', purpose: null, model: 'claude-sonnet-5-5', input_tokens: 18400, output_tokens: 910, cost_usd: 0.0689 },
+      { id: 410, at: '2026-10-10T15:12:00+00:00', user: 'Kerem B.', department: 'Ticari', type: 'title', purpose: 'title', model: 'claude-haiku-5-5', input_tokens: 220, output_tokens: 12, cost_usd: 0.0003 },
+    ],
+    options: {
+      departments: [{ id: 1, name: 'Operasyon' }, { id: 2, name: 'Ticari' }],
+      users: [{ id: 1, name: 'Kerem B.' }, { id: 3, name: 'Selin A.' }],
+      models: [{ id: 'claude-sonnet-5-5', label: 'Sonnet 5.5' }, { id: 'claude-haiku-5-5', label: 'Haiku 5.5' }],
+      types: [['chat', 'Sohbet'], ['agent', 'Agent'], ['title', 'Başlık'], ['evaluation', 'Puanlama'], ['eval', 'Eval'], ['flow', 'Akış adımı']].map(([id, label]) => ({ id, label })),
+    },
+    credit_usd_value: null,
+  })
+  const budgetsData = () => ({
+    month: 'Ekim 2026',
+    org: { id: 1, monthly_limit_usd: 50, warn_at_percent: 80, hard_stop: false, spent_usd: 18.42, ratio: 0.3684 },
+    departments: [
+      { id: 1, name: 'Operasyon', budget: state.opsBudget ? { id: 2, ...state.opsBudget, spent_usd: 12.1, ratio: 12.1 / state.opsBudget.monthly_limit_usd } : null, spent_usd: 12.1 },
+      { id: 2, name: 'Ticari', budget: null, spent_usd: 5.6 },
+    ],
+    users: [],
+    credit_usd_value: null,
+    blocks_flow_ai_steps: false,
   })
   const governance = () => ({
     live: [
@@ -316,6 +370,14 @@ export function installFakeBackend(page: Page, { signedIn = true, theme = 'light
     }
     if (path === '/connectors/apm') return json(route, { data: apmDetail() })
     if (path === '/governance/overview') return json(route, { data: governance() })
+    if (path === '/governance/usage') return json(route, { data: usageReport() })
+    if (path === '/governance/budgets') {
+      if (method === 'PUT') {
+        const ops = (route.request().postDataJSON().budgets as { scope: string; scope_id?: number; monthly_limit_usd: number; warn_at_percent: number; hard_stop: boolean }[]).find((b) => b.scope_id === 1)
+        if (ops) state.opsBudget = ops.monthly_limit_usd ? { monthly_limit_usd: ops.monthly_limit_usd, warn_at_percent: ops.warn_at_percent, hard_stop: ops.hard_stop } : null
+      }
+      return json(route, { data: budgetsData() })
+    }
     if (path === '/governance/runs/31/stop') {
       state.stopped = true
       return json(route, { data: { live: governance().live } })

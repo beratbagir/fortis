@@ -1066,3 +1066,66 @@ export const governanceApi = {
   stop: (run: LiveRun, reason: string) => sendAgent<{ live: LiveRun[] }>(`/governance/runs/${run.id}/stop`, 'POST', { kind: run.kind, reason }),
   resolve: (id: number) => sendAgent<GovernanceAlertInfo>(`/governance/alerts/${id}/resolve`, 'POST'),
 }
+
+/* ---------- Yönetişim: Kullanım ve bütçeler (Faz A4.3) ---------- */
+
+export type UsageType = 'chat' | 'agent' | 'title' | 'evaluation' | 'eval' | 'flow'
+
+export interface UsageFilters {
+  from?: string
+  to?: string
+  department_id?: string
+  user_id?: string
+  model?: string
+  type?: string
+}
+
+export interface UsageReportData {
+  range: { from: string; to: string }
+  totals: { calls: number; cost_usd: number; input_tokens: number; output_tokens: number }
+  daily: ({ date: string } & Record<UsageType, number>)[]
+  by_type: { type: UsageType; label: string; calls: number; cost_usd: number }[]
+  by_department: { id: number | null; name: string; calls: number; cost_usd: number }[]
+  by_model: { model: string; label: string; calls: number; cost_usd: number }[]
+  top_agents: { id: number; name: string; runs: number; cost_usd: number }[]
+  top_users: { id: number; name: string; department: string | null; calls: number; cost_usd: number }[]
+  rows_total: number
+  rows: { id: number; at: string; user: string | null; department: string | null; type: UsageType; purpose: string | null; model: string; input_tokens: number; output_tokens: number; cost_usd: number }[]
+  options: { departments: { id: number; name: string }[]; users: { id: number; name: string }[]; models: { id: string; label: string }[]; types: { id: UsageType; label: string }[] }
+  credit_usd_value: number | null
+}
+
+export interface BudgetRow {
+  id: number
+  monthly_limit_usd: number | null
+  warn_at_percent: number
+  hard_stop: boolean
+  spent_usd: number
+  ratio: number | null
+}
+
+export interface BudgetsData {
+  month: string
+  org: BudgetRow
+  departments: { id: number; name: string; budget: BudgetRow | null; spent_usd: number }[]
+  users: { user_id: number; name: string | null; budget: BudgetRow }[]
+  credit_usd_value: number | null
+  blocks_flow_ai_steps: boolean
+}
+
+export interface BudgetInput {
+  scope: 'org' | 'department' | 'user'
+  scope_id?: number | null
+  monthly_limit_usd: number | null
+  warn_at_percent?: number
+  hard_stop?: boolean
+}
+
+const usageQuery = (filters: UsageFilters) => new URLSearchParams(Object.entries(filters).filter(([, v]) => v !== undefined && v !== '') as [string, string][]).toString()
+
+export const governanceUsageApi = {
+  report: (filters: UsageFilters) => sendAgent<UsageReportData>(`/governance/usage?${usageQuery(filters)}`),
+  csvUrl: (filters: UsageFilters) => `/api/governance/usage?${usageQuery({ ...filters })}&format=csv`,
+  budgets: () => sendAgent<BudgetsData>('/governance/budgets'),
+  saveBudgets: (budgets: BudgetInput[], creditUsdValue: number | null) => sendAgent<BudgetsData>('/governance/budgets', 'PUT', { budgets, credit_usd_value: creditUsdValue }),
+}

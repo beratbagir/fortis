@@ -19,6 +19,8 @@ use App\Models\Department;
 use App\Models\Message;
 use App\Models\User;
 use App\Services\Auth\Audit;
+use App\Services\Usage\Budget;
+use App\Services\Usage\BudgetExceededException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -111,7 +113,11 @@ class AgentController extends Controller
 
         $input = trim((string) ($validated['input'] ?? ''))
             ?: ($agent->triggers()->where('type', '!=', AgentTrigger::MANUAL)->whereNotNull('input_template')->value('input_template') ?? 'Görevini şimdi yap.');
-        $run = $runner->start($agent, $input, $user, $test);
+        try {
+            $run = $runner->start($agent, $input, $user, $test);
+        } catch (BudgetExceededException $e) {
+            return response()->json(['message' => $e->getMessage()], 402);
+        }
 
         return response()->json(['data' => self::presentRun($run->refresh())], 201);
     }
@@ -121,6 +127,11 @@ class AgentController extends Controller
     {
         $user = $request->user();
         abort_unless($this->canChat($user, $agent), 403, 'Bu agentla sohbet edemezsin: pilot veya canlı değil.');
+        try {
+            app(Budget::class)->assertChatAllowed($user);
+        } catch (BudgetExceededException $e) {
+            return response()->json(['message' => $e->getMessage()], 402);
+        }
 
         return response()->json(['data' => self::presentRun($runner->startChat($agent, $user))], 201);
     }

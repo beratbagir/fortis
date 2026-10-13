@@ -7,6 +7,7 @@ use App\Models\AgentRun;
 use App\Models\AgentTrigger;
 use App\Models\AuditLog;
 use App\Services\Auth\Audit;
+use App\Services\Usage\BudgetExceededException;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -24,11 +25,14 @@ class AgentTriggers
 
     public const SKIP_RATE_LIMITED = 'rate_limited';
 
+    public const SKIP_BUDGET = 'budget';
+
     private const SKIP_MESSAGES = [
         self::SKIP_DISABLED => 'Tetikleyici kapalı.',
         self::SKIP_INACTIVE => 'Agent pilot veya canlı değil.',
         self::SKIP_BUSY => 'Bu tetikleyicinin önceki çalışması hâlâ sürüyor.',
         self::SKIP_RATE_LIMITED => 'Bu tetikleyici son bir saatte çalışma sınırına ulaştı.',
+        self::SKIP_BUDGET => 'Bütçe bu ay doldu ("dolunca durdur" açık); çalışma başlatılmadı.',
     ];
 
     public function __construct(private readonly AgentRunner $runner) {}
@@ -61,7 +65,11 @@ class AgentTriggers
                     return self::SKIP_RATE_LIMITED;
                 }
 
-                return $this->runner->start($agent, $trigger->input($event), null, false, $trigger);
+                try {
+                    return $this->runner->start($agent, $trigger->input($event), null, false, $trigger);
+                } catch (BudgetExceededException) {
+                    return self::SKIP_BUDGET;
+                }
             });
 
             if ($run instanceof AgentRun) {

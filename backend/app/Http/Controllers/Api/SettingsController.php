@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\BudgetLimit;
 use App\Services\Auth\Audit;
 use App\Services\Settings\AppSettings;
+use App\Services\Usage\Budget;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -36,7 +38,9 @@ class SettingsController extends Controller
         }
 
         if (array_key_exists('monthly_budget_usd', $validated)) {
-            $this->settings->set(AppSettings::MONTHLY_BUDGET, $validated['monthly_budget_usd'] === null ? null : (float) $validated['monthly_budget_usd']);
+            // A4.3: şirket bütçesi budgets tablosunda (Yönetişim > Kullanım > Bütçeler).
+            BudgetLimit::org()->update(['monthly_limit_usd' => $validated['monthly_budget_usd'] === null ? null : (float) $validated['monthly_budget_usd']]);
+            Budget::forget();
         }
 
         if (array_key_exists('budget_blocks_flow_ai_steps', $validated)) {
