@@ -1,0 +1,9 @@
+{
+  "architect.step.trigger": "TRIGGER",
+  "architect.step.read": "READ",
+  "architect.step.lookup": "LOOK UP",
+  "architect.step.decide": "DECIDE",
+  "architect.step.draft": "DRAFT",
+  "architect.step.approve": "APPROVE",
+  "architect.step.act": "SEND"
+}

@@ -9,6 +9,7 @@ import { copyText, extractActions, markCharts, numberCitations, splitBlocks } fr
 import { ChartCard, ChartErrorCard } from './ChartCard'
 import { isChartError } from './chartFormat'
 import { LiveTrace } from './LiveTrace'
+import { intlLocale, t } from '../i18n'
 
 interface Props {
   message: Message
@@ -36,7 +37,7 @@ export function AnswerView({ message, onSend, onAutomate, onRegenerate, busy }: 
   const queries = useMemo(() => new Map((answer?.queries ?? []).map((q) => [q.query_id, q])), [answer])
 
   return (
-    <article className="flex flex-col gap-3" aria-label="Fortis'in cevabı">
+    <article className="flex flex-col gap-3" aria-label={t('chat.answer.aria')}>
       {answer && answer.trace.length > 0 && (
         <LiveTrace steps={answer.trace} running={false} durationMs={answer.duration_ms} defaultOpen={waiting} onAudit={answer.queries.length > 0 && !waiting ? () => setAudit(true) : undefined} />
       )}
@@ -91,17 +92,17 @@ function Feedback({ message, onRegenerate, busy }: { message: Message; onRegener
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-0.5">
-        <button type="button" aria-label={copied ? 'Kopyalandı' : 'Cevabı kopyala'} onClick={copy} className={button}>
+        <button type="button" aria-label={copied ? t('chat.copied') : t('chat.answer.copy')} onClick={copy} className={button}>
           <CopyIcon />
         </button>
-        <button type="button" aria-label="Faydalı" aria-pressed={rating === 'up'} onClick={() => rate('up')} className={button}>
+        <button type="button" aria-label={t('chat.feedback.up')} aria-pressed={rating === 'up'} onClick={() => rate('up')} className={button}>
           <ThumbUpIcon />
         </button>
-        <button type="button" aria-label="Faydalı değil" aria-pressed={rating === 'down'} onClick={() => rate('down')} className={button}>
+        <button type="button" aria-label={t('chat.feedback.down')} aria-pressed={rating === 'down'} onClick={() => rate('down')} className={button}>
           <ThumbDownIcon />
         </button>
         {onRegenerate && (
-          <button type="button" aria-label="Yeniden üret" disabled={busy} onClick={onRegenerate} className={button}>
+          <button type="button" aria-label={t('chat.answer.regenerate')} disabled={busy} onClick={onRegenerate} className={button}>
             <RetryIcon />
           </button>
         )}
@@ -116,14 +117,14 @@ function Feedback({ message, onRegenerate, busy }: { message: Message; onRegener
           }}
         >
           <input
-            aria-label="Neyi daha iyi yapabilirdik?"
-            placeholder="Neyi daha iyi yapabilirdik? (isteğe bağlı)"
+            aria-label={t('chat.feedback.question')}
+            placeholder={t('chat.feedback.placeholder')}
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             className="h-8 flex-1 rounded-lg border border-line bg-surface px-2.5 text-[13px] text-ink"
           />
           <button type="submit" className="h-8 rounded-lg border border-line px-3 text-[13px] text-ink-2 hover:bg-raised">
-            Gönder
+            {t('chat.feedback.send')}
           </button>
         </form>
       )}
@@ -137,10 +138,10 @@ function AuditDialog({ messageId, onClose }: { messageId: number; onClose: () =>
   const error = query.error ? (query.error as Error).message : null
 
   return (
-    <Dialog title="Denetim kaydı" onClose={onClose}>
+    <Dialog title={t('chat.audit.title')} onClose={onClose}>
       {error && <p className="m-0 text-sm text-bad">{error}</p>}
-      {!entries && !error && <p className="m-0 text-sm text-muted">Yükleniyor…</p>}
-      {entries && entries.length === 0 && <p className="m-0 text-sm text-muted">Bu cevap için kayıt yok.</p>}
+      {!entries && !error && <p className="m-0 text-sm text-muted">{t('app.loading')}</p>}
+      {entries && entries.length === 0 && <p className="m-0 text-sm text-muted">{t('chat.audit.empty')}</p>}
       {entries && entries.length > 0 && (
         <ul className="m-0 flex list-none flex-col gap-3 p-0 text-sm">
           {entries.map((e, i) => (
@@ -149,15 +150,15 @@ function AuditDialog({ messageId, onClose }: { messageId: number; onClose: () =>
                 {e.system} · {e.purpose}
               </span>
               <span className="text-xs text-muted">
-                {new Date(e.at).toLocaleString('tr-TR')} · {e.actor ?? 'Sistem'} · {e.result === 'allowed' ? 'İzin verildi' : e.result} · {e.rows ?? 0} satır
-                {e.masked_fields.length > 0 ? ` · Gizlenen alanlar: ${e.masked_fields.join(', ')}` : ''}
+                {new Date(e.at).toLocaleString(intlLocale())} · {e.actor ?? t('chat.audit.system')} · {e.result === 'allowed' ? t('chat.audit.allowed') : e.result} · {t('chat.rows', { count: e.rows ?? 0 })}
+                {e.masked_fields.length > 0 ? ` · ${t('chat.audit.masked_fields', { fields: e.masked_fields.join(', ') })}` : ''}
               </span>
               {e.query && <span className="truncate font-mono text-[11px] text-faint">{queryText(e.query)}</span>}
             </li>
           ))}
         </ul>
       )}
-      <p className="mt-4 mb-0 text-xs text-muted">Kayıtlar değiştirilemez; dönen veri saklanmaz.</p>
+      <p className="mt-4 mb-0 text-xs text-muted">{t('chat.audit.note')}</p>
     </Dialog>
   )
 }

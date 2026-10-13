@@ -20,6 +20,8 @@
     <php>
         <ini name="memory_limit" value="512M"/>
         <env name="APP_ENV" value="testing"/>
+        <!-- Mevcut testler Türkçe metinleri doğrular; İngilizce (varsayılan) ayrı testlerde. -->
+        <env name="APP_LOCALE" value="tr"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>

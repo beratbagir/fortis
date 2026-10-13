@@ -3,8 +3,11 @@
 namespace App\Console\Commands;
 
 use App\Ai\PromptClock;
+use App\Models\Artifact;
+use App\Models\ArtifactVersion;
 use App\Models\Conversation;
 use App\Models\Message;
+use App\Services\Artifacts\PageService;
 use App\Services\Claude\ClaudeChat;
 use App\Services\Claude\ClaudeException;
 use App\Services\Settings\AppSettings;
@@ -26,6 +29,9 @@ class RunEval extends Command
 
             return self::FAILURE;
         }
+
+        // Değerlendirme seti Türkçe (sorular, tarih ve biçim kontrolleri): cevap dili Türkçe.
+        app()->setLocale('tr');
 
         $file = $this->option('path') ?: base_path('tests/eval/questions.json');
         $questions = json_decode((string) file_get_contents($file), true)['questions'] ?? [];
@@ -97,6 +103,12 @@ class RunEval extends Command
         $error = null;
         try {
             app(ClaudeChat::class)->reply($conversation, fn () => null);
+            // Takip sorusu (ör. "Bu panoya meydan filtresi ekle"): aynı sohbette ikinci tur.
+            if (isset($question['followup'])) {
+                $conversation->messages()->create(['role' => Message::ROLE_USER, 'content' => [['type' => 'text', 'text' => $question['followup']]], 'text' => $question['followup']]);
+                app()->forgetInstance(ClaudeChat::class);
+                app(ClaudeChat::class)->reply($conversation, fn () => null);
+            }
         } catch (ClaudeException $e) {
             $error = $e->getMessage();
         }
@@ -104,6 +116,8 @@ class RunEval extends Command
         $messages = $conversation->messages()->orderBy('id')->get();
         $tools = $messages->flatMap(fn (Message $m) => collect($m->content)->where('type', 'tool_use')->pluck('name'))->values()->all();
         $last = $messages->where('role', Message::ROLE_ASSISTANT)->last();
+        // Bu sohbette üretilen son sayfa sürümü (create_page).
+        $page = ArtifactVersion::query()->whereIn('artifact_id', Artifact::query()->where('conversation_id', $conversation->id)->where('kind', Artifact::PAGE)->select('id'))->latest('id')->first();
         $answer = (string) $last?->text;
         // Doğrulanmış grafikler (kaynağı ve değerleri sorgudan); hatalı bloklar sayılmaz.
         $charts = array_values(array_filter($last?->meta['answer']['charts'] ?? [], fn (array $c) => ! isset($c['error'])));
@@ -125,10 +139,16 @@ class RunEval extends Command
             'source' => ! empty($question['expect_source']) ? (bool) preg_match('/Kaynak\s*:/iu', $answer) : null,
             'date' => isset($question['expect_date']) ? self::mentionsDate($answer, $question['expect_date']) : null,
             'utc_range' => ! empty($question['expect_utc_from']) && isset($question['expect_date']) ? self::queriedFrom($messages, $question['expect_date']) : null,
+            'page' => ! empty($question['expect_page']) ? $page !== null : null,
+            'no_page' => ! empty($question['expect_no_page']) ? $page === null : null,
+            'page_data' => ! empty($question['expect_page']) ? $page !== null && PageService::usesData($page->content) && $page->warning === null : null,
+            'page_charts' => isset($question['expect_page_charts']) ? $page !== null && max(preg_match_all('/fortis\.chart\(|new Chart\(/', $page->content), preg_match_all('/\btype\s*:\s*["\'](line|bar|scatter|bubble|radar)["\']/', $page->content), preg_match_all('/<canvas\b/i', $page->content)) >= $question['expect_page_charts'] : null,
+            'page_filter' => ! empty($question['expect_page_filter']) ? $page !== null && (bool) preg_match('/<select|type=["\']?(checkbox|radio)/i', $page->content) : null,
+            'page_version' => isset($question['expect_page_version']) ? $page !== null && $page->number >= $question['expect_page_version'] : null,
             'no_error' => $error === null,
         ], fn ($check) => $check !== null);
 
-        $labels = ['tool' => 'Beklenen araç kullanılmadı', 'no_flow' => 'Gereksiz akış önerildi', 'flow' => 'Akış önerilmedi', 'table' => 'Tablo yok', 'no_table' => 'Gereksiz tablo', 'chart' => 'Beklenen grafik yok (veya doğrulanamadı)', 'no_chart' => 'Gereksiz grafik', 'single_measure' => 'Grafik yok veya bir grafikte iki farklı ölçü', 'citation' => 'Kaynak numarası yok', 'date' => 'Cevapta doğru tarih (Türkiye) yok', 'utc_range' => 'Sorguda doğru tarih aralığı yok (APM: UTC başlangıcı, IBS: Türkiye tarihi)', 'source' => 'Kaynak satırı yok', 'no_error' => "Hata: {$error}"];
+        $labels = ['tool' => 'Beklenen araç kullanılmadı', 'no_flow' => 'Gereksiz akış önerildi', 'flow' => 'Akış önerilmedi', 'table' => 'Tablo yok', 'no_table' => 'Gereksiz tablo', 'chart' => 'Beklenen grafik yok (veya doğrulanamadı)', 'no_chart' => 'Gereksiz grafik', 'single_measure' => 'Grafik yok veya bir grafikte iki farklı ölçü', 'page' => 'Sayfa üretilmedi', 'no_page' => 'Gereksiz sayfa', 'page_data' => 'Sayfa verisi FORTIS_DATA\'dan değil (veya doğrulama uyarısı var)', 'page_charts' => 'Sayfada beklenen sayıda grafik yok', 'page_filter' => 'Sayfada filtre yok', 'page_version' => 'Takip isteğinde yeni sürüm oluşmadı', 'citation' => 'Kaynak numarası yok', 'date' => 'Cevapta doğru tarih (Türkiye) yok', 'utc_range' => 'Sorguda doğru tarih aralığı yok (APM: UTC başlangıcı, IBS: Türkiye tarihi)', 'source' => 'Kaynak satırı yok', 'no_error' => "Hata: {$error}"];
 
         return [
             'id' => $question['id'],

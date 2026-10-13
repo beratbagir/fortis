@@ -1,0 +1,19 @@
+{
+  "inbox.tab.all": "All",
+  "inbox.tab.action": "Needs action",
+  "inbox.tab.mentions": "Mentions",
+  "inbox.tab.updates": "Updates",
+  "inbox.tab.done": "Done",
+  "inbox.type.approval": "Approval",
+  "inbox.type.question": "Question",
+  "inbox.type.update": "Update",
+  "inbox.type.alert": "Alert",
+  "inbox.type.mention": "Mention",
+  "inbox.type.shared": "Shared",
+  "inbox.group.today": "Today",
+  "inbox.group.yesterday": "Yesterday",
+  "inbox.group.older": "Older",
+  "inbox.primary.open": "Open",
+  "inbox.primary.answer": "Answer",
+  "inbox.primary.review": "Review"
+}

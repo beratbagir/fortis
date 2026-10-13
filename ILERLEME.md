@@ -1442,7 +1442,8 @@ Plan: [docs/fortis-sohbet-grafik.md](docs/fortis-sohbet-grafik.md). Model HTML y
   - Klavye: Recharts `accessibilityLayer` (tab, ok tuşları). Ekran okuyucu için `aria-label` = başlık + tür, nokta sayısı, ilk serinin en yüksek ve en düşüğü.
 - **Telefon:** yükseklik 220px, x etiketleri seyreltiliyor, legend altta.
 - **Biçim:** Türkçe sayı ve tarih: `%82,4`, `1.250 adet`, `35 dk`, `1.204,5 ₺`, `14 Eyl`, `14 Eyl 06:30`. Dokümandaki `82,4 %` yerine uygulamanın geri kalanındaki Türkçe yazım (`%82,4`) kullanıldı.
-- **PNG:** SVG kopyalanıyor, tema değişkenleri hesaplanmış renklere çevriliyor, kart zemini üstünde 2x çiziliyor.
+- **PNG:** SVG kopyalanıyor, tema değişkenleri hesaplanmış renklere çevriliyor, kart zemini üstünde 2x çiziliyor. Görüntüye başlık, renk açıklaması (legend HTML olduğu için SVG'de yoktu) ve kaynak/not satırı ekleniyor; dosya tek başına anlaşılıyor.
+- **Düzeltme (kullanıcı geri bildirimi):** son değerleri yakın serilerde çizgi sonu etiketleri üst üste biniyordu ve uzun ad sağda kesiliyordu. Etiketler artık en az 13px aralıkla diziliyor (`endLabelOffsets`; çizim alanının yüksekliği ölçülüyor). Sağ boşluk en uzun ada göre ayarlanıyor; 18 karakterden uzun adlar "…" ile kısalıyor, tam ad üzerine gelince görünüyor. Tarih ekseni eşit aralıklı seyreltiliyor (bir günü atlayıp boşluk bırakmıyor). Playwright örneği birbirine yakın iki seriyle (Check-in / Uçağa biniş) güncellendi.
 
 **Renkler ve renk körlüğü kontrolü**
 - Tek seri marka rengi (açık `#B42A3F`, koyu `#D2404F`). 2+ seri için `index.css`'te açık ve koyu temaya ayrı, sabit sıralı 6 renk (`--series-1…6`). Renk serinin adına bağlı. Durum renkleri (yeşil/sarı/kırmızı) ve gri palette yok.
@@ -1477,6 +1478,91 @@ Playwright 15: yeni grafik testi açık/koyu tema. Grafikler çiziliyor, ham JSO
 - Yüzde biçimi `%82,4` (uygulamanın geri kalanıyla aynı Türkçe yazım), dokümandaki `82,4 %` değil.
 - En yüksek/en düşük noktalar grafikte işaretlenmiyor (doküman "işaretlenebilir" diyor); ekran okuyucu özetinde var.
 - Playwright temelleri tam sayfa yerine grafik kartı görüntüsü: sohbet alanı iç kaydırmalı olduğu için tam sayfa görüntüsü üstteki grafiği kesiyordu.
+
+## Sohbette HTML sayfalar — H1: güvenli çerçeve, create_page, sayfa paneli (2026-10-13)
+
+Plan: [docs/fortis-html-sayfalar.md](docs/fortis-html-sayfalar.md) (H1). Bitti ölçütü: model gerçek veriyle 2 grafikli ve filtreli bir pano üretiyor, güvenlik testleri geçiyor. Eval'de "Son 14 günün operasyon panosu… meydan filtresi olsun" sorusu gerçek IBS verisiyle 2+ grafik ve filtreli sayfa üretti; güvenlik testleri gerçek tarayıcıda (Playwright) geçiyor.
+
+**Güvenlik modeli (uygulanan)**
+1. **İzole çerçeve:** `<iframe sandbox="allow-scripts" srcdoc>`. `allow-same-origin`, `allow-forms`, `allow-popups`, `allow-top-navigation`, `allow-modals` yok. Sayfa opak origin'de: Fortis çerezi, localStorage/sessionStorage ve üst pencere yok.
+2. **Ağ tamamen kapalı:** CSP `default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src 'none'; connect-src 'none'; form-action 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; media-src 'none'; base-uri 'none'`. CSP modelin içeriğinden önce, belgenin başında. `unsafe-eval` yok.
+3. **Kütüphane sadece Fortis'ten:** Chart.js 4.5.1 `frontend/public/vendor/chartjs-4.5.1/` altında, sabit sürüm. npm paketinden alındı: integrity `sha512-GIjfiT9d…E8/Pw==`, dosya sha256 `48444a82…c9f54a`, MIT lisansı yanında. Fortis dosyayı bir kez okuyup sayfaya satır içi gömüyor; CSP'de hiçbir adres yok. Sunucu ayrıca `/vendor/` dışındaki `<script src>` ve `<link>` etiketlerini, belge iskeletini (`<html>`, `<head>`, `<body>`, doctype) ve `<meta>`, `<base>`, `<iframe>`, `<object>`, `<embed>` etiketlerini temizliyor.
+4. **Veri modelin yazdığı sayılar değil:** `create_page`'in `sources`'u bu cevapta çalışmış sorgular olmalı. Güncellemede önceki sürümün kaynakları da geçerli; verisi o sürümün anlık görüntüsünden geliyor.
+   - Sunucu bu sorguların Claude'a giden maskeli satırlarını (AiDataGate çıktısı) `window.FORTIS_DATA["q:ID"]` olarak sayfaya koyuyor.
+   - `FORTIS_DATA` kullanmayıp 20'den fazla sayı gömen sayfaya "Veri kaynağı doğrulanamadı" uyarısı ekleniyor; model bunu araç sonucunda görüyor.
+5. **Üst pencereyle tek kanal:** sadece o iframe'den gelen `{type:"ask"}` işleniyor. Kullanıcı "Sohbette sor" demeden gönderilmiyor. Başka kaynaktan ve bilinmeyen türdeki mesajlar yok sayılıyor.
+6. **Sınırlar:** HTML en fazla 200 KB, veri en fazla 2 MB. Aşarsa araç hata dönüyor ve modelden toplulaştırması isteniyor.
+7. **Kayıt:** `artifact.create` (kaynaklar, boyut, uyarı), `artifact.view` (her açılış), `artifact.download`.
+
+**Backend**
+- `App\Services\Artifacts\PageService` (doğrulama, temizleme, veri toplama, kayıt).
+- `create_page` aracı sadece veri erişimi açıkken sunuluyor. `FlowTools` bu cevabın sorgularını hatırlıyor, soru kartından sonra devam eden cevaplarda da.
+- Migration: `artifacts.description`; `artifact_versions.sources`, `data`, `data_at`, `warning`. Sayfa `kind = page`.
+- `GET /api/artifacts/{id}` sayfada veri, kaynak ve uyarıyla dönüyor. `POST /api/artifacts/{id}/downloaded` indirmeyi kayda geçiriyor. Yetki: sahibi ve admin.
+- **Maliyet:** `create_page` içeren çağrı `ai_calls.purpose = page`; Kullanım ekranında "Sayfa" türü.
+- **Model:** `ai.page_model` (varsayılan Sonnet). Auto sohbette son mesaj pano/sayfa/dashboard/html istiyorsa (kök eşleşmesi: "panosunu", "sayfalık"…), veri sorgusundan sonraki turlar Opus yerine sayfa modeliyle gidiyor. Politikalar > Modeller'de "Sayfa modeli" seçicisi var.
+- **Prompt:** biçim seçimi (cümle / tablo / `:::chart` / sayfa), önce veri sonra `create_page`, veri her zaman `fortis.data()`, yardımcılar, grafik kuralları (tek eksen, ≤6 seri, `fortis.colors`, durum renkleri yok), telefonda tek sütun, sohbette 2–3 cümle özet ve kaynak, değişiklikte aynı `artifact_id`. `create_artifact` artık sadece veri içermeyen tasarım, taslak, diyagram ve belgeler için. `:::chart` kuralına "bir grafiğin verisi tek sorgudan" eklendi; eval'de model iki sorgunun etiketlerini tek grafikte birleştirmişti ve doğrulayıcı reddetmişti.
+
+**Arayüz**
+- **Kabuk** (`pages/pageDocument.ts`): CSP, tema değişkenleri (açık/koyu, uygulamanın token'ları ve grafik paleti), sistem yazı tipi, `FORTIS_DATA` (`</script>` ve satır ayraçları kaçırılmış JSON), `fortis` yardımcıları:
+  - `data(id)` satırları nesne olarak verir; ayrıca `meta`, `formatNumber`, `formatDate` (Türkçe), `colors`, `ask`.
+  - `table` metni `textContent` ile yazıyor, HTML olarak yorumlamıyor.
+  - `chart(el, config)` Chart.js'i tema renkleri, ızgara ve yazı tipiyle sarıyor; animasyon kapalı. Aynı kaba yeniden çizimde (filtre) eski grafik yok ediliyor. Tek başına `<canvas>` verilirse 260px yükseklikli bir kaba sarılıyor.
+- **Sayfa paneli** (kullanıcı isteğiyle sohbet içi kart yerine):
+  - Sohbette küçük bir kart (başlık, açıklama, veri zamanı, sürüm, uyarı simgesi, "Aç"). Yeni üretilen sayfa paneli kendiliğinden açıyor.
+  - Panel sohbetin yanında; telefonda tam ekran. İçinde başlık, açıklama, "Veri: 13 Eki 14:32" (mono), kaynaklar (sistem · amaç), sürüm.
+  - Düğmeler: Tam ekran / Panele dön, Yeniden oluştur (sohbete "… sayfasında şunu değiştir:" taslağı), İndir, Kapat. İndirilen dosya tek HTML; veri ve Chart.js gömülü, CSP aynı, çevrimdışı açılıp çalışıyor.
+  - Sayfadan gelen soru panelde onay çubuğu olarak çıkıyor: "Sohbette sor" / "Vazgeç".
+
+**Kullanıcı geri bildirimiyle düzeltilenler**
+- **Grafikler görünmüyordu.** İki neden vardı:
+  - Model grafiği doğrudan `<canvas>`'a çiziyordu; yardımcı grafiği kabın yüksekliğine göre boyutladığı için yüksekliği olmayan kapta 0px kalıyordu.
+  - Fortis yerelde `http://[::1]:5173`'te çalışıyor. CSP host-source IPv6 adresi kabul etmediği için `/vendor/` izni geçersiz sayılıp Chart.js yüklenmiyor olabilirdi.
+  - İkisi de düzeldi: kütüphane artık gömülü, tek başına `<canvas>` sarılıyor. Yerelde gerçek modelin ürettiği "Sefer panosu" yeni kabukta iki grafiğiyle (260px) çiziliyor.
+- **Sayfa yan panelde açılıyor.**
+
+**Yolda bulunan eski hata:** `artifactsApi.get` cevabı iki kez açıyordu (`request()` zaten `data`'yı dönüyor), sonuç `undefined` kalıyordu. A0–A3 commit'inden beri yan paneldeki `create_artifact` önizlemesi açılmıyordu; düzeltildi.
+
+**Testler:** backend 475 (hepsi geçti).
+- Yeni `PageTest` 6:
+  - Maskeli veri anlık görüntüsü (fixture'daki PNR, telefon, e-posta, ad sayfa verisinde yok), kart, `artifact.create`, `purpose = page`.
+  - API'de sahibi görüyor, başkası 404; görüntüleme ve indirme kaydı.
+  - Bu cevapta çalışmamış kaynak (önceki cevabın sorgusu dahil) reddediliyor.
+  - Güncellemede önceki kaynaklarla 2. sürüm oluşuyor.
+  - Temizleme (dış script/link, base, meta CSP, iframe, object, `../`) ve gömülü sayı uyarısı.
+  - 200 KB ve 2 MB sınırları; sayfa modeli yönlendirmesi ve Kullanım'da "Sayfa" türü.
+
+Vitest 85: yeni `pageDocument.test.tsx` 3. CSP'de adres yok ve içerikten önce; veri ve kütüphane `</script>` ile kaçamıyor; panelde sadece kendi çerçevesinden gelen `ask` işleniyor ve onaysız gönderilmiyor.
+
+Playwright 20: yeni `pages.spec.ts` 5.
+- **Güvenlik (gerçek Chromium):** kötü niyetli sayfa çerez, localStorage, sessionStorage, `parent.document` ve `top.location`'a erişemiyor; `window.open` açılır pencere açamıyor, üst sayfa yönlendirilemiyor.
+  - Dış sunucu yakalanıp 200 dönecek şekilde kurulmuştu; `fetch` (dış adres ve Fortis API), XHR, WebSocket, görsel, prefetch, `<form action>`, `sendBeacon` ve dış `<script src>` denemelerinden hiçbiri ona ulaşmadı. Tarayıcının başlattığı dört istek `csp` nedeniyle düştü.
+  - Sayfa sunucu temizliğinden geçmemiş haliyle verildi; CSP ve sandbox tek başına sınandı.
+  - Sahte ve bilinmeyen `postMessage`'lar yok sayıldı; `ask` onaysız gönderilmedi.
+- **Kabuk:** sandbox özniteliği, CSP içeriği, dış `<script src>` olmaması, CSP'nin içerikten önce gelmesi.
+- **Pano (açık/koyu):** 2 grafik (biri tek başına `<canvas>`, yüksekliği > 150px), meydan filtresi tabloyu ve grafiği güncelliyor, sayfadan soru onay çubuğu, tam ekran ve panele dönüş.
+  - HTML indirme: tek dosya, Chart.js ve veri gömülü, `<script src>` yok, indirme kaydı. Dosya ağı tamamen kesilmiş bir sayfada açılıp grafikleri çiziyor.
+- **Telefonda** pano tek sütun.
+- Görsel temeller: panel açık/koyu; görüntülere bakıldı.
+
+**Eval** (gerçek model, `--max-cost=5`; toplam 1,65 $):
+- İlk çalıştırma, 5 soru: 2/5, 1,03 $. Rapor: `backend/storage/app/private/eval/2026-10-13_131412.json`.
+  - "Son 14 günün rötar panosu (günlük OTP, nedenler, en çok rötar yapan 5 rota)" → **kaldı.** APM test ortamında rötar ve OTP verisi yok. Model sayfa uydurmadı, eksik veriyi kayda geçirdi ve var olan veriyle pano önerdi. Gerçek veride yeniden denenmeli.
+  - "Son 14 günün operasyon panosu… meydan filtresi olsun" → sayfa, filtre, grafikler üretildi. İlk çalıştırmada eval'in grafik sayacı yanıldı (model grafikleri bir yardımcı fonksiyonla tek `fortis.chart` çağrısından çiziyor); sayaç düzeltildi.
+  - "Dün kaç sefer vardı" → sayfa ve grafik yok. **Geçti.**
+  - "Departmanlara göre çalışan sayısını grafikle göster" → sayfa değil `:::chart` geldi, ama doğrulanamadı: iki sorgunun etiketleri tek grafikte birleştirilmişti. Prompt'a "tek sorgu" kuralı eklendi.
+  - "Son 7 günün sefer panosu…" + takip "Bu panoya meydan filtresi ekle" → aynı `artifact_id` ile 2. sürüm, filtreli. **Geçti.**
+- Düzeltmelerden sonra iki soru yeniden: **2/2 geçti, 0,62 $.** Rapor: `backend/storage/app/private/eval/2026-10-13_131938.json`.
+- Eval'e yeni kontroller: `expect_page`, `expect_no_page`, sayfa verisi `FORTIS_DATA`'dan ve uyarısız, `expect_page_charts`, `expect_page_filter`, `followup` + `expect_page_version`.
+
+**Dokümandan sapmalar ve nedenleri**
+- **CSP'yi sunucu değil Fortis istemcisi ekliyor.** Belge iskeletini Fortis'in kendi kodu kuruyor; model içeriği bu koda dokunamıyor, sunucu da iskelet etiketlerini temizliyor. Böylece önizleme, indirilen dosya ve tarayıcı güvenlik testleri aynı kabuğu kullanıyor.
+- **CSP'de `/vendor/` adresi yok:** kütüphane satır içi gömülü (daha sıkı; IPv6 yerel adres sorununu da gideriyor).
+- **Yazı tipi gömülü değil:** uygulama yazı tipleri Google Fonts'tan geliyor, sayfa ağı kapalı. Sayfa sistem yazı tipini kullanıyor.
+- **Önizleme sohbet içi kart yerine yan panel** (kullanıcı isteği). Yükseklik için `resize` mesajı panelde kullanılmıyor (panel tam yükseklik); kabuk göndermeye devam ediyor, Fortis yok sayıyor.
+- **H2'nin tablo kısmı öne çekildi:** sayfayı yeniden açabilmek için veri anlık görüntüsü, kaynaklar ve veri zamanı H1'de saklanmak zorundaydı (`artifact_versions` kolonları). Kaydet, `#/pages`, paylaşım ve görünürlük H2'de.
+- **Veri zamanı:** sorgunun bu cevaptaki çalışma zamanı.
+- **Açık konu:** mevcut `create_artifact` (veri içermeyen tasarım işleri) hâlâ CDN'den kod yüklüyor ve `allow-modals allow-popups` ile açılıyor. Şirket verisi taşımıyor, ama aynı sıkı kabuğa geçirilmesi önerilir.
 
 ## Çalıştırma
 

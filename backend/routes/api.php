@@ -133,6 +133,7 @@ Route::middleware(['auth:sanctum', 'active', 'password.changed'])->group(functio
 
     // Sohbette üretilen arayüz, diyagram ve belgeler
     Route::get('artifacts/{artifact}', [ArtifactController::class, 'show'])->middleware('can:view,artifact')->name('artifacts.show');
+    Route::post('artifacts/{artifact}/downloaded', [ArtifactController::class, 'downloaded'])->middleware('can:view,artifact')->name('artifacts.downloaded');
 
     // Home ve konuşma ekranları
     Route::get('home', HomeController::class)->name('home');

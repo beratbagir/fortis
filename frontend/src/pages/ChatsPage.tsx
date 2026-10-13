@@ -2,7 +2,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { api, type Conversation } from '../api'
 import { href } from '../router'
-import { CHAT_GROUPS, groupOf } from '../chat/chatUtils'
+import { CHAT_GROUPS, chatGroupLabel, groupKey } from '../chat/chatUtils'
+import { intlLocale, t } from '../i18n'
 import { SearchIcon } from '../ui/icons'
 
 /** Bütün sohbetler: arama, tarihe göre gruplar, yeniden adlandır ve sil. */
@@ -14,8 +15,8 @@ export function ChatsPage() {
   const [title, setTitle] = useState('')
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['conversations'] })
-  const term = search.trim().toLocaleLowerCase('tr')
-  const list = (conversations.data ?? []).filter((c) => term === '' || (c.title ?? 'Yeni sohbet').toLocaleLowerCase('tr').includes(term))
+  const term = search.trim().toLocaleLowerCase(intlLocale())
+  const list = (conversations.data ?? []).filter((c) => term === '' || (c.title ?? t('nav.new_chat')).toLocaleLowerCase(intlLocale()).includes(term))
 
   const rename = async (c: Conversation) => {
     const value = title.trim()
@@ -26,7 +27,7 @@ export function ChatsPage() {
   }
 
   const remove = async (c: Conversation) => {
-    if (!window.confirm(`"${c.title ?? 'Yeni sohbet'}" silinsin mi?`)) return
+    if (!window.confirm(t('chat.list.confirm_delete', { title: c.title ?? t('nav.new_chat') }))) return
     await api.deleteConversation(c.id)
     refresh()
   }
@@ -35,24 +36,24 @@ export function ChatsPage() {
     <main className="flex-1 overflow-y-auto">
       <div className="mx-auto flex max-w-3xl flex-col gap-5 px-4 py-8">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="m-0 flex-1 font-serif text-[30px] font-normal tracking-tight">Sohbetler</h1>
+          <h1 className="m-0 flex-1 font-serif text-[30px] font-normal tracking-tight">{t('nav.chats')}</h1>
           <a href={href({ name: 'chat', conversationId: null })} className="flex h-9 items-center rounded-lg bg-brand px-3.5 text-sm font-medium text-on-brand no-underline hover:bg-brand-hover">
-            Yeni sohbet
+            {t('nav.new_chat')}
           </a>
         </div>
         <label className="flex items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-muted">
           <SearchIcon />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Sohbetlerde ara" aria-label="Sohbetlerde ara" className="flex-1 bg-transparent text-sm text-ink outline-none" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('chat.list.search')} aria-label={t('chat.list.search')} className="flex-1 bg-transparent text-sm text-ink outline-none" />
         </label>
 
-        {conversations.isSuccess && list.length === 0 && <p className="m-0 text-sm text-muted">{term ? 'Eşleşen sohbet yok.' : 'Henüz sohbet yok.'}</p>}
+        {conversations.isSuccess && list.length === 0 && <p className="m-0 text-sm text-muted">{term ? t('chat.list.no_match') : t('chat.list.empty')}</p>}
 
         {CHAT_GROUPS.map((group) => {
-          const items = list.filter((c) => groupOf(c.updated_at) === group)
+          const items = list.filter((c) => groupKey(c.updated_at) === group)
           if (items.length === 0) return null
           return (
-            <section key={group} aria-label={group} className="flex flex-col gap-1">
-              <h2 className="m-0 mb-1 text-xs font-medium text-muted">{group}</h2>
+            <section key={group} aria-label={chatGroupLabel(group)} className="flex flex-col gap-1">
+              <h2 className="m-0 mb-1 text-xs font-medium text-muted">{chatGroupLabel(group)}</h2>
               <ul className="m-0 flex list-none flex-col p-0">
                 {items.map((c) => (
                   <li key={c.id} className="group flex items-center gap-2 rounded-lg px-2 hover:bg-raised">
@@ -64,27 +65,27 @@ export function ChatsPage() {
                           rename(c)
                         }}
                       >
-                        <input autoFocus aria-label="Yeni başlık" value={title} onChange={(e) => setTitle(e.target.value)} onBlur={() => rename(c)} className="h-8 w-full rounded-md border border-line-strong bg-surface px-2 text-sm" />
+                        <input autoFocus aria-label={t('chat.list.new_title')} value={title} onChange={(e) => setTitle(e.target.value)} onBlur={() => rename(c)} className="h-8 w-full rounded-md border border-line-strong bg-surface px-2 text-sm" />
                       </form>
                     ) : (
                       <a href={href({ name: 'chat', conversationId: c.id })} className="flex-1 truncate py-2 text-sm text-ink no-underline">
-                        {c.title ?? 'Yeni sohbet'}
+                        {c.title ?? t('nav.new_chat')}
                       </a>
                     )}
-                    <span className="hidden text-xs text-faint sm:inline">{new Date(c.updated_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}</span>
+                    <span className="hidden text-xs text-faint sm:inline">{new Date(c.updated_at).toLocaleDateString(intlLocale(), { day: 'numeric', month: 'short' })}</span>
                     <button
                       type="button"
-                      aria-label={`"${c.title ?? 'Yeni sohbet'}" sohbetini yeniden adlandır`}
+                      aria-label={t('chat.list.rename_aria', { title: c.title ?? t('nav.new_chat') })}
                       onClick={() => {
                         setTitle(c.title ?? '')
                         setEditing(c.id)
                       }}
                       className="rounded-md px-2 py-1 text-xs text-muted opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 hover:text-ink"
                     >
-                      Yeniden adlandır
+                      {t('chat.list.rename')}
                     </button>
-                    <button type="button" aria-label={`"${c.title ?? 'Yeni sohbet'}" sohbetini sil`} onClick={() => remove(c)} className="rounded-md px-2 py-1 text-xs text-muted opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 hover:text-bad">
-                      Sil
+                    <button type="button" aria-label={t('chat.list.delete_aria', { title: c.title ?? t('nav.new_chat') })} onClick={() => remove(c)} className="rounded-md px-2 py-1 text-xs text-muted opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 hover:text-bad">
+                      {t('chat.list.delete')}
                     </button>
                   </li>
                 ))}

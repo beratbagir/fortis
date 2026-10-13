@@ -7,6 +7,7 @@ import { credits, usd } from './money'
 const TYPE_COLOR: Record<UsageType, string> = {
   chat: 'var(--color-ink-2)',
   agent: 'var(--color-brand)',
+  page: 'var(--color-accent)',
   eval: 'var(--color-info)',
   evaluation: 'var(--color-ok)',
   title: 'var(--color-faint)',

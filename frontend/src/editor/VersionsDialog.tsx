@@ -1,13 +1,14 @@
 import { DiffEditor } from '@monaco-editor/react'
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
+import { t } from '../i18n'
 import { useTheme } from '../theme'
 import { Dialog } from '../ui/Dialog'
 import { when } from '../ui/format'
 import { editorApi } from './api'
 import './monaco'
 
-const SOURCE = { chat: 'Chat', canvas: 'Tuval', yaml: 'YAML', restore: 'Geri yükleme' } as const
+const SOURCE = { chat: 'editor.source.chat', canvas: 'editor.source.canvas', yaml: 'editor.source.yaml', restore: 'editor.source.restore' } as const
 
 interface Props {
   flowId: number
@@ -27,9 +28,9 @@ export default function VersionsDialog({ flowId, current, onClose, onRestore }: 
   const [busy, setBusy] = useState(false)
 
   return (
-    <Dialog title="Sürümler" onClose={onClose} wide>
+    <Dialog title={t('editor.versions.title')} onClose={onClose} wide>
       <div className="flex flex-col gap-4 lg:flex-row">
-        <ol className="m-0 flex list-none flex-col gap-1.5 p-0 lg:w-72 lg:shrink-0" aria-label="Sürüm listesi">
+        <ol className="m-0 flex list-none flex-col gap-1.5 p-0 lg:w-72 lg:shrink-0" aria-label={t('editor.versions.list')}>
           {versions.data?.map((v) => (
             <li key={v.number}>
               <button
@@ -40,11 +41,11 @@ export default function VersionsDialog({ flowId, current, onClose, onRestore }: 
               >
                 <span className="flex items-center gap-2 text-sm font-extrabold">
                   v{v.number}
-                  {v.number === current && <span className="rounded-full bg-brand-soft px-2 text-[11px] text-brand-fg">Güncel</span>}
-                  {v.is_published && <span className="rounded-full bg-ok-soft px-2 text-[11px] text-ok">Yayında</span>}
+                  {v.number === current && <span className="rounded-full bg-brand-soft px-2 text-[11px] text-brand-fg">{t('editor.versions.current')}</span>}
+                  {v.is_published && <span className="rounded-full bg-ok-soft px-2 text-[11px] text-ok">{t('editor.versions.published')}</span>}
                 </span>
                 <span className="text-xs text-muted">
-                  {SOURCE[v.source] ?? v.source} · {when(v.created_at)}
+                  {SOURCE[v.source] ? t(SOURCE[v.source]) : v.source} · {when(v.created_at)}
                   {v.created_by ? ` · ${v.created_by}` : ''}
                 </span>
               </button>
@@ -54,12 +55,12 @@ export default function VersionsDialog({ flowId, current, onClose, onRestore }: 
 
         <div className="flex min-w-0 flex-1 flex-col gap-3">
           {compare === null ? (
-            <p className="m-0 text-sm text-muted">Karşılaştırılacak başka sürüm yok.</p>
+            <p className="m-0 text-sm text-muted">{t('editor.versions.none')}</p>
           ) : (
             <>
               <div className="flex flex-wrap items-center gap-3">
                 <span className="text-sm font-semibold text-ink-2">
-                  Solda v{compare}, sağda güncel v{current}
+                  {t('editor.versions.compare', { left: compare, right: current })}
                 </span>
                 <div className="flex-1" />
                 {compare !== current && (
@@ -80,7 +81,7 @@ export default function VersionsDialog({ flowId, current, onClose, onRestore }: 
                     }}
                     className="h-9 rounded-xl bg-brand px-3 text-sm font-bold text-on-brand disabled:opacity-60"
                   >
-                    v{compare} sürümünü taslak olarak geri yükle
+                    {t('editor.versions.restore', { version: compare })}
                   </button>
                 )}
               </div>

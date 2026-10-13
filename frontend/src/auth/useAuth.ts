@@ -1,4 +1,5 @@
 import { createContext, useContext } from 'react'
+import type { Locale } from '../i18n'
 import type { AuthConfig, ThemePreference, User } from './api'
 
 export interface AuthState {
@@ -7,6 +8,9 @@ export interface AuthState {
   setUser: (user: User | null) => void
   logout: () => Promise<void>
   setTheme: (theme: ThemePreference) => void
+  /** Arayüz dili (kullanıcı başına; girişsiz tarayıcı dili). */
+  locale: Locale
+  setLanguage: (locale: Locale) => void
 }
 
 export const AuthContext = createContext<AuthState | null>(null)

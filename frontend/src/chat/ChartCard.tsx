@@ -1,10 +1,11 @@
-import { useContext, useMemo, useRef, useState } from 'react'
+import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { Bar, BarChart, CartesianGrid, LabelList, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { ChartError, ChartSpec } from '../api'
-import { chartCsv, formatValue, label, niceTicks, seriesColors, shortTick, summary } from './chartFormat'
+import { chartCsv, endLabelOffsets, endLabelText, formatValue, label, niceTicks, seriesColors, shortTick, summary } from './chartFormat'
 import { Dialog } from '../ui/Dialog'
 import { DownloadIcon, ExpandIcon, WarnIcon } from '../ui/icons'
 import { CitationContext } from './chatUtils'
+import { t } from '../i18n'
 
 const slug = (title: string) =>
   title
@@ -21,8 +22,27 @@ function save(blob: Blob, name: string) {
   URL.revokeObjectURL(url)
 }
 
-/** SVG → PNG: tema değişkenleri hesaplanmış renklere çevrilir (kopya sayfadan bağımsız çizilsin). */
-async function svgToPng(svg: SVGSVGElement, background: string): Promise<Blob | null> {
+/** Tema değişkeni veya CSS rengi → hesaplanmış renk (canvas için). */
+function resolveColor(value: string): string {
+  const probe = document.createElement('span')
+  probe.style.color = value
+  document.body.appendChild(probe)
+  const color = getComputedStyle(probe).color
+  probe.remove()
+  return color
+}
+
+interface PngExtras {
+  title: string
+  legend: { name: string; color: string }[]
+  footer: string
+}
+
+/**
+ * SVG → PNG: tema değişkenleri hesaplanmış renklere çevrilir (kopya sayfadan bağımsız çizilsin). Başlık, renk açıklaması
+ * (legend HTML olduğu için SVG'de yok) ve kaynak satırı görüntüye eklenir; dosya tek başına anlaşılır.
+ */
+async function svgToPng(svg: SVGSVGElement, extras: PngExtras): Promise<Blob | null> {
   const clone = svg.cloneNode(true) as SVGSVGElement
   const source = svg.querySelectorAll('*')
   clone.querySelectorAll('*').forEach((el, i) => {
@@ -43,16 +63,43 @@ async function svgToPng(svg: SVGSVGElement, background: string): Promise<Blob | 
       image.onerror = reject
       image.src = url
     })
+    const pad = 16
+    const titleH = 48
+    // Recharts legend için SVG'nin altında yer ayırır (legend HTML olduğundan SVG'de boş); açıklama oraya çizilir.
+    const legendH = 0
+    const footerH = 24
     const scale = 2
     const canvas = document.createElement('canvas')
-    canvas.width = width * scale
-    canvas.height = height * scale
+    canvas.width = (width + pad * 2) * scale
+    canvas.height = (titleH + height + legendH + footerH + pad) * scale
     const ctx = canvas.getContext('2d')
     if (!ctx) return null
-    ctx.fillStyle = background
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    const font = getComputedStyle(document.body).fontFamily
     ctx.scale(scale, scale)
-    ctx.drawImage(image, 0, 0)
+    ctx.fillStyle = resolveColor('var(--surface)')
+    ctx.fillRect(0, 0, width + pad * 2, titleH + height + legendH + footerH + pad)
+    ctx.fillStyle = resolveColor('var(--text)')
+    ctx.font = `600 14px ${font}`
+    ctx.textBaseline = 'middle'
+    ctx.fillText(extras.title, pad, pad + 8)
+    ctx.drawImage(image, pad, titleH)
+
+    // Renk açıklaması: ortalanmış çizgi/kare + ad (metin tema renginde).
+    ctx.font = `12px ${font}`
+    const items = extras.legend.map((item) => ({ ...item, w: 22 + ctx.measureText(item.name).width }))
+    let x = pad + Math.max(0, (width - items.reduce((sum, item) => sum + item.w + 16, -16)) / 2)
+    const y = titleH + height - 14
+    for (const item of items.length > 1 ? items : []) {
+      ctx.fillStyle = resolveColor(item.color)
+      ctx.fillRect(x, y - 1.5, 14, 3)
+      ctx.fillStyle = resolveColor('var(--text-2)')
+      ctx.fillText(item.name, x + 20, y)
+      x += item.w + 16
+    }
+
+    ctx.fillStyle = resolveColor('var(--text-muted)')
+    ctx.font = `11px ${font}`
+    ctx.fillText(extras.footer, pad, titleH + height + legendH + footerH / 2 + 4)
     return await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'))
   } finally {
     URL.revokeObjectURL(url)
@@ -67,7 +114,7 @@ export function ChartErrorCard({ chart }: { chart: ChartError | undefined }) {
     <div role="note" className="flex items-center gap-2 rounded-xl border border-dashed border-line-strong bg-canvas px-3 py-2.5 text-[13px] text-muted">
       <WarnIcon className="shrink-0 text-warn" />
       <span>
-        {chart?.error ?? 'Grafik gösterilemedi'}
+        {chart?.error ?? t('chat.chart.invalid')}
         {chart?.title ? ` · ${chart.title}` : ''}
       </span>
     </div>
@@ -98,7 +145,8 @@ export function ChartCard({ chart }: { chart: ChartSpec }) {
   const png = async () => {
     const svg = plot.current?.querySelector('.recharts-wrapper > svg') as SVGSVGElement | null
     if (!svg) return
-    const blob = await svgToPng(svg, getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || 'white')
+    const footer = [t('chat.chart.source', { source: query ? `${query.source} · ${query.purpose}` : chart.source }), chart.derived ? t('chat.chart.derived') : null, chart.note].filter(Boolean).join(' · ')
+    const blob = await svgToPng(svg, { title: chart.title, legend: chart.series.filter((s) => !hidden.has(s.name)).map((s) => ({ name: s.name, color: colors.get(s.name) ?? 'var(--brand)' })), footer })
     if (blob) save(blob, `${slug(chart.title)}.png`)
   }
 
@@ -106,20 +154,20 @@ export function ChartCard({ chart }: { chart: ChartSpec }) {
     <figure className="m-0 overflow-hidden rounded-xl border border-line bg-surface" aria-label={chart.title}>
       <figcaption className="flex items-center gap-1 border-b border-line px-3 py-2">
         <span className="flex-1 truncate text-[13px] font-medium text-ink">{chart.title}</span>
-        <div role="group" aria-label="Görünüm" className="mr-1 flex rounded-md border border-line p-0.5 text-xs">
+        <div role="group" aria-label={t('chat.chart.view')} className="mr-1 flex rounded-md border border-line p-0.5 text-xs">
           {(['chart', 'table'] as const).map((v) => (
             <button key={v} type="button" aria-pressed={view === v} onClick={() => setView(v)} className={`rounded px-2 py-0.5 ${view === v ? 'bg-raised text-ink' : 'text-muted hover:text-ink'}`}>
-              {v === 'chart' ? 'Grafik' : 'Tablo'}
+              {v === 'chart' ? t('chat.chart.chart') : t('chat.table.title')}
             </button>
           ))}
         </div>
-        <button type="button" aria-label="CSV indir" title="CSV indir" onClick={() => save(new Blob(['\uFEFF' + chartCsv(chart)], { type: 'text/csv;charset=utf-8' }), `${slug(chart.title)}.csv`)} className={iconButton}>
+        <button type="button" aria-label={t('chat.csv')} title={t('chat.csv')} onClick={() => save(new Blob(['\uFEFF' + chartCsv(chart)], { type: 'text/csv;charset=utf-8' }), `${slug(chart.title)}.csv`)} className={iconButton}>
           <DownloadIcon />
         </button>
-        <button type="button" aria-label="PNG indir" title="PNG indir" disabled={view !== 'chart'} onClick={png} className={`${iconButton} px-2 text-[11px] font-medium disabled:opacity-40`}>
+        <button type="button" aria-label={t('chat.chart.png')} title={t('chat.chart.png')} disabled={view !== 'chart'} onClick={png} className={`${iconButton} px-2 text-[11px] font-medium disabled:opacity-40`}>
           PNG
         </button>
-        <button type="button" aria-label="Grafiği büyüt" title="Büyüt" onClick={() => setExpanded(true)} className={iconButton}>
+        <button type="button" aria-label={t('chat.chart.expand')} title={t('chat.expand')} onClick={() => setExpanded(true)} className={iconButton}>
           <ExpandIcon />
         </button>
       </figcaption>
@@ -133,10 +181,8 @@ export function ChartCard({ chart }: { chart: ChartSpec }) {
       )}
 
       <div className="flex flex-wrap gap-x-3 gap-y-1 border-t border-line px-3 py-2 text-[11px] text-muted">
-        <span>
-          Kaynak{n ? ` [${n}]` : ''}: {query ? `${query.source} · ${query.purpose}` : chart.source}
-        </span>
-        {chart.derived && <span>Değerler kaynaktan hesaplandı.</span>}
+        <span>{n ? t('chat.chart.source_n', { n, source: query ? `${query.source} · ${query.purpose}` : chart.source }) : t('chat.chart.source', { source: query ? `${query.source} · ${query.purpose}` : chart.source })}</span>
+        {chart.derived && <span>{t('chat.chart.derived')}.</span>}
         {chart.note && <span>{chart.note}</span>}
       </div>
 
@@ -223,48 +269,72 @@ function ChartPlot({ chart, colors, hidden, onToggle, large = false }: { chart: 
     />
   )
   const grid = <CartesianGrid stroke="var(--chart-grid)" vertical={chart.type === 'hbar'} horizontal={chart.type !== 'hbar'} />
-  const margin = { top: 8, right: chart.type === 'line' && multi && chart.series.length <= 4 ? 56 : 16, bottom: 0, left: 0 }
+  const directLabels = chart.type === 'line' && multi && chart.series.length <= 4
+  const longestName = Math.max(...chart.series.map((s) => endLabelText(s.name).length))
+  const margin = { top: 8, right: directLabels ? Math.min(130, 14 + longestName * 6.5) : 16, bottom: 0, left: 0 }
+  // Çizim alanı yüksekliği (etiket aralığı için): kap yüksekliği − x ekseni − legend − üst boşluk.
+  const box = useRef<HTMLDivElement>(null)
+  const [boxHeight, setBoxHeight] = useState(0)
+  useEffect(() => {
+    const el = box.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(() => setBoxHeight(el.clientHeight))
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+  const offsets = directLabels ? endLabelOffsets(chart, hidden, domain, Math.max(80, (boxHeight || 220) - 30 - (multi ? 26 : 0) - margin.top)) : new Map<string, number>()
 
   if (chart.type === 'line') {
     const last = chart.data.length - 1
     return (
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={chart.data} margin={margin} accessibilityLayer>
-          {grid}
-          <XAxis dataKey={chart.x.field} tickFormatter={(v) => label(chart, v)} tick={AXIS_TICK} tickLine={false} axisLine={{ stroke: 'var(--border)' }} interval="preserveStartEnd" minTickGap={large ? 24 : 16} />
-          <YAxis domain={domain} ticks={ticks} tickFormatter={(v: number) => shortTick(v, chart.y.unit)} tick={AXIS_TICK} tickLine={false} axisLine={false} width={44} />
-          {tooltip}
-          {reference}
-          {legend}
-          {chart.series.map((s) => (
-            <Line
-              key={s.field}
-              dataKey={s.field}
-              name={s.name}
-              hide={hidden.has(s.name)}
-              stroke={colors.get(s.name)}
-              strokeWidth={2}
-              dot={false}
-              activeDot={{ r: 4.5, strokeWidth: 0, fill: colors.get(s.name) }}
-              isAnimationActive={false}
-              connectNulls
-            >
-              {multi && chart.series.length <= 4 && (
-                <LabelList
-                  dataKey={s.field}
-                  content={({ x, y, index }) =>
-                    index === last ? (
-                      <text x={Number(x) + 6} y={Number(y)} dy={4} fontSize={11} fill="var(--text-2)">
-                        {s.name}
-                      </text>
-                    ) : null
-                  }
-                />
-              )}
-            </Line>
-          ))}
-        </LineChart>
-      </ResponsiveContainer>
+      <div ref={box} className="h-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={chart.data} margin={margin} accessibilityLayer>
+            {grid}
+            <XAxis
+              dataKey={chart.x.field}
+              tickFormatter={(v) => label(chart, v)}
+              tick={AXIS_TICK}
+              tickLine={false}
+              axisLine={{ stroke: 'var(--border)' }}
+              interval="equidistantPreserveStart"
+              minTickGap={large ? 24 : 12}
+            />
+            <YAxis domain={domain} ticks={ticks} tickFormatter={(v: number) => shortTick(v, chart.y.unit)} tick={AXIS_TICK} tickLine={false} axisLine={false} width={44} />
+            {tooltip}
+            {reference}
+            {legend}
+            {chart.series.map((s) => (
+              <Line
+                key={s.field}
+                dataKey={s.field}
+                name={s.name}
+                hide={hidden.has(s.name)}
+                stroke={colors.get(s.name)}
+                strokeWidth={2}
+                dot={false}
+                activeDot={{ r: 4.5, strokeWidth: 0, fill: colors.get(s.name) }}
+                isAnimationActive={false}
+                connectNulls
+              >
+                {directLabels && (
+                  <LabelList
+                    dataKey={s.field}
+                    content={({ x, y, index }) =>
+                      index === last ? (
+                        <text x={Number(x) + 6} y={Number(y) + (offsets.get(s.name) ?? 0)} dy={4} fontSize={11} fill="var(--text-2)">
+                          <title>{s.name}</title>
+                          {endLabelText(s.name)}
+                        </text>
+                      ) : null
+                    }
+                  />
+                )}
+              </Line>
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
     )
   }
 

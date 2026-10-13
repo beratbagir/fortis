@@ -1,4 +1,5 @@
 import type { FlowInput } from './api'
+import { intlLocale, t } from './i18n'
 
 /** Girdilerin başlangıç değerleri: BOOL için varsayılan, diğerleri boş (boşsa Kestra varsayılanı kullanır). */
 export function initialValues(inputs: FlowInput[]): Record<string, unknown> {
@@ -14,37 +15,38 @@ export function formatDuration(iso: string | null): string {
   if (!m) return iso
   const [, h, min, sec] = m
   const parts = []
-  if (h) parts.push(`${h} sa`)
-  if (min) parts.push(`${min} dk`)
-  if (sec) parts.push(`${Number(sec).toLocaleString('tr-TR', { maximumFractionDigits: 1 })} sn`)
-  return parts.join(' ') || '0 sn'
+  if (h) parts.push(t('format.duration.h', { n: h }))
+  if (min) parts.push(t('format.duration.m', { n: min }))
+  if (sec) parts.push(t('format.duration.s', { n: Number(sec).toLocaleString(intlLocale(), { maximumFractionDigits: 1 }) }))
+  return parts.join(' ') || t('format.duration.s', { n: 0 })
 }
 
-const EXECUTION_STATES: Record<string, { label: string; className: string }> = {
-  CREATED: { label: 'Sırada', className: 'bg-raised text-ink-2' },
-  QUEUED: { label: 'Sırada', className: 'bg-raised text-ink-2' },
-  SUBMITTED: { label: 'Sırada', className: 'bg-raised text-ink-2' },
-  RUNNING: { label: 'Çalışıyor', className: 'bg-info-soft text-info' },
-  RESTARTED: { label: 'Çalışıyor', className: 'bg-info-soft text-info' },
-  RETRYING: { label: 'Yeniden deneniyor', className: 'bg-info-soft text-info' },
-  KILLING: { label: 'Durduruluyor', className: 'bg-raised text-ink-2' },
-  PAUSED: { label: 'Onay bekliyor', className: 'bg-warn-soft text-warn' },
-  SUCCESS: { label: 'Başarılı', className: 'bg-ok-soft text-ok' },
-  WARNING: { label: 'Uyarıyla bitti', className: 'bg-warn-soft text-warn' },
-  FAILED: { label: 'Hata', className: 'bg-bad-soft text-bad' },
-  KILLED: { label: 'Durduruldu', className: 'bg-line text-ink-2' },
-  CANCELLED: { label: 'İptal edildi', className: 'bg-line text-ink-2' },
-  SKIPPED: { label: 'Atlandı', className: 'bg-line text-ink-2' },
-  RETRIED: { label: 'Yeniden denendi', className: 'bg-line text-ink-2' },
+const EXECUTION_STATES: Record<string, { className: string }> = {
+  CREATED: { className: 'bg-raised text-ink-2' },
+  QUEUED: { className: 'bg-raised text-ink-2' },
+  SUBMITTED: { className: 'bg-raised text-ink-2' },
+  RUNNING: { className: 'bg-info-soft text-info' },
+  RESTARTED: { className: 'bg-info-soft text-info' },
+  RETRYING: { className: 'bg-info-soft text-info' },
+  KILLING: { className: 'bg-raised text-ink-2' },
+  PAUSED: { className: 'bg-warn-soft text-warn' },
+  SUCCESS: { className: 'bg-ok-soft text-ok' },
+  WARNING: { className: 'bg-warn-soft text-warn' },
+  FAILED: { className: 'bg-bad-soft text-bad' },
+  KILLED: { className: 'bg-line text-ink-2' },
+  CANCELLED: { className: 'bg-line text-ink-2' },
+  SKIPPED: { className: 'bg-line text-ink-2' },
+  RETRIED: { className: 'bg-line text-ink-2' },
 }
 
-/** Kestra çalışma durumunun Türkçe etiketi ve rozet rengi. */
+/** Kestra çalışma durumunun etiketi (arayüz dilinde) ve rozet rengi. */
 export function executionState(state: string | null): { label: string; className: string } {
-  return EXECUTION_STATES[state ?? ''] ?? { label: state ?? '—', className: 'bg-raised text-ink-2' }
+  const known = EXECUTION_STATES[state ?? '']
+  return known ? { label: t(`format.state.${state}`), className: known.className } : { label: state ?? '—', className: 'bg-raised text-ink-2' }
 }
 
-const TRIGGER_LABELS: Record<string, string> = { Schedule: 'Zamanlayıcı', Webhook: 'Webhook', Elle: 'Elle' }
+const TRIGGERS = ['Schedule', 'Webhook', 'Elle']
 
 export function triggerLabel(trigger: string): string {
-  return TRIGGER_LABELS[trigger] ?? trigger
+  return TRIGGERS.includes(trigger) ? t(`format.trigger.${trigger}`) : trigger
 }

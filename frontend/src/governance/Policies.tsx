@@ -38,6 +38,7 @@ const LABELS: Record<keyof PolicyValues, string> = {
   default_model: 'Genel varsayılan model',
   data_question_model: 'Veri sorusu modeli',
   fast_model: 'Hızlı model',
+  page_model: 'Sayfa modeli (pano/HTML sayfa)',
   budget_blocks_flow_ai_steps: 'Bütçe dolunca akış içi AI adımları dursun',
   allow_external_recipients: 'Şirket dışı alıcı',
   allowed_recipient_domains: 'Şirket içi alan adları',
@@ -53,6 +54,7 @@ const pick = (data: PoliciesData): PolicyValues => ({
   default_model: data.default_model,
   data_question_model: data.data_question_model,
   fast_model: data.fast_model,
+  page_model: data.page_model,
   budget_blocks_flow_ai_steps: data.budget_blocks_flow_ai_steps,
   allow_external_recipients: data.allow_external_recipients,
   allowed_recipient_domains: data.allowed_recipient_domains,
@@ -141,7 +143,7 @@ function PoliciesForm({ data, message, setMessage }: { data: PoliciesData; messa
           ))}
         </fieldset>
         <div className="flex flex-wrap gap-3">
-          {(['default_model', 'data_question_model', 'fast_model'] as const).map((key) => (
+          {(['default_model', 'data_question_model', 'fast_model', 'page_model'] as const).map((key) => (
             <label key={key} className="flex flex-col gap-1 text-xs text-muted">
               {LABELS[key]}
               <select value={draft[key]} onChange={(e) => set({ [key]: e.target.value })} className={INPUT}>
@@ -155,7 +157,7 @@ function PoliciesForm({ data, message, setMessage }: { data: PoliciesData; messa
             </label>
           ))}
         </div>
-        <p className="m-0 text-xs text-muted">Auto seçili sohbetlerde ilk tur genel varsayılan, veri sorgusundan sonraki turlar veri sorusu modeli, sohbet başlığı hızlı modelle yazılır.</p>
+        <p className="m-0 text-xs text-muted">Auto seçili sohbetlerde ilk tur genel varsayılan, veri sorgusundan sonraki turlar veri sorusu modeli (pano/sayfa isteğinde sayfa modeli), sohbet başlığı hızlı modelle yazılır.</p>
       </Group>
 
       <Group title="Bütçe">

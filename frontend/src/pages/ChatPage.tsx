@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { api, architectPrompt, buildApi, isArtifactCard, isFlowCard, isReportCard, sendMessage, type Conversation, type FlowCard, type Message, type MessageExtras, type TraceStep } from '../api'
+import { api, architectPrompt, buildApi, isArtifactCard, isFlowCard, isPageCard, isReportCard, sendMessage, type ArtifactCard, type Conversation, type FlowCard, type Message, type MessageExtras, type TraceStep } from '../api'
 import { liveText } from '../chat/answerText'
 import { AnswerView } from '../chat/AnswerView'
 import { HomeView } from '../chat/HomeView'
@@ -10,6 +10,7 @@ import { QuestionCard } from '../chat/QuestionCard'
 import { ArtifactCardView, ArtifactPanel } from '../components/ArtifactPanel'
 import { Composer } from '../components/Composer'
 import { FlowCardView } from '../components/FlowCardView'
+import { PageCardView, PagePanel } from '../components/PageCard'
 import { MessageBubble } from '../components/MessageBubble'
 import { ReportCardView } from '../components/ReportCardView'
 import { useAuth } from '../auth/useAuth'
@@ -177,14 +178,15 @@ export function ChatPage({ conversationId }: { conversationId: number | null }) 
 
   const editFlow = (card: FlowCard) => setDraft({ id: Date.now(), text: `"${card.title}" akışında şunu değiştirmek istiyorum: ` })
 
-  const [artifact, setArtifact] = useState<{ id: string; version: number | null } | null>(null)
+  const [artifact, setArtifact] = useState<{ id: string; version: number | null; page?: boolean } | null>(null)
   // Yanıt akarken yeni üretilen artifact kendiliğinden açılır; eski sohbet açılırken açılmaz.
   const latestArtifact = messages.flatMap((m) => m.flow_cards.filter(isArtifactCard)).at(-1)
   const [shownArtifact, setShownArtifact] = useState<string | null>(null)
   const latestKey = latestArtifact ? `${latestArtifact.artifact_id}:${latestArtifact.version}` : null
   if (streaming !== null && latestKey !== null && latestKey !== shownArtifact) {
     setShownArtifact(latestKey)
-    setArtifact({ id: latestArtifact!.artifact_id, version: null })
+    // Sayfa: üretilen sürümle açılır (panel sürüm numarasıyla yükler).
+    setArtifact({ id: latestArtifact!.artifact_id, version: latestArtifact!.kind === 'page' ? latestArtifact!.version : null, page: latestArtifact!.kind === 'page' })
   }
 
   const busy = streaming !== null
@@ -241,7 +243,15 @@ export function ChatPage({ conversationId }: { conversationId: number | null }) 
                   <AnswerView message={message} onSend={send} onAutomate={canBuild ? (title) => toAgent(title) : undefined} onRegenerate={lastQuestion && message.id === lastAnswerId ? () => send(lastQuestion) : undefined} busy={busy} />
                 )}
                 {message.role === 'assistant' && (!message.answer || message.ask_answered) && message.text !== '' && <MessageBubble role="assistant" text={liveText(message.text)} />}
-                {message.flow_cards.filter(isArtifactCard).map((card) => (
+                {message.flow_cards.filter(isPageCard).map((card) => (
+                  <PageCardView
+                    key={`${card.artifact_id}:${card.version}`}
+                    card={card}
+                    open={artifact?.id === card.artifact_id && artifact.version === card.version}
+                    onOpen={() => setArtifact({ id: card.artifact_id, version: card.version, page: true })}
+                  />
+                ))}
+                {message.flow_cards.filter((c): c is ArtifactCard => isArtifactCard(c) && !isPageCard(c)).map((card) => (
                   <ArtifactCardView key={`${card.artifact_id}:${card.version}`} card={card} open={artifact?.id === card.artifact_id} onOpen={() => setArtifact({ id: card.artifact_id, version: card.version })} />
                 ))}
                 {message.flow_cards.filter(isReportCard).map((card) => (
@@ -270,7 +280,11 @@ export function ChatPage({ conversationId }: { conversationId: number | null }) 
         <Composer disabled={busy} onSend={send} draft={draft} placeholder="Devam eden bir soru sor…" {...toolbar} />
       </main>
       {artifact && (
-        <ArtifactPanel key={artifact.id} id={artifact.id} version={artifact.version} onVersion={(version) => setArtifact({ id: artifact.id, version })} onClose={() => setArtifact(null)} />
+        artifact.page ? (
+          <PagePanel key={`${artifact.id}:${artifact.version}`} id={artifact.id} version={artifact.version ?? 1} onSend={send} onRevise={(text) => setDraft({ id: Date.now(), text })} onClose={() => setArtifact(null)} />
+        ) : (
+          <ArtifactPanel key={artifact.id} id={artifact.id} version={artifact.version} onVersion={(version) => setArtifact({ id: artifact.id, version })} onClose={() => setArtifact(null)} />
+        )
       )}
     </div>
   )

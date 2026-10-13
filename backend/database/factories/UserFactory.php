@@ -33,6 +33,8 @@ class UserFactory extends Factory
             'role' => User::ROLE_USER,
             'is_active' => true,
             'must_change_password' => false,
+            // Testler varsayılan dille (phpunit.xml APP_LOCALE) çalışır.
+            'locale' => config('app.locale'),
         ];
     }
 

@@ -24,6 +24,9 @@ class AiCall extends Model
 
     public const SOURCE_FLOW_STEP = 'flow_step';
 
+    /** Sohbette HTML sayfa üreten çağrı (create_page). */
+    public const PURPOSE_PAGE = 'page';
+
     protected static function booted(): void
     {
         static::created(fn (AiCall $call) => app(Budget::class)->recorded($call));

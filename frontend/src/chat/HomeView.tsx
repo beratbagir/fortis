@@ -5,13 +5,14 @@ import { href } from '../router'
 import { ChartIcon, CheckSquareIcon, DocumentIcon, ScreenIcon, WrenchIcon } from '../ui/icons'
 import { Logo } from '../ui/Logo'
 import { greeting } from './chatUtils'
+import { t } from '../i18n'
 
 const SUGGESTION_ICON = { question: ChartIcon, agent: WrenchIcon, report: DocumentIcon, presentation: ScreenIcon }
 
 const minutesAgo = (iso: string | null) => {
   if (!iso) return ''
   const minutes = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000))
-  return minutes < 60 ? `${minutes} dk` : `${Math.round(minutes / 60)} sa`
+  return minutes < 60 ? t('chat.home.minutes', { n: minutes }) : t('chat.home.hours', { n: Math.round(minutes / 60) })
 }
 
 const TONE: Record<HomeData['activity'][number]['tone'], string> = { ok: 'bg-ok', bad: 'bg-bad', warn: 'bg-warn', running: 'bg-info' }
@@ -38,13 +39,13 @@ export function HomeView({ composer, onSend, busy, error }: { composer: ReactNod
           </p>
         )}
 
-        <ul aria-label="Bağlı sistemler" className="m-0 flex list-none gap-1.5 overflow-x-auto p-0 md:flex-wrap md:justify-center">
+        <ul aria-label={t('chat.home.systems')} className="m-0 flex list-none gap-1.5 overflow-x-auto p-0 md:flex-wrap md:justify-center">
           {(connectors.data ?? []).map((c) => (
             <li key={c.key} className="shrink-0">
               <a
                 href={`#/connectors/${c.key}`}
-                title={c.status === 'not_configured' ? 'Kurulum bekliyor' : c.status === 'disabled' ? 'Yönetici şirket genelinde kapattı' : (c.detail ?? 'Bağlı')}
-                aria-label={`${c.label}: ${c.status === 'connected' ? 'bağlı' : c.status === 'attention' ? 'dikkat' : c.status === 'disabled' ? 'kapalı' : 'kurulum bekliyor'}`}
+                title={c.status === 'not_configured' ? t('chat.source.not_configured') : c.status === 'disabled' ? t('chat.source.disabled_org') : (c.detail ?? t('chat.source.connected'))}
+                aria-label={`${c.label}: ${t(`chat.source.aria.${c.status}`)}`}
                 data-status={c.status}
                 className={`flex items-center gap-1.5 rounded-md border border-line px-2 py-1 text-xs text-ink-2 no-underline hover:bg-raised ${c.status === 'not_configured' || c.status === 'disabled' ? 'opacity-50' : ''}`}
               >
@@ -74,13 +75,14 @@ export function HomeView({ composer, onSend, busy, error }: { composer: ReactNod
           <section aria-labelledby="waiting-title" className="flex flex-col gap-2">
             <div className="flex items-center text-xs">
               <h2 id="waiting-title" className="m-0 flex-1 text-xs font-medium text-ink-2">
-                Seni bekleyenler{data ? ` · ${data.waiting_total}` : ''}
+                {t('chat.home.waiting')}
+                {data ? ` · ${data.waiting_total}` : ''}
               </h2>
               <a href={href({ name: 'inbox', itemId: null })} className="text-muted no-underline hover:text-ink">
-                Tümünü gör
+                {t('chat.home.see_all')}
               </a>
             </div>
-            {data && data.waiting.length === 0 && <p className="m-0 rounded-lg border border-dashed border-line px-3 py-4 text-center text-[13px] text-muted">Bekleyen işin yok</p>}
+            {data && data.waiting.length === 0 && <p className="m-0 rounded-lg border border-dashed border-line px-3 py-4 text-center text-[13px] text-muted">{t('chat.home.waiting_empty')}</p>}
             {data?.waiting.map((w) => (
               <a key={w.id} href={href({ name: 'inbox', itemId: w.id })} className="flex gap-2.5 rounded-lg border border-line bg-surface px-3 py-2.5 text-ink no-underline hover:bg-canvas">
                 <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded bg-brand-soft text-brand-fg">
@@ -99,13 +101,13 @@ export function HomeView({ composer, onSend, busy, error }: { composer: ReactNod
           <section aria-labelledby="activity-title" className="flex flex-col gap-2">
             <div className="flex items-center text-xs">
               <h2 id="activity-title" className="m-0 flex-1 text-xs font-medium text-ink-2">
-                Bugünkü etkinlik
+                {t('chat.home.activity')}
               </h2>
               <a href="#/agents" className="text-muted no-underline hover:text-ink">
-                Kayıt
+                {t('chat.home.log')}
               </a>
             </div>
-            {data && data.activity.length === 0 && <p className="m-0 rounded-lg border border-dashed border-line px-3 py-4 text-center text-[13px] text-muted">Bugün henüz çalışan yok</p>}
+            {data && data.activity.length === 0 && <p className="m-0 rounded-lg border border-dashed border-line px-3 py-4 text-center text-[13px] text-muted">{t('chat.home.activity_empty')}</p>}
             {data && data.activity.length > 0 && (
               <ul className="m-0 list-none overflow-hidden rounded-lg border border-line bg-surface p-0">
                 {data.activity.map((a) => (

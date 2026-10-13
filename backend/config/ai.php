@@ -23,6 +23,10 @@ return [
     // Kısa işler (sohbet başlığı, sınıflandırma) için hızlı model. Haiku izinli listeye eklenirse sadece burası değişir.
     'fast_model' => env('ANTHROPIC_FAST_MODEL', 'claude-sonnet-5-5'),
 
+    // HTML sayfa (pano, rapor sayfası) istenen sohbetlerde veri sorgusundan sonraki turlar (Auto). Sayfa üretiminde
+    // Sonnet yeterli; veri sorusu modeli (Opus) yerine bu kullanılır.
+    'page_model' => env('ANTHROPIC_PAGE_MODEL', 'claude-sonnet-5-5'),
+
     // Modellerin model seçicide görünen güçlü yönü.
     'model_strengths' => [
         'claude-opus-5-5' => 'Çok adımlı derin analiz',

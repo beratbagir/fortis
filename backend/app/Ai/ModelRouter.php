@@ -28,11 +28,25 @@ class ModelRouter
             return ['model' => $conversation->model, 'auto' => false, 'reason' => 'Sohbette seçilen model'];
         }
 
+        // HTML sayfa istendiyse (pano, sayfa, dashboard, html) sayfa modeli: üretim uzun, Sonnet yeterli.
+        if ($afterDataQuery && self::wantsPage($conversation) && $this->settings->isAllowedModel($this->settings->pageModel())) {
+            return ['model' => $this->settings->pageModel(), 'auto' => true, 'reason' => 'HTML sayfa üretimi'];
+        }
+
         if ($afterDataQuery && $this->settings->isAllowedModel($this->settings->dataQuestionModel())) {
             return ['model' => $this->settings->dataQuestionModel(), 'auto' => true, 'reason' => 'Veri çekme ve çok adımlı karşılaştırma'];
         }
 
         return ['model' => $this->settings->defaultModel(), 'auto' => true, 'reason' => 'Genel varsayılan model'];
+    }
+
+    /** Son kullanıcı mesajı bir sayfa/pano istiyor mu. */
+    public static function wantsPage(Conversation $conversation): bool
+    {
+        $text = (string) $conversation->messages()->where('role', 'user')->where('text', '!=', '')->latest('id')->value('text');
+
+        // Kök eşleşmesi: Türkçe çekimler (panosunu, sayfalık, sayfasına…) de yakalanır.
+        return (bool) preg_match('/\b(pano|dashboard|sayfa|html)/iu', $text);
     }
 
     /** Kısa işler (sohbet başlığı): hızlı model, izinli değilse genel varsayılan. */

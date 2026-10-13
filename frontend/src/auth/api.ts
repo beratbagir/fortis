@@ -22,6 +22,7 @@ export interface User {
   is_active: boolean
   must_change_password: boolean
   theme: ThemePreference
+  locale?: Locale
   last_login_at: string | null
   department: Department | null
   abilities: { build: boolean; admin: boolean }
@@ -78,6 +79,7 @@ export const authApi = {
   },
   logout: () => send<void>('POST', '/auth/logout'),
   setTheme: (theme: ThemePreference) => send<{ data: User }>('PATCH', '/me/preferences', { theme }).then((r) => r.data),
+  setLocale: (locale: Locale) => send<{ data: User }>('PATCH', '/me/preferences', { locale }).then((r) => r.data),
   changePassword: (current_password: string, password: string, password_confirmation: string) =>
     send<{ data: User }>('POST', '/me/password', { current_password, password, password_confirmation }).then((r) => r.data),
 }

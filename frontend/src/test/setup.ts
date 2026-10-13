@@ -1,7 +1,10 @@
 import '@testing-library/jest-dom/vitest'
 import { cleanup } from '@testing-library/react'
-import { afterEach } from 'vitest'
+import { afterEach, beforeEach } from 'vitest'
+import { setLocale } from '../i18n'
 
+// Mevcut testler Türkçe metinleri doğrular; İngilizce (varsayılan dil) testleri setLocale('en') ile.
+beforeEach(() => setLocale('tr'))
 afterEach(() => cleanup())
 
 // jsdom <dialog> modal API'sini desteklemiyor.

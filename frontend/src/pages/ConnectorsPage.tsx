@@ -1,21 +1,17 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { connectorsApi, type ConnectorCard, type ConnectorDetail } from '../api'
-import { STATUS_BADGE } from '../agentpage/format'
+import { statusBadge } from '../agentpage/format'
 import { useAuth } from '../auth/useAuth'
 import { CATEGORY_TITLE, CONNECTOR_STATUS, SCOPE_LABEL, setupText } from '../connectors/format'
+import { intlLocale, t } from '../i18n'
 import { href } from '../router'
 import { Dialog } from '../ui/Dialog'
 import { ago } from '../ui/format'
 import { SearchIcon } from '../ui/icons'
 
 type Tab = 'all' | 'data' | 'channel' | 'mcp'
-const TABS: { key: Tab; label: string }[] = [
-  { key: 'all', label: 'Tümü' },
-  { key: 'data', label: 'Veri kaynakları' },
-  { key: 'channel', label: 'Kanallar' },
-  { key: 'mcp', label: 'MCP' },
-]
+const TABS: Tab[] = ['all', 'data', 'channel', 'mcp']
 
 /** Bağlantılar (#/connectors, #/connectors/:key): Fortis hangi sistemlere bağlı, sağlıklı mı, ne yapabiliyor, kim kullanıyor. */
 export function ConnectorsPage({ connectorKey }: { connectorKey: string | null }) {
@@ -26,23 +22,23 @@ function ConnectorList() {
   const list = useQuery({ queryKey: ['connectors', 'list'], queryFn: connectorsApi.summary, refetchInterval: 60_000 })
   const [tab, setTab] = useState<Tab>('all')
   const [search, setSearch] = useState('')
-  const term = search.trim().toLocaleLowerCase('tr')
-  const items = (list.data?.data ?? []).filter((c) => term === '' || `${c.label} ${c.description ?? ''}`.toLocaleLowerCase('tr').includes(term))
+  const term = search.trim().toLocaleLowerCase(intlLocale())
+  const items = (list.data?.data ?? []).filter((c) => term === '' || `${c.label} ${c.description ?? ''}`.toLocaleLowerCase(intlLocale()).includes(term))
   const summary = list.data?.summary
 
   return (
     <main className="flex-1 overflow-y-auto">
       <div className="mx-auto flex max-w-5xl flex-col gap-5 px-4 py-8 md:px-8">
         <header className="flex flex-col gap-1.5">
-          <h1 className="m-0 font-serif text-[30px] font-normal tracking-tight">Bağlantılar</h1>
-          <p className="m-0 max-w-[620px] text-[13px] text-muted">Fortis, Freebird'ün mevcut sistemlerinin üstünde bir katmandır: her bağlantı izinle sınırlı, varsayılan olarak salt okunur ve denetim kaydına yazılır.</p>
+          <h1 className="m-0 font-serif text-[30px] font-normal tracking-tight">{t('connectors.title')}</h1>
+          <p className="m-0 max-w-[620px] text-[13px] text-muted">{t('connectors.intro')}</p>
           {summary && (
             <p className="m-0 text-xs text-muted">
-              <b className="font-mono text-ink">{summary.connected}</b> bağlı · <b className="font-mono text-ink">{summary.attention}</b> dikkat · <b className="font-mono text-ink">{summary.needs_setup}</b> kurulum gerekli
+              <b className="font-mono text-ink">{summary.connected}</b> {t('connectors.summary.connected')} · <b className="font-mono text-ink">{summary.attention}</b> {t('connectors.summary.attention')} · <b className="font-mono text-ink">{summary.needs_setup}</b> {t('connectors.summary.needs_setup')}
               {summary.disabled > 0 && (
                 <>
                   {' '}
-                  · <b className="font-mono text-bad">{summary.disabled}</b> kapalı
+                  · <b className="font-mono text-bad">{summary.disabled}</b> {t('connectors.summary.disabled')}
                 </>
               )}
             </p>
@@ -50,25 +46,25 @@ function ConnectorList() {
         </header>
 
         <div className="flex flex-wrap items-center gap-3">
-          <div role="tablist" aria-label="Bağlantı türü" className="flex gap-1 rounded-lg bg-raised p-0.5">
-            {TABS.map((t) => (
-              <button key={t.key} role="tab" type="button" aria-selected={tab === t.key} onClick={() => setTab(t.key)} className={`rounded-md px-2.5 py-1 text-[13px] ${tab === t.key ? 'bg-surface font-medium text-ink shadow-[0_1px_2px_var(--shadow)]' : 'text-muted hover:text-ink'}`}>
-                {t.label}
+          <div role="tablist" aria-label={t('connectors.tabs.label')} className="flex gap-1 rounded-lg bg-raised p-0.5">
+            {TABS.map((key) => (
+              <button key={key} role="tab" type="button" aria-selected={tab === key} onClick={() => setTab(key)} className={`rounded-md px-2.5 py-1 text-[13px] ${tab === key ? 'bg-surface font-medium text-ink shadow-[0_1px_2px_var(--shadow)]' : 'text-muted hover:text-ink'}`}>
+                {t(`connectors.tabs.${key}`)}
               </button>
             ))}
           </div>
           {tab !== 'mcp' && (
             <label className="flex min-w-48 flex-1 items-center gap-2 rounded-lg border border-line bg-surface px-3 py-1.5 text-muted md:max-w-xs">
               <SearchIcon />
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Bağlantı ara…" aria-label="Bağlantı ara" className="flex-1 bg-transparent text-sm text-ink outline-none" />
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('connectors.search.placeholder')} aria-label={t('connectors.search.label')} className="flex-1 bg-transparent text-sm text-ink outline-none" />
             </label>
           )}
         </div>
 
-        {list.isError && <p role="alert" className="m-0 text-sm text-bad">Bağlantılar yüklenemedi.</p>}
+        {list.isError && <p role="alert" className="m-0 text-sm text-bad">{t('connectors.load_error')}</p>}
 
         {tab === 'mcp' ? (
-          <p className="m-0 rounded-xl border border-dashed border-line px-4 py-10 text-center text-[13px] text-muted">Fortis'i Claude Desktop, Teams gibi araçlara bağlama (MCP) A6'da gelecek.</p>
+          <p className="m-0 rounded-xl border border-dashed border-line px-4 py-10 text-center text-[13px] text-muted">{t('connectors.mcp_soon')}</p>
         ) : (
           (['data', 'channel', 'setup'] as const)
             .filter((category) => tab === 'all' || category === tab || (tab === 'data' && category === 'setup'))
@@ -79,7 +75,7 @@ function ConnectorList() {
               return (
                 <section key={category} aria-label={title} className="flex flex-col gap-2">
                   <h2 className="m-0 text-[13px] font-medium">
-                    {title} <span className="font-normal text-muted">· {category === 'setup' ? note : `${cards.filter((c) => c.status === 'connected').length} bağlı`}</span>
+                    {title} <span className="font-normal text-muted">· {category === 'setup' ? note : t('connectors.category.connected_count', { n: cards.filter((c) => c.status === 'connected').length })}</span>
                   </h2>
                   <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
                     {cards.map((c) => (
@@ -119,8 +115,8 @@ export function ConnectorCardView({ connector: c }: { connector: ConnectorCard }
         <span className="flex-1" />
         {c.category !== 'setup' && (
           <span className="font-mono text-[10px] text-faint">
-            {c.last_checked_at ? ago(c.last_checked_at) : c.status === 'not_configured' ? '' : 'kontrol yok'}
-            {c.uses_this_week > 0 ? ` · ${c.uses_this_week} kullanım/hafta` : ''}
+            {c.last_checked_at ? ago(c.last_checked_at) : c.status === 'not_configured' ? '' : t('connectors.card.no_check')}
+            {c.uses_this_week > 0 ? ` · ${t('connectors.card.uses_week', { n: c.uses_this_week })}` : ''}
           </span>
         )}
       </span>
@@ -138,7 +134,7 @@ function ConnectorDetailPage({ connectorKey }: { connectorKey: string }) {
   const [disabling, setDisabling] = useState(false)
   const [reason, setReason] = useState('')
 
-  if (detail.isError) return <p role="alert" className="m-8 text-sm text-muted">Bağlantı bulunamadı.</p>
+  if (detail.isError) return <p role="alert" className="m-8 text-sm text-muted">{t('connectors.detail.not_found')}</p>
   if (!detail.data) return null
   const c: ConnectorDetail = detail.data
   const [label, tone] = CONNECTOR_STATUS[c.status]
@@ -161,7 +157,7 @@ function ConnectorDetailPage({ connectorKey }: { connectorKey: string }) {
     <main className="flex-1 overflow-y-auto">
       <div className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-6 md:px-8">
         <a href={href({ name: 'connectors', key: null })} className="text-xs text-muted no-underline hover:text-ink">
-          ← Bağlantılar
+          ← {t('connectors.title')}
         </a>
         <header className="flex flex-wrap items-start gap-3">
           <span className="flex size-10 items-center justify-center rounded-lg bg-raised font-mono text-[12px] text-ink-2" aria-hidden>
@@ -176,24 +172,24 @@ function ConnectorDetailPage({ connectorKey }: { connectorKey: string }) {
             {c.detail && <p className="m-0 text-xs text-muted">{c.detail}</p>}
             {c.disabled && (
               <p className="m-0 rounded-lg bg-bad-soft px-3 py-2 text-xs text-bad">
-                Şirket genelinde kapalı: {c.disabled.reason} {c.disabled.by ? `· ${c.disabled.by}` : ''} {c.disabled.at ? `· ${ago(c.disabled.at)}` : ''}. Sohbetlerde ve agentlarda bu kaynağın araçları kullanılmıyor.
+                {t('connectors.detail.disabled_prefix')} {c.disabled.reason} {c.disabled.by ? `· ${c.disabled.by}` : ''} {c.disabled.at ? `· ${ago(c.disabled.at)}` : ''}. {t('connectors.detail.disabled_suffix')}
               </p>
             )}
           </div>
           {isAdmin && c.category !== 'setup' && (
             <div className="flex flex-wrap gap-2">
               {c.checkable && (
-                <button type="button" disabled={busy} onClick={() => act(() => connectorsApi.check(c.key), 'Kontrol edildi.')} className={SECONDARY}>
-                  Şimdi kontrol et
+                <button type="button" disabled={busy} onClick={() => act(() => connectorsApi.check(c.key), t('connectors.detail.checked'))} className={SECONDARY}>
+                  {t('connectors.detail.check_now')}
                 </button>
               )}
               {c.enabled ? (
                 <button type="button" disabled={busy} onClick={() => setDisabling(true)} className="rounded-lg border border-bad px-3 py-1.5 text-[13px] text-bad hover:bg-bad-soft disabled:opacity-60">
-                  Kapat
+                  {t('connectors.detail.disable')}
                 </button>
               ) : (
-                <button type="button" disabled={busy} onClick={() => act(() => connectorsApi.enable(c.key), `${c.label} açıldı.`)} className="rounded-lg bg-ink px-3 py-1.5 text-[13px] font-medium text-bg disabled:opacity-60">
-                  Aç
+                <button type="button" disabled={busy} onClick={() => act(() => connectorsApi.enable(c.key), t('connectors.detail.enabled', { label: c.label }))} className="rounded-lg bg-ink px-3 py-1.5 text-[13px] font-medium text-bg disabled:opacity-60">
+                  {t('connectors.detail.enable')}
                 </button>
               )}
             </div>
@@ -207,25 +203,25 @@ function ConnectorDetailPage({ connectorKey }: { connectorKey: string }) {
 
         <div className="grid gap-4 lg:grid-cols-2">
           {c.category !== 'setup' && (
-            <Section title="Durum">
-              <div aria-label="Son 24 saat kontroller" className="flex h-6 items-end gap-px">
-                {c.checks.length === 0 && <span className="text-xs text-muted">Son 24 saatte kontrol yok.</span>}
+            <Section title={t('connectors.detail.status')}>
+              <div aria-label={t('connectors.detail.checks_24h')} className="flex h-6 items-end gap-px">
+                {c.checks.length === 0 && <span className="text-xs text-muted">{t('connectors.detail.no_checks_24h')}</span>}
                 {c.checks.map((check, i) => (
-                  <span key={i} title={`${new Date(check.at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })} · ${check.ok ? 'başarılı' : 'başarısız'}`} className={`h-full min-w-[3px] flex-1 rounded-sm ${check.ok ? 'bg-ok' : 'bg-bad'}`} />
+                  <span key={i} title={`${new Date(check.at).toLocaleTimeString(intlLocale(), { hour: '2-digit', minute: '2-digit' })} · ${check.ok ? t('connectors.detail.check_ok') : t('connectors.detail.check_failed')}`} className={`h-full min-w-[3px] flex-1 rounded-sm ${check.ok ? 'bg-ok' : 'bg-bad'}`} />
                 ))}
               </div>
               <dl className="m-0 grid grid-cols-[120px_minmax(0,1fr)] gap-y-1 text-xs">
-                <dt className="text-muted">Son kontrol</dt>
+                <dt className="text-muted">{t('connectors.detail.last_check')}</dt>
                 <dd className="m-0 font-mono">{c.last_checked_at ? ago(c.last_checked_at) : '—'}</dd>
-                <dt className="text-muted">Ortalama yanıt</dt>
+                <dt className="text-muted">{t('connectors.detail.avg_response')}</dt>
                 <dd className="m-0 font-mono">{c.avg_duration_ms === null ? '—' : `${c.avg_duration_ms} ms`}</dd>
-                <dt className="text-muted">Son hata</dt>
-                <dd className="m-0 break-words">{c.last_error ? `${c.last_error.message} (${ago(c.last_error.at)})` : 'Yok'}</dd>
+                <dt className="text-muted">{t('connectors.detail.last_error')}</dt>
+                <dd className="m-0 break-words">{c.last_error ? `${c.last_error.message} (${ago(c.last_error.at)})` : t('connectors.detail.none')}</dd>
               </dl>
             </Section>
           )}
 
-          <Section title="Ne yapabilir">
+          <Section title={t('connectors.detail.capabilities')}>
             {c.scopes.length > 0 && (
               <span className="flex gap-1">
                 {c.scopes.map((s) => (
@@ -236,27 +232,27 @@ function ConnectorDetailPage({ connectorKey }: { connectorKey: string }) {
               </span>
             )}
             <ul className="m-0 flex list-none flex-col gap-1 p-0 text-xs">
-              {c.tools.length === 0 && <li className="text-muted">Henüz araç yok.</li>}
-              {c.tools.map((t) => (
-                <li key={t.name}>
-                  <span className="font-mono text-ink">{t.name}</span> <span className="text-muted">— {t.description || t.label}</span>
+              {c.tools.length === 0 && <li className="text-muted">{t('connectors.detail.no_tools')}</li>}
+              {c.tools.map((tool) => (
+                <li key={tool.name}>
+                  <span className="font-mono text-ink">{tool.name}</span> <span className="text-muted">— {tool.description || tool.label}</span>
                 </li>
               ))}
             </ul>
           </Section>
 
           {c.category !== 'setup' && (
-            <Section title="Kim kullanıyor">
-              <p className="m-0 text-xs text-muted">Son 7 günde sohbetlerde {c.chat_queries_7d} sorgu.</p>
+            <Section title={t('connectors.detail.used_by')}>
+              <p className="m-0 text-xs text-muted">{t('connectors.detail.chat_queries_7d', { n: c.chat_queries_7d })}</p>
               <ul className="m-0 flex list-none flex-col gap-1 p-0 text-xs">
-                {c.used_by.length === 0 && <li className="text-muted">Bu kaynağı kullanan agent yok.</li>}
+                {c.used_by.length === 0 && <li className="text-muted">{t('connectors.detail.no_agents')}</li>}
                 {c.used_by.map((a) => (
                   <li key={a.id}>
                     <a href={href({ name: 'agent', agentId: a.id, tab: 'overview', runId: null })} className="text-ink">
                       {a.name}
                     </a>{' '}
                     <span className="text-muted">
-                      · {a.owner ?? '—'} · {STATUS_BADGE[a.status][0]}
+                      · {a.owner ?? '—'} · {statusBadge(a.status)[0]}
                     </span>
                   </li>
                 ))}
@@ -265,10 +261,10 @@ function ConnectorDetailPage({ connectorKey }: { connectorKey: string }) {
           )}
 
           {(c.protection.masked_groups.length > 0 || c.protection.rules.length > 0) && (
-            <Section title="Veri koruması">
+            <Section title={t('connectors.detail.protection')}>
               {c.protection.masked_groups.length > 0 && (
                 <>
-                  <span className="text-xs text-muted">Claude'a giderken maskelenen alanlar</span>
+                  <span className="text-xs text-muted">{t('connectors.detail.masked_fields')}</span>
                   <ul className="m-0 flex list-none flex-wrap gap-1 p-0">
                     {c.protection.masked_groups.map((g) => (
                       <li key={g} className="rounded border border-line px-1.5 py-px text-[11px] text-ink-2">
@@ -287,8 +283,8 @@ function ConnectorDetailPage({ connectorKey }: { connectorKey: string }) {
           )}
 
           {c.env && c.env.length > 0 && (
-            <Section title="Yapılandırma (.env)">
-              <p className="m-0 text-xs text-muted">Sadece değişken adları; değerler hiçbir zaman gösterilmez. Kimlik bilgileri arayüzden girilmez.</p>
+            <Section title={t('connectors.detail.config')}>
+              <p className="m-0 text-xs text-muted">{t('connectors.detail.config_note')}</p>
               <ul className="m-0 grid list-none gap-1 p-0 font-mono text-[11px] sm:grid-cols-2">
                 {c.env.map((e) => (
                   <li key={e.name} className={e.defined ? 'text-ink-2' : 'text-faint'}>
@@ -300,7 +296,7 @@ function ConnectorDetailPage({ connectorKey }: { connectorKey: string }) {
           )}
 
           {c.needs.length > 0 && (
-            <Section title="Ne gerekiyor?">
+            <Section title={t('connectors.detail.needs')}>
               <ul className="m-0 list-disc pl-4 text-[13px] text-ink-2">
                 {c.needs.map((n) => (
                   <li key={n}>{n}</li>
@@ -313,28 +309,28 @@ function ConnectorDetailPage({ connectorKey }: { connectorKey: string }) {
       </div>
 
       {disabling && (
-        <Dialog title={`${c.label} kapatılsın mı?`} onClose={() => setDisabling(false)}>
+        <Dialog title={t('connectors.disable.title', { label: c.label })} onClose={() => setDisabling(false)}>
           <form
             className="flex flex-col gap-3"
             onSubmit={(e) => {
               e.preventDefault()
               setDisabling(false)
-              act(() => connectorsApi.disable(c.key, reason.trim()), `${c.label} şirket genelinde kapatıldı.`)
+              act(() => connectorsApi.disable(c.key, reason.trim()), t('connectors.disable.done', { label: c.label }))
             }}
           >
             <p className="m-0 text-sm text-ink-2">
-              Kapatınca sohbetlerde ve agentlarda {c.label} araçları kullanılamaz. <b>{c.affected_agents} agent</b> etkilenecek; sahiplerine Inbox uyarısı gider.
+              {t('connectors.disable.body', { label: c.label })} <b>{t('connectors.disable.agents', { n: c.affected_agents })}</b> {t('connectors.disable.body_after')}
             </p>
             <label className="flex flex-col gap-1 text-xs text-muted">
-              Gerekçe (zorunlu, denetim kaydına yazılır)
+              {t('connectors.disable.reason')}
               <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} minLength={3} maxLength={500} required className="rounded-lg border border-line bg-surface px-2.5 py-2 text-sm text-ink" />
             </label>
             <span className="flex justify-end gap-2">
               <button type="button" onClick={() => setDisabling(false)} className={SECONDARY}>
-                Vazgeç
+                {t('connectors.cancel')}
               </button>
               <button type="submit" disabled={reason.trim().length < 3} className="rounded-lg bg-bad px-3 py-1.5 text-[13px] font-medium text-bg disabled:opacity-50">
-                Bağlantıyı kapat
+                {t('connectors.disable.confirm')}
               </button>
             </span>
           </form>
@@ -368,7 +364,7 @@ function CopyButton({ text }: { text: string }) {
       }}
       className="self-start rounded-lg border border-line px-2.5 py-1 text-xs text-ink-2 hover:bg-raised"
     >
-      {copied ? 'Kopyalandı' : "IT'ye iletmek için kopyala"}
+      {copied ? t('connectors.copied') : t('connectors.copy_for_it')}
     </button>
   )
 }

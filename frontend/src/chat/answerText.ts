@@ -1,6 +1,7 @@
 // Cevap metnini ekrana hazırlar: kaynak numaraları ([^q:ID] → [1]), önerilen aksiyonlar (:::actions bloğu) ve
 // kanıt tabloları (üstündeki italik satır başlık olur).
 import type { AnswerQuery } from '../api'
+import { t } from '../i18n'
 
 export interface SuggestedAction {
   title: string
@@ -28,10 +29,11 @@ export function markCharts(text: string): string {
  * Doğrulanmış meta'sı olmayan eski cevaplarda da kullanılır.
  */
 export function liveText(text: string): string {
-  const done = text.replace(ACTIONS, '').replace(CHART, '\n\n_Grafik hazırlanıyor…_\n\n')
+  const pending = `_${t('chat.chart.pending')}_`
+  const done = text.replace(ACTIONS, '').replace(CHART, `\n\n${pending}\n\n`)
   const open = done.search(/:::(chart|actions)\b/)
   if (open === -1) return done
-  return done.slice(0, open) + (done.slice(open).startsWith(':::chart') ? '\n\n_Grafik hazırlanıyor…_' : '')
+  return done.slice(0, open) + (done.slice(open).startsWith(':::chart') ? `\n\n${pending}` : '')
 }
 
 /** Kopyalama için düz metin: bloklar ve kaynak numaraları çıkarılır. */

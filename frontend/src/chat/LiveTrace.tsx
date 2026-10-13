@@ -3,21 +3,24 @@ import type { TraceStep } from '../api'
 import { querySource, toolLabel } from '../toolLabels'
 import { CheckIcon, ChevronIcon, SparkIcon, WarnIcon } from '../ui/icons'
 import { queryText } from './chatUtils'
+import { intlLocale, t } from '../i18n'
 
-const seconds = (ms: number) => `${(ms / 1000).toLocaleString('tr-TR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} sn`
-const count = (n: number) => n.toLocaleString('tr-TR')
+const seconds = (ms: number) => t('chat.trace.seconds', { n: (ms / 1000).toLocaleString(intlLocale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 }) })
+const count = (n: number) => n.toLocaleString(intlLocale())
 
 /** Adımın başlığı ve alt satırları. */
 function describe(step: TraceStep): { title: string; lines: string[]; mono?: string; footer?: string } {
   if (step.kind === 'query') {
     const source = step.source ?? querySource(step.tool ?? '')
     const lines: string[] = []
-    if (step.status === 'error') lines.push(step.error ?? 'Sorgu yapılamadı.')
+    if (step.status === 'error') lines.push(step.error ?? t('chat.trace.query_failed'))
     if (step.rows !== undefined) {
       lines.push(
         [
-          step.total_rows !== undefined && step.total_rows > step.rows ? `${count(step.total_rows)} satırın ${count(step.rows)}'i döndü` : `${count(step.rows)} satır döndü`,
-          step.masked ? 'Kişisel bilgiler gizlendi' : null,
+          step.total_rows !== undefined && step.total_rows > step.rows
+            ? t('chat.trace.rows_of', { rows: count(step.rows), total: count(step.total_rows) })
+            : t('chat.trace.rows', { rows: count(step.rows) }),
+          step.masked ? t('chat.masked') : null,
         ]
           .filter(Boolean)
           .join(' · '),
@@ -25,10 +28,10 @@ function describe(step: TraceStep): { title: string; lines: string[]; mono?: str
     }
 
     return {
-      title: `${source} sorgulanıyor${step.purpose ? ` · ${step.purpose}` : ''}`,
+      title: `${t('chat.trace.querying', { source })}${step.purpose ? ` · ${step.purpose}` : ''}`,
       lines,
       mono: step.query ? queryText(step.query) : undefined,
-      footer: step.status === 'done' ? `Fortis tarafından çekildi · ${source} bağlayıcısı (salt okunur)` : undefined,
+      footer: step.status === 'done' ? t('chat.trace.fetched', { source }) : undefined,
     }
   }
 
@@ -84,13 +87,13 @@ export function LiveTrace({ steps, running, durationMs, onAudit, defaultOpen = f
   const last = steps.slice(-4)
 
   return (
-    <section aria-label="Cevabın izi" className="flex flex-col gap-2">
+    <section aria-label={t('chat.trace.aria')} className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2 text-[13px] text-muted">
         <SparkIcon className="text-brand-fg" />
         <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)} className="inline-flex items-center gap-2 rounded-md hover:text-ink">
-          {running ? <span className="font-medium text-ink">Düşünüyor</span> : <span>{seconds(elapsed)} düşündü</span>}
+          {running ? <span className="font-medium text-ink">{t('chat.trace.thinking')}</span> : <span>{t('chat.trace.thought', { time: seconds(elapsed) })}</span>}
           {running && <span className="font-mono text-xs">{seconds(elapsed)}</span>}
-          <span className="font-mono text-xs">· {steps.length} adım</span>
+          <span className="font-mono text-xs">· {t('chat.trace.steps', { count: steps.length })}</span>
           <span className="flex gap-0.5" aria-hidden>
             {last.map((s) => (
               <span key={s.id} className={`block size-2.5 rounded-[3px] ${s.status === 'error' ? 'bg-bad' : s.status === 'running' ? 'bg-line-strong' : s.status === 'waiting' ? 'bg-warn' : 'bg-faint'}`} />
@@ -100,7 +103,7 @@ export function LiveTrace({ steps, running, durationMs, onAudit, defaultOpen = f
         </button>
         {!running && onAudit && (
           <button type="button" onClick={onAudit} className="text-xs text-muted underline-offset-2 hover:text-ink hover:underline">
-            Denetim kaydı
+            {t('chat.audit.title')}
           </button>
         )}
       </div>

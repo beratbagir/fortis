@@ -268,7 +268,7 @@ class ChartBlocks
      * cevaplarda önceki turların sorguları da bulunur).
      *
      * @param  list<string>  $queryIds
-     * @return array<string, array{columns: list<string>, rows: list<list<mixed>>}>
+     * @return array<string, array{columns: list<string>, rows: list<list<mixed>>, source: string|null, total_rows: int|null, truncated: bool}>
      */
     public static function sourceRows(Conversation $conversation, array $queryIds, array $pending = []): array
     {
@@ -288,7 +288,7 @@ class ChartBlocks
             $data = json_decode($block['content'], true);
             $id = is_array($data) ? ($data['query_id'] ?? null) : null;
             if ($id !== null && in_array($id, $queryIds, true) && ! isset($found[$id]) && is_array($data['rows'] ?? null)) {
-                $found[$id] = ['columns' => $data['columns'] ?? [], 'rows' => $data['rows']];
+                $found[$id] = ['columns' => $data['columns'] ?? [], 'rows' => $data['rows'], 'source' => $data['source'] ?? null, 'total_rows' => $data['total_rows'] ?? null, 'truncated' => $data['truncated'] ?? false];
             }
         }
 

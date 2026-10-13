@@ -34,6 +34,8 @@ class AppSettings
 
     public const FAST_MODEL = 'ai.fast_model';
 
+    public const PAGE_MODEL = 'ai.page_model';
+
     public const ALLOW_EXTERNAL_RECIPIENTS = 'agents.allow_external_recipients';
 
     public const RECIPIENT_DOMAINS = 'agents.allowed_recipient_domains';
@@ -104,6 +106,12 @@ class AppSettings
     public function fastModel(): string
     {
         return (string) ($this->get(self::FAST_MODEL) ?? config('ai.fast_model'));
+    }
+
+    /** HTML sayfa istenen sohbetlerde veri sorgusundan sonraki turların modeli (Auto). */
+    public function pageModel(): string
+    {
+        return (string) ($this->get(self::PAGE_MODEL) ?? config('ai.page_model'));
     }
 
     /** Agentlar şirket dışı alıcıya (onaylı) gönderebilir mi. */

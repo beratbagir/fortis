@@ -11,13 +11,16 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 
 /**
- * Kullanıcının kendi ayarları: tema ve şifre.
+ * Kullanıcının kendi ayarları: tema, dil (en/tr) ve şifre.
  */
 class PreferencesController extends Controller
 {
     public function update(Request $request): UserResource
     {
-        $validated = $request->validate(['theme' => ['required', 'string', Rule::in(User::THEMES)]]);
+        $validated = $request->validate([
+            'theme' => ['required_without:locale', 'string', Rule::in(User::THEMES)],
+            'locale' => ['required_without:theme', 'string', Rule::in(User::LOCALES)],
+        ]);
 
         $request->user()->update($validated);
 

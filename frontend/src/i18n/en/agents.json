@@ -1,0 +1,10 @@
+{
+  "agents.cron.every_minutes": "Every {n} minutes",
+  "agents.cron.hourly": "Hourly",
+  "agents.cron.daily": "Every day at {time}",
+  "agents.cron.weekdays": "Weekdays at {time}",
+  "agents.cron.weekly": "Every {day} at {time}",
+  "agents.cron.monthly": "Monthly on day {dom} at {time}",
+  "agents.trigger.webhook": "Via webhook",
+  "agents.trigger.manual": "Manual"
+}

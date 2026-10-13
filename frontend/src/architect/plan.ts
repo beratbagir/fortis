@@ -1,14 +1,8 @@
 import type { PlanStep, PlanStepType } from '../api'
+import { t } from '../i18n'
 
-export const STEP_LABEL: Record<PlanStepType, string> = {
-  trigger: 'TETİKLEYİCİ',
-  read: 'OKU',
-  lookup: 'ARA',
-  decide: 'KARAR',
-  draft: 'TASLAK',
-  approve: 'ONAY',
-  act: 'GÖNDER',
-}
+/** Plan adımı türünün etiketi (büyük harf). */
+export const stepLabel = (type: PlanStepType) => t(`architect.step.${type}`)
 
 const SYSTEM_ABBR: [RegExp, string][] = [
   [/\bAPM\b/i, 'AP'],

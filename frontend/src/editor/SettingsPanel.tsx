@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 import { useState } from 'react'
 import { SchemaForm } from './SchemaForm'
 import { tone } from './tones'
@@ -54,7 +55,7 @@ function Header({ def, title, id }: { def: BlockDef | undefined; title: string; 
       <div className="flex min-w-0 flex-col">
         <h2 className="m-0 truncate text-base font-extrabold">{title}</h2>
         <span className="truncate text-xs font-semibold text-faint">
-          {def?.label ?? 'Gelişmiş'}
+          {def?.label ?? t('editor.settings.advanced')}
           {id && <span className="font-mono"> · {id}</span>}
         </span>
       </div>
@@ -67,7 +68,7 @@ function ErrorList({ errors }: { errors: EditError[] }) {
 
   return (
     <div role="alert" className="rounded-xl border border-bad/30 bg-bad-soft px-3 py-2 text-[13px] text-bad">
-      <strong className="block">Kaydedilmedi; doğrulama hatası:</strong>
+      <strong className="block">{t('editor.settings.not_saved')}</strong>
       <ul className="m-0 mt-1 list-disc pl-4">
         {errors.map((e, i) => (
           <li key={i}>{e.message}</li>
@@ -103,17 +104,17 @@ export function SettingsPanel(props: EditProps | DraftProps) {
           props.onInsert(Object.fromEntries(Object.entries(values).map(([k, v]) => [k, clean(v)])))
         }}
       >
-        <Header def={def} title={`Yeni: ${props.def.label}`} />
-        <p className="m-0 text-[13px] text-muted">{props.where}. Zorunlu alanları doldurup ekleyin; blok doğrulamadan geçerse taslağa eklenir.</p>
+        <Header def={def} title={t('editor.settings.new_title', { label: props.def.label })} />
+        <p className="m-0 text-[13px] text-muted">{t('editor.settings.insert_hint', { where: props.where })}</p>
         <TitleField value={values.title} onChange={(v) => change('title', v)} />
         <SchemaForm schema={schema} values={values} onChange={change} />
         <ErrorList errors={props.errors} />
         <div className="flex gap-2">
           <button type="submit" disabled={props.busy} className="h-10 rounded-xl bg-brand px-4 text-sm font-bold text-on-brand disabled:opacity-60">
-            {props.busy ? 'Ekleniyor…' : 'Ekle'}
+            {props.busy ? t('editor.settings.adding') : t('editor.settings.add')}
           </button>
           <button type="button" onClick={props.onCancel} className="h-10 rounded-xl border border-line px-4 text-sm font-bold">
-            Vazgeç
+            {t('editor.common.cancel')}
           </button>
         </div>
       </form>
@@ -124,17 +125,17 @@ export function SettingsPanel(props: EditProps | DraftProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <Header def={def} title={node.title ?? node.id ?? 'Adım'} id={node.id} />
+      <Header def={def} title={node.title ?? node.id ?? t('editor.settings.step')} id={node.id} />
 
       {node.writes && (
         <p className="m-0 rounded-xl bg-accent-soft px-3 py-2 text-[13px] text-accent">
-          Bu blok dış sisteme yazar. Test çalıştırmada gerçekten gönderilmez, logda gösterilir.
+          {t('editor.settings.writes')}
         </p>
       )}
 
       {node.readonly ? (
         <p className="m-0 rounded-xl bg-canvas px-3 py-2 text-[13px] text-ink-2">
-          Bu adım ({node.raw_type ?? 'bilinmeyen tür'}) tuvaldeki bloklardan birine karşılık gelmiyor. Salt okunurdur; tuvaldeki düzenlemeler onu değiştirmez. YAML görünümünden düzenleyebilirsiniz.
+          {t('editor.settings.readonly', { type: node.raw_type ?? t('editor.settings.unknown_type') })}
         </p>
       ) : (
         <>
@@ -148,34 +149,34 @@ export function SettingsPanel(props: EditProps | DraftProps) {
       {!props.isTrigger && props.onMove && (
         <div className="flex gap-2">
           <button type="button" disabled={!props.canMove?.up} onClick={() => props.onMove?.(-1)} className="h-9 rounded-xl border border-line px-3 text-[13px] font-bold disabled:opacity-50">
-            Yukarı taşı
+            {t('editor.settings.move_up')}
           </button>
           <button type="button" disabled={!props.canMove?.down} onClick={() => props.onMove?.(1)} className="h-9 rounded-xl border border-line px-3 text-[13px] font-bold disabled:opacity-50">
-            Aşağı taşı
+            {t('editor.settings.move_down')}
           </button>
         </div>
       )}
 
       <div className="border-t border-line pt-4">
         {confirmDelete ? (
-          <div role="alertdialog" aria-label="Silme onayı" className="flex flex-col gap-2 rounded-xl bg-bad-soft p-3 text-[13px] text-bad">
+          <div role="alertdialog" aria-label={t('editor.settings.delete_confirm')} className="flex flex-col gap-2 rounded-xl bg-bad-soft p-3 text-[13px] text-bad">
             <span>
-              {node.readonly ? 'Bu gelişmiş adım tuvalden geri getirilemez (sürüm geçmişinden geri yüklenebilir). ' : ''}
-              {node.children?.length || node.branches ? 'İçindeki adımlarla birlikte silinecek. ' : ''}
-              Silinsin mi?
+              {node.readonly ? t('editor.settings.delete_advanced') + ' ' : ''}
+              {node.children?.length || node.branches ? t('editor.settings.delete_children') + ' ' : ''}
+              {t('editor.settings.delete_question')}
             </span>
             <div className="flex gap-2">
               <button type="button" onClick={props.onDelete} className="h-9 rounded-xl bg-bad px-3 font-bold text-bg">
-                Sil
+                {t('editor.settings.delete')}
               </button>
               <button type="button" onClick={() => setConfirmDelete(false)} className="h-9 rounded-xl border border-bad/30 bg-surface px-3 font-bold text-ink">
-                Vazgeç
+                {t('editor.common.cancel')}
               </button>
             </div>
           </div>
         ) : (
           <button type="button" onClick={() => setConfirmDelete(true)} className="h-9 rounded-xl border border-line px-3 text-[13px] font-bold text-bad hover:bg-bad-soft">
-            {props.isTrigger ? 'Tetikleyiciyi sil' : 'Bloğu sil'}
+            {props.isTrigger ? t('editor.settings.delete_trigger') : t('editor.settings.delete_block')}
           </button>
         )}
       </div>
@@ -186,7 +187,7 @@ export function SettingsPanel(props: EditProps | DraftProps) {
 function TitleField({ value, onChange }: { value: unknown; onChange: (value: string) => void }) {
   return (
     <SchemaForm
-      schema={{ type: 'object', properties: { title: { type: 'string', title: 'Başlık', description: 'Tuvalde ve çalışmalarda görünen ad.' } } }}
+      schema={{ type: 'object', properties: { title: { type: 'string', title: t('editor.settings.title_field'), description: t('editor.settings.title_help') } } }}
       values={{ title: value }}
       onChange={(_, v) => onChange(v as string)}
     />

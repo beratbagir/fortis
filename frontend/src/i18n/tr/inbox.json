@@ -1,0 +1,19 @@
+{
+  "inbox.tab.all": "Tümü",
+  "inbox.tab.action": "Aksiyon gerekiyor",
+  "inbox.tab.mentions": "Bahsedilenler",
+  "inbox.tab.updates": "Güncellemeler",
+  "inbox.tab.done": "Tamamlananlar",
+  "inbox.type.approval": "Onay",
+  "inbox.type.question": "Soru",
+  "inbox.type.update": "Güncelleme",
+  "inbox.type.alert": "Uyarı",
+  "inbox.type.mention": "Bahsedilme",
+  "inbox.type.shared": "Paylaşım",
+  "inbox.group.today": "Bugün",
+  "inbox.group.yesterday": "Dün",
+  "inbox.group.older": "Daha eski",
+  "inbox.primary.open": "Aç",
+  "inbox.primary.answer": "Cevapla",
+  "inbox.primary.review": "İncele"
+}

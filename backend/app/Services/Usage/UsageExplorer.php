@@ -10,15 +10,15 @@ use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Yönetişim > Kullanım (A4.3): ai_calls üzerinden filtreli toplamlar, kırılımlar ve satırlar. Tarihler Türkiye
- * gününe göre; her rakam ai_calls.cost_usd'den. Tür: sohbet, agent, başlık, puanlama, eval, akış adımı.
+ * gününe göre; her rakam ai_calls.cost_usd'den. Tür: sohbet, agent, sayfa, başlık, puanlama, eval, akış adımı.
  */
 class UsageExplorer
 {
-    public const TYPES = ['chat' => 'Sohbet', 'agent' => 'Agent', 'title' => 'Başlık', 'evaluation' => 'Puanlama', 'eval' => 'Eval', 'flow' => 'Akış adımı'];
+    public const TYPES = ['chat' => 'Sohbet', 'agent' => 'Agent', 'page' => 'Sayfa', 'title' => 'Başlık', 'evaluation' => 'Puanlama', 'eval' => 'Eval', 'flow' => 'Akış adımı'];
 
     private const TZ = 'Europe/Istanbul';
 
-    private const TYPE_SQL = "CASE WHEN ai_calls.purpose = 'title' THEN 'title' WHEN ai_calls.purpose = 'evaluation' THEN 'evaluation' WHEN ai_calls.agent_run_id IS NOT NULL THEN 'agent' WHEN ai_calls.source = 'flow_step' THEN 'flow' WHEN conversations.title LIKE '[eval]%' THEN 'eval' ELSE 'chat' END";
+    private const TYPE_SQL = "CASE WHEN ai_calls.purpose = 'title' THEN 'title' WHEN ai_calls.purpose = 'evaluation' THEN 'evaluation' WHEN ai_calls.purpose = 'page' AND ai_calls.agent_run_id IS NULL AND (conversations.title IS NULL OR conversations.title NOT LIKE '[eval]%') THEN 'page' WHEN ai_calls.agent_run_id IS NOT NULL THEN 'agent' WHEN ai_calls.source = 'flow_step' THEN 'flow' WHEN conversations.title LIKE '[eval]%' THEN 'eval' ELSE 'chat' END";
 
     /**
      * @param  array{from?: string|null, to?: string|null, department_id?: int|null, user_id?: int|null, model?: string|null, type?: string|null}  $filters

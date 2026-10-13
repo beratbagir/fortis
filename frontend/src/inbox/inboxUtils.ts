@@ -1,21 +1,11 @@
 import type { InboxItem, InboxTab, InboxType } from '../api'
+import { intlLocale, t } from '../i18n'
 
-export const INBOX_TABS: { key: InboxTab; label: string }[] = [
-  { key: 'all', label: 'Tümü' },
-  { key: 'action', label: 'Aksiyon gerekiyor' },
-  { key: 'mentions', label: 'Bahsedilenler' },
-  { key: 'updates', label: 'Güncellemeler' },
-  { key: 'done', label: 'Tamamlananlar' },
-]
+const TAB_KEYS: InboxTab[] = ['all', 'action', 'mentions', 'updates', 'done']
 
-export const TYPE_LABEL: Record<InboxType, string> = {
-  approval: 'Onay',
-  question: 'Soru',
-  update: 'Güncelleme',
-  alert: 'Uyarı',
-  mention: 'Bahsedilme',
-  shared: 'Paylaşım',
-}
+export const inboxTabs = (): { key: InboxTab; label: string }[] => TAB_KEYS.map((key) => ({ key, label: t(`inbox.tab.${key}`) }))
+
+export const typeLabel = (type: InboxType) => t(`inbox.type.${type}`)
 
 export const TYPE_TONE: Record<InboxType, string> = {
   approval: 'bg-brand-soft text-brand-fg',
@@ -26,14 +16,15 @@ export const TYPE_TONE: Record<InboxType, string> = {
   shared: 'bg-raised text-ink-2',
 }
 
-export type InboxGroup = 'Bugün' | 'Dün' | 'Daha eski'
-export const INBOX_GROUPS: InboxGroup[] = ['Bugün', 'Dün', 'Daha eski']
+/** Liste grupları, arayüz dilinde ("Bugün" / "Today"…); sırayla. */
+export type InboxGroup = string
+export const inboxGroups = (): InboxGroup[] => [t('inbox.group.today'), t('inbox.group.yesterday'), t('inbox.group.older')]
 
 export function inboxGroup(iso: string | null, now: Date = new Date()): InboxGroup {
-  if (!iso) return 'Daha eski'
+  if (!iso) return t('inbox.group.older')
   const day = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
   const diff = Math.round((day(now) - day(new Date(iso))) / 86_400_000)
-  return diff <= 0 ? 'Bugün' : diff === 1 ? 'Dün' : 'Daha eski'
+  return diff <= 0 ? t('inbox.group.today') : diff === 1 ? t('inbox.group.yesterday') : t('inbox.group.older')
 }
 
 /** Satır ikonu: öğenin kendi kısaltması, yoksa başlığın baş harfleri (2 harf). */
@@ -45,11 +36,11 @@ export function initials(item: Pick<InboxItem, 'icon' | 'title'>): string {
 
 /** Satırın ana düğmesi: onay → Onayla/İncele, soru → Cevapla, diğerleri → Aç. */
 export function primaryLabel(item: InboxItem): string {
-  if (!item.actionable) return 'Aç'
-  return item.type === 'question' ? 'Cevapla' : 'İncele'
+  if (!item.actionable) return t('inbox.primary.open')
+  return item.type === 'question' ? t('inbox.primary.answer') : t('inbox.primary.review')
 }
 
-export const time = (iso: string | null) => (iso ? new Date(iso).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '')
+export const time = (iso: string | null) => (iso ? new Date(iso).toLocaleTimeString(intlLocale(), { hour: '2-digit', minute: '2-digit' }) : '')
 
 /** E-posta listesi: virgül/boşlukla ayrılmış metin → adresler. */
 export const parseRecipients = (text: string) =>

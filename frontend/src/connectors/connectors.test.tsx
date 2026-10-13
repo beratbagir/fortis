@@ -30,7 +30,7 @@ const detail: ConnectorDetail = {
 const auth = (admin: boolean): AuthState => ({
   config: { driver: 'password', locale: 'tr' } as AuthState['config'],
   user: { id: 1, name: 'K', email: 'k@x', role: admin ? 'admin' : 'user', abilities: { build: admin, admin } } as unknown as AuthState['user'],
-  setUser: () => {}, logout: async () => {}, setTheme: () => {},
+  setUser: () => {}, logout: async () => {}, setTheme: () => {}, locale: 'tr', setLanguage: () => {},
 })
 
 let posts: { url: string; body: unknown }[] = []

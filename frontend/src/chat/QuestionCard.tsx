@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { AskAnswer, AskQuestion } from '../api'
 import { CloseIcon } from '../ui/icons'
+import { t } from '../i18n'
 
 interface Props {
   questions: AskQuestion[]
@@ -43,11 +44,11 @@ export function QuestionCard({ questions, disabled = false, onSubmit }: Props) {
   const answered = selected[page].length > 0 || other[page].trim() !== ''
 
   return (
-    <section aria-label="Fortis'in sorusu" className="overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_8px_24px_var(--shadow)]">
+    <section aria-label={t('chat.question.aria')} className="overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_8px_24px_var(--shadow)]">
       {q.context && (
         <div className="flex items-start gap-2 bg-canvas px-4 py-2.5 text-xs text-ink-2">
           <p className="m-0 flex-1">{q.context}</p>
-          <button type="button" aria-label="Soruyu atla" disabled={disabled} onClick={() => onSubmit({ skipped: true })} className="text-muted hover:text-ink">
+          <button type="button" aria-label={t('chat.question.skip_aria')} disabled={disabled} onClick={() => onSubmit({ skipped: true })} className="text-muted hover:text-ink">
             <CloseIcon width={14} height={14} />
           </button>
         </div>
@@ -67,8 +68,8 @@ export function QuestionCard({ questions, disabled = false, onSubmit }: Props) {
         {q.allow_other && (
           <input
             type="text"
-            aria-label="Başka bir şey"
-            placeholder="Başka bir şey…"
+            aria-label={t('chat.question.other')}
+            placeholder={t('chat.question.other_placeholder')}
             value={other[page]}
             onChange={(e) => setOther((all) => all.map((v, i) => (i === page ? e.target.value : v)))}
             className="mt-1 h-9 rounded-lg border border-transparent bg-transparent px-2.5 text-[13px] text-ink placeholder:text-faint focus:border-line"
@@ -83,10 +84,10 @@ export function QuestionCard({ questions, disabled = false, onSubmit }: Props) {
         )}
         <span className="flex-1" />
         <button type="button" disabled={disabled} onClick={() => onSubmit({ skipped: true })} className="h-8 rounded-lg px-3 text-[13px] text-ink-2 hover:bg-raised">
-          Atla
+          {t('chat.question.skip')}
         </button>
         <button type="button" disabled={disabled || !answered} onClick={next} className="h-8 rounded-lg bg-ink px-3.5 text-[13px] font-medium text-bg disabled:opacity-50">
-          Devam
+          {t('chat.question.continue')}
         </button>
       </div>
     </section>

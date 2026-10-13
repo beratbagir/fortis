@@ -40,7 +40,7 @@ class Inbox
         return InboxItem::create([
             'user_id' => $user->id,
             'type' => InboxItem::APPROVAL,
-            'title' => self::actionTitle($action),
+            'title' => self::actionTitle($action, self::localeOf($user)),
             'body' => $action->reason,
             'subject_type' => self::SUBJECT_ACTION,
             'subject_id' => $action->id,
@@ -55,7 +55,7 @@ class Inbox
         return InboxItem::create([
             'user_id' => $user->id,
             'type' => InboxItem::QUESTION,
-            'title' => $questions[0]['question'] ?? 'Agent bir soru sordu',
+            'title' => $questions[0]['question'] ?? __('Agent bir soru sordu', [], self::localeOf($user)),
             'body' => $questions[0]['context'] ?? null,
             'subject_type' => self::SUBJECT_RUN,
             'subject_id' => $run->id,
@@ -91,11 +91,11 @@ class Inbox
         InboxItem::create([
             'user_id' => $user->id,
             'type' => InboxItem::APPROVAL,
-            'title' => ($execution->flow?->title ?? 'Akış').' onay bekliyor',
-            'body' => 'Akış bir onay adımında durdu. Onaylarsan devam eder, reddedersen durdurulur.',
+            'title' => __(':flow onay bekliyor', ['flow' => $execution->flow?->title ?? __('Akış', [], self::localeOf($user))], self::localeOf($user)),
+            'body' => __('Akış bir onay adımında durdu. Onaylarsan devam eder, reddedersen durdurulur.', [], self::localeOf($user)),
             'subject_type' => self::SUBJECT_EXECUTION,
             'subject_id' => $execution->id,
-            'source_label' => ($execution->flow?->title ?? 'Akış').' · Akış',
+            'source_label' => ($execution->flow?->title ?? __('Akış', [], self::localeOf($user))).' · '.__('Akış', [], self::localeOf($user)),
             'icon' => 'AK',
         ]);
     }
@@ -182,8 +182,8 @@ class Inbox
         return InboxItem::create([
             'user_id' => $owner->id,
             'type' => InboxItem::ALERT,
-            'title' => 'Bütçe dolduğu için bugünkü çalışma atlandı',
-            'body' => "{$agent->name}: {$reason} Bütçe artırılınca ya da ay başında çalışmalar kendiliğinden devam eder; bugün başka atlanan çalışma olursa ayrıca uyarı gönderilmez.",
+            'title' => __('Bütçe dolduğu için bugünkü çalışma atlandı', [], self::localeOf($owner)),
+            'body' => __(':agent: :reason Bütçe artırılınca ya da ay başında çalışmalar kendiliğinden devam eder; bugün başka atlanan çalışma olursa ayrıca uyarı gönderilmez.', ['agent' => $agent->name, 'reason' => $reason], self::localeOf($owner)),
             'subject_type' => self::SUBJECT_BUDGET_SKIP,
             'subject_id' => $agent->id,
             'source_label' => trim($agent->name.($agent->department ? ' · '.$agent->department->name : '')),
@@ -204,15 +204,22 @@ class Inbox
         return trim($agent->name.($agent->department ? ' · '.$agent->department->name : ''));
     }
 
-    public static function actionTitle(AgentAction $action): string
+    /** Onay başlığı; alıcının dilinde (verilmezse geçerli dil). */
+    public static function actionTitle(AgentAction $action, ?string $locale = null): string
     {
         $p = $action->payload;
 
         return match ($action->type) {
-            'send_email' => sprintf('"%s" e-postası %s adresine gönderilsin mi?', $p['subject'] ?? 'Konu yok', implode(', ', $p['to'] ?? [])),
-            'post_teams' => sprintf('%s kanalına mesaj gönderilsin mi?', $p['channel'] ?? 'Teams'),
-            'deliver_report' => 'Rapor dosyası gönderilsin mi?',
-            default => 'Aksiyon onayı',
+            'send_email' => __('":subject" e-postası :to adresine gönderilsin mi?', ['subject' => $p['subject'] ?? __('Konu yok', [], $locale), 'to' => implode(', ', $p['to'] ?? [])], $locale),
+            'post_teams' => __(':channel kanalına mesaj gönderilsin mi?', ['channel' => $p['channel'] ?? 'Teams'], $locale),
+            'deliver_report' => __('Rapor dosyası gönderilsin mi?', [], $locale),
+            default => __('Aksiyon onayı', [], $locale),
         };
+    }
+
+    /** Alıcının dili (users.locale); yoksa geçerli dil. Inbox metinleri alıcının dilinde yazılır. */
+    public static function localeOf(?User $user): string
+    {
+        return $user !== null && in_array($user->locale, User::LOCALES, true) ? $user->locale : app()->getLocale();
     }
 }

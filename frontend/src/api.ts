@@ -1,6 +1,8 @@
 // Laravel sohbet API'si. React sadece Laravel ile konuşur.
 import type { VoiceMeta } from './voice/api'
 import { apiFetch } from './http'
+import { t } from './i18n'
+import type { PageData } from './pages/pageDocument'
 
 export type Role = 'user' | 'assistant'
 
@@ -129,10 +131,33 @@ export interface ArtifactCard {
   artifact_id: string
   version: number
   title: string
-  kind: ArtifactKind
+  kind: ArtifactKind | 'page'
+  /** Sayfa (create_page): açıklama, kaynak sorgular, veri zamanı, doğrulama uyarısı. */
+  description?: string | null
+  sources?: string[]
+  data_at?: string | null
+  warning?: string | null
 }
 
 export type ArtifactKind = 'html' | 'svg' | 'mermaid' | 'markdown'
+
+export const isPageCard = (card: ChatCard): card is ArtifactCard & { kind: 'page' } => (card as ArtifactCard).type === 'artifact' && (card as ArtifactCard).kind === 'page'
+
+export interface PageDetail {
+  id: string
+  conversation_id: number
+  kind: 'page'
+  title: string
+  description: string | null
+  version: number
+  latest_version: number
+  content: string
+  sources: string[]
+  data: PageData
+  data_at: string | null
+  warning: string | null
+  versions: { number: number; title: string; created_at: string }[]
+}
 
 export interface ArtifactDetail {
   id: string
@@ -160,7 +185,7 @@ async function postReport<T>(path: string, body?: unknown): Promise<T> {
     body: body === undefined ? undefined : JSON.stringify(body),
   })
   const json = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(json.message ?? `İstek başarısız (${response.status})`)
+  if (!response.ok) throw new Error(json.message ?? t('api.request_failed', { status: response.status }))
   return json.data as T
 }
 
@@ -328,7 +353,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   })
 
   if (!response.ok) {
-    throw new Error(`İstek başarısız (${response.status})`)
+    throw new Error(t('api.request_failed', { status: response.status }))
   }
 
   return response.status === 204 ? (undefined as T) : ((await response.json()).data as T)
@@ -354,7 +379,7 @@ export async function uploadFlowVersion(versionId: number): Promise<FlowCard> {
   const body = await response.json().catch(() => ({}))
 
   if (!response.ok) {
-    throw new UploadError(body.errors ?? [`Yükleme başarısız (${response.status})`], body.card ?? null)
+    throw new UploadError(body.errors ?? [t('api.upload_failed', { status: response.status })], body.card ?? null)
   }
 
   return body.card as FlowCard
@@ -453,7 +478,7 @@ async function inboxRequest<T>(path: string, method = 'GET', body?: unknown): Pr
     body: body === undefined ? undefined : JSON.stringify(body),
   })
   const json = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(json.message ?? `İstek başarısız (${response.status})`)
+  if (!response.ok) throw new Error(json.message ?? t('api.request_failed', { status: response.status }))
   return (path === '' || path.startsWith('?') ? json : json.data) as T
 }
 
@@ -530,7 +555,7 @@ export async function sendMessage(
 
   if (!response.ok || !response.body) {
     const body = await response.json().catch(() => ({}))
-    throw new Error(body.message ?? `Mesaj gönderilemedi (${response.status})`)
+    throw new Error(body.message ?? t('api.send_failed', { status: response.status }))
   }
 
   const reader = response.body.pipeThrough(new TextDecoderStream()).getReader()
@@ -569,7 +594,7 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
   const json = await response.json().catch(() => ({}))
 
   if (!response.ok) {
-    throw new Error(json.message ?? `İstek başarısız (${response.status})`)
+    throw new Error(json.message ?? t('api.request_failed', { status: response.status }))
   }
 
   return json.data as T
@@ -668,7 +693,7 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const json = response.status === 204 ? {} : await response.json().catch(() => ({}))
 
   if (!response.ok) {
-    throw new Error(json.message ?? `İstek başarısız (${response.status})`)
+    throw new Error(json.message ?? t('api.request_failed', { status: response.status }))
   }
 
   return json as T
@@ -688,7 +713,10 @@ export const flowsApi = {
 }
 
 export const artifactsApi = {
-  get: (id: string, version?: number) => request<{ data: ArtifactDetail }>(`/artifacts/${id}${version ? `?version=${version}` : ''}`).then((r) => r.data),
+  // request() zaten yanıtın data alanını döner.
+  get: (id: string, version?: number) => request<ArtifactDetail>(`/artifacts/${id}${version ? `?version=${version}` : ''}`),
+  page: (id: string, version?: number) => request<PageDetail>(`/artifacts/${id}${version ? `?version=${version}` : ''}`),
+  downloaded: (id: string, version: number) => request<unknown>(`/artifacts/${id}/downloaded?version=${version}`, { method: 'POST' }),
 }
 
 /* ---------- Agent kurma: Oluştur ve Architect (Faz A3.3) ---------- */
@@ -774,7 +802,7 @@ async function send<T>(path: string, method = 'GET', body?: unknown): Promise<T>
     body: body === undefined ? undefined : JSON.stringify(body),
   })
   const json = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(json.message ?? `İstek başarısız (${response.status})`)
+  if (!response.ok) throw new Error(json.message ?? t('api.request_failed', { status: response.status }))
   return json.data as T
 }
 
@@ -958,7 +986,7 @@ async function sendAgent<T>(path: string, method = 'GET', body?: unknown): Promi
     body: body === undefined ? undefined : JSON.stringify(body),
   })
   const json = await response.json().catch(() => ({}))
-  if (!response.ok) throw new AgentConfigError(json.message ?? `İstek başarısız (${response.status})`, Array.isArray(json.errors) ? json.errors : [], response.status)
+  if (!response.ok) throw new AgentConfigError(json.message ?? t('api.request_failed', { status: response.status }), Array.isArray(json.errors) ? json.errors : [], response.status)
   return json.data as T
 }
 
@@ -1093,7 +1121,7 @@ export const governanceApi = {
 
 /* ---------- Yönetişim: Kullanım ve bütçeler (Faz A4.3) ---------- */
 
-export type UsageType = 'chat' | 'agent' | 'title' | 'evaluation' | 'eval' | 'flow'
+export type UsageType = 'chat' | 'agent' | 'page' | 'title' | 'evaluation' | 'eval' | 'flow'
 
 export interface UsageFilters {
   from?: string
@@ -1163,6 +1191,7 @@ export interface PolicyValues {
   default_model: string
   data_question_model: string
   fast_model: string
+  page_model: string
   budget_blocks_flow_ai_steps: boolean
   allow_external_recipients: boolean
   allowed_recipient_domains: string[]
@@ -1223,7 +1252,7 @@ export const auditApi = {
     const query = auditQuery(filters)
     const response = await apiFetch(`/api/audit-logs?${query}${cursor ? `${query ? '&' : ''}cursor=${encodeURIComponent(cursor)}` : ''}`, { headers: { Accept: 'application/json' } })
     const json = await response.json().catch(() => ({}))
-    if (!response.ok) throw new Error(json.message ?? `İstek başarısız (${response.status})`)
+    if (!response.ok) throw new Error(json.message ?? t('api.request_failed', { status: response.status }))
     return json as AuditLogPage
   },
   csvUrl: (filters: AuditFilters) => `/api/audit-logs?${auditQuery(filters)}${auditQuery(filters) ? '&' : ''}format=csv`,

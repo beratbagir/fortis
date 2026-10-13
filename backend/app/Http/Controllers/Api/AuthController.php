@@ -23,7 +23,8 @@ class AuthController extends Controller
     {
         return response()->json(['data' => [
             'driver' => config('fortis.auth_driver'),
-            'locale' => in_array(config('app.locale'), config('fortis.locales'), true) ? config('app.locale') : 'tr',
+            // Girişsiz: tarayıcının dili (SetLocale), yoksa varsayılan (en). Giriş sonrası kullanıcının tercihi geçerli.
+            'locale' => in_array(app()->getLocale(), config('fortis.locales'), true) ? app()->getLocale() : config('app.locale'),
             'show_coming_soon' => (bool) config('fortis.show_coming_soon'),
         ]]);
     }

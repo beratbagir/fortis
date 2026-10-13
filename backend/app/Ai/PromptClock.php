@@ -37,6 +37,24 @@ class PromptClock
         ];
     }
 
+    /**
+     * Cevap dili bloğu (kullanıcının arayüz dili). Sistem promptu Türkçe yazılmıştır; İngilizce kullanıcıda bu blok
+     * promptteki "Türkçe yaz" kurallarının yerine geçer.
+     */
+    public static function language(string $locale): string
+    {
+        if ($locale === 'tr') {
+            return "# Cevap dili\n\nKullanıcının arayüz dili Türkçe. Cevabı, tabloları, grafik ve sayfa metinlerini Türkçe yaz.";
+        }
+
+        return implode("\n", [
+            '# Answer language',
+            '',
+            "The user's interface language is **English**. Write everything the user sees in English: the answer, table headers and titles, `:::chart` titles/labels/notes, `create_page` texts, `:::actions` titles, `ask_user` questions and options, agent names and descriptions you propose. This overrides every \"Türkçe\" / \"Turkish\" instruction in the system prompt; all other rules still apply.",
+            'Use English formats in prose: 1,250.5 · 82.4% · 12 Oct 2026 · 06:30 (Turkey time). Data values from sources (airport codes, department names, flight numbers) stay as they are.',
+        ]);
+    }
+
     public static function block(?CarbonInterface $now = null): string
     {
         $utcNow = CarbonImmutable::instance($now ?? now())->utc();

@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { agentsApi, type AgentDetail } from '../api'
 import { ArchitectChat } from '../architect/ArchitectChat'
 import { stamp } from './format'
+import { t } from '../i18n'
 
 /**
  * Sohbet sekmesi: agent'la talimatı ve araçlarıyla doğrudan sohbet. Her sohbet bir çalışmadır (kaynak: sohbet);
@@ -27,14 +28,14 @@ export function Chat({ agent }: { agent: AgentDetail }) {
   }
 
   if (!agent.can_chat) {
-    return <p className="m-0 rounded-xl border border-dashed border-line px-4 py-8 text-center text-[13px] text-muted">Bu agent pilot veya canlı olunca sohbet edilebilir.</p>
+    return <p className="m-0 rounded-xl border border-dashed border-line px-4 py-8 text-center text-[13px] text-muted">{t('agent.chat.unavailable')}</p>
   }
 
   return (
     <div className="grid min-h-[520px] gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
-      <nav aria-label="Sohbetler" className="flex flex-col gap-1">
+      <nav aria-label={t('agent.chat.list')} className="flex flex-col gap-1">
         <button type="button" onClick={() => start()} className="mb-1 rounded-lg bg-ink px-3 py-1.5 text-[13px] font-medium text-bg">
-          Yeni sohbet
+          {t('agent.chat.new')}
         </button>
         {(chats.data ?? []).map((c) => (
           <button
@@ -64,9 +65,9 @@ export function Chat({ agent }: { agent: AgentDetail }) {
             conversationId={current.conversationId}
             firstMessage={current.first}
             onChanged={() => queryClient.invalidateQueries({ queryKey: ['agent-chats', agent.id] })}
-            label={`${agent.name} ile sohbet`}
-            placeholder={`${agent.name}'e sor…`}
-            emptyText={agent.description ?? 'Agent\'a bir şey sor.'}
+            label={t('agent.chat.label', { name: agent.name })}
+            placeholder={t('agent.chat.placeholder', { name: agent.name })}
+            emptyText={agent.description ?? t('agent.chat.empty')}
             suggestions={agent.suggested_prompts}
           />
         ) : (
@@ -78,7 +79,7 @@ export function Chat({ agent }: { agent: AgentDetail }) {
               </button>
             ))}
             <button type="button" onClick={() => start()} className="text-xs text-brand-fg">
-              Sohbet başlat
+              {t('agent.chat.start')}
             </button>
           </div>
         )}

@@ -19,6 +19,7 @@ use App\Models\Report;
 use App\Services\Apm\ApmApi;
 use App\Services\Artifacts\ArtifactException;
 use App\Services\Artifacts\ArtifactService;
+use App\Services\Artifacts\PageService;
 use App\Services\Auth\Audit;
 use App\Services\Connectors\ConnectorRegistry;
 use App\Services\Flows\Catalog;
@@ -69,6 +70,7 @@ class FlowTools
         private readonly ReportService $reports,
         private readonly ReportSources $reportSources,
         private readonly ArtifactService $artifacts,
+        private readonly PageService $pages,
         private readonly DataQueryTools $dataQueries,
         private readonly AiDataGate $gate,
     ) {}
@@ -89,12 +91,30 @@ class FlowTools
         $this->architect = $agent;
     }
 
+    /** @var array<string, array{source: string|null, purpose: string|null, at: string}> Bu cevapta çalışan veri sorguları (create_page kaynakları) */
+    private array $answerQueries = [];
+
     /** Her kullanıcı mesajının başında çağrılır: sohbeti bağlar ve deneme sayacını sıfırlar. */
     public function startTurn(Conversation $conversation): void
     {
         $this->conversation = $conversation;
         $this->failedValidations = 0;
+        $this->answerQueries = [];
         $this->dataQueries->startTurn();
+    }
+
+    /**
+     * Soru kartından sonra devam eden cevap: önceki turlarda çalışan sorgular da bu cevabın parçası.
+     *
+     * @param  list<array<string, mixed>>  $queries  AnswerTrace::queries()
+     */
+    public function rememberQueries(array $queries): void
+    {
+        foreach ($queries as $q) {
+            if (isset($q['query_id'])) {
+                $this->answerQueries[$q['query_id']] = ['source' => $q['source'] ?? null, 'purpose' => $q['purpose'] ?? null, 'at' => $q['at'] ?? now()->toIso8601String()];
+            }
+        }
     }
 
     /**
@@ -108,7 +128,7 @@ class FlowTools
         $yaml = ['type' => 'string', 'description' => 'Kestra akışının tam YAML metni.'];
 
         // Veri sorgulama ayarı kapalıyken query_* araçları hiç sunulmaz.
-        $dataTools = $this->dataQueries->enabled() ? $this->dataQueries->definitions() : [];
+        $dataTools = $this->dataQueries->enabled() ? [...$this->dataQueries->definitions(), self::createPageDefinition()] : [];
         $disabled = $this->disabledTools();
 
         $all = [...$this->flowDefinitions($yaml), self::askUserDefinition(), ...$dataTools];
@@ -507,7 +527,12 @@ class FlowTools
         }
 
         if (in_array($name, DataQueryTools::TOOLS, true)) {
-            return $this->dataQueries->execute($name, $input);
+            $result = $this->dataQueries->execute($name, $input);
+            if (! $result->isError && isset($result->meta['query_id'])) {
+                $this->rememberQueries([$result->meta + ['at' => now()->toIso8601String()]]);
+            }
+
+            return $result;
         }
 
         return match ($name) {
@@ -519,6 +544,7 @@ class FlowTools
             'list_report_sources' => ToolResult::json(['sources' => $this->reportSources->describe(), 'note' => 'Rapora sadece bu alanlar eklenebilir. TC kimlik, telefon ve doğum tarihi gibi alanlar kasıtlı olarak yok.']),
             'create_report' => $this->createReport($input),
             'create_artifact' => $this->createArtifact($input),
+            'create_page' => $this->createPage($input),
             'get_execution' => $this->getExecution($input),
             'record_unsupported_request' => $this->recordUnsupportedRequest($input),
             'get_queries' => $this->getQueries(),
@@ -547,6 +573,55 @@ class FlowTools
         return ToolResult::json(
             ['artifact_id' => $artifact->id, 'version' => $version, 'note' => 'Önizleme kullanıcıya sohbetin yanında gösteriliyor. İçeriği mesajda tekrar yazma; ne yaptığını kısaca anlat.'],
             card: ['type' => 'artifact', 'artifact_id' => $artifact->id, 'version' => $version, 'title' => $artifact->title, 'kind' => $artifact->kind],
+        );
+    }
+
+    /** @return array<string, mixed> Şirket verisiyle HTML sayfa (pano, rapor); sadece veri erişimi açıkken sunulur. */
+    private static function createPageDefinition(): array
+    {
+        return [
+            'name' => 'create_page',
+            'description' => 'Bu cevapta çalıştırdığın sorguların verisiyle çalışan bir HTML sayfa (pano, tek sayfalık rapor, filtrelenebilir görünüm) üretir veya günceller. Sayfa sohbette kart olarak açılır. Veriyi HTML\'e yazma: sunucu `sources` sorgularının maskeli sonuçlarını window.FORTIS_DATA["q:ID"] = {columns, rows, source, purpose, at, total_rows, truncated} olarak sayfaya koyar; fortis.data("q:ID") satırları nesne listesi olarak verir. Yardımcılar: fortis.chart(el, config) (Chart.js, Fortis teması), fortis.table(el, rows, columns), fortis.formatNumber(n, digits), fortis.formatDate(iso), fortis.colors (seri renkleri), fortis.ask(text). Ağ kapalı; dış script/stil yüklenmez. Değişiklik isteğinde aynı artifact_id ile HTML\'in TAMAMINI yeniden gönder (yeni sürüm olur).',
+            'eagerInputStreaming' => true,
+            'inputSchema' => [
+                'type' => 'object',
+                'properties' => [
+                    'title' => ['type' => 'string', 'description' => 'Kısa Türkçe başlık (ör. "Rötar panosu – son 30 gün").'],
+                    'description' => ['type' => 'string', 'description' => 'Bir cümlelik açıklama: sayfada ne var.'],
+                    'sources' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'Sayfanın verisinin geldiği, bu cevapta çalıştırdığın sorguların "q:QUERY_ID" kimlikleri.'],
+                    'html' => ['type' => 'string', 'description' => 'Sadece gövde içeriği: HTML + <style> + <script>. <html>/<head>, CSP, tema ve veri sunucu tarafından eklenir. En fazla 200 KB.'],
+                    'artifact_id' => ['type' => 'string', 'description' => 'Var olan sayfayı güncellerken onun id\'si. Yeni sayfa için verme.'],
+                ],
+                'required' => ['title', 'description', 'sources', 'html'],
+                'additionalProperties' => false,
+            ],
+        ];
+    }
+
+    /** @param  array<string, mixed>  $input */
+    private function createPage(array $input): ToolResult
+    {
+        if ($this->conversation === null) {
+            return ToolResult::error('Sohbet bağlamı yok.');
+        }
+
+        try {
+            ['artifact' => $artifact, 'version' => $version] = $this->pages->save($this->conversation, $input, $this->answerQueries);
+        } catch (ArtifactException $e) {
+            return ToolResult::invalidInput(array_diff_key($input, ['html' => true]), $e->getMessage());
+        }
+
+        return ToolResult::json(
+            array_filter([
+                'artifact_id' => $artifact->id,
+                'version' => $version->number,
+                'warning' => $version->warning === null ? null : $version->warning.': sayfa FORTIS_DATA kullanmıyor ve çok sayıda sayı gömülü. Veriyi window.FORTIS_DATA / fortis.data() ile oku ve sayfayı yeniden üret.',
+                'note' => 'Sayfa kullanıcıya sohbette kart olarak gösteriliyor. HTML\'i mesajda tekrar yazma; 2–3 cümle özet ve kaynak numaralarını yaz.',
+            ]),
+            card: [
+                'type' => 'artifact', 'artifact_id' => $artifact->id, 'version' => $version->number, 'title' => $artifact->title, 'kind' => Artifact::PAGE,
+                'description' => $artifact->description, 'sources' => $version->sources, 'data_at' => $version->data_at?->toIso8601String(), 'warning' => $version->warning,
+            ],
         );
     }
 

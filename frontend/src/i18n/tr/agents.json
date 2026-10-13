@@ -1,0 +1,10 @@
+{
+  "agents.cron.every_minutes": "{n} dakikada bir",
+  "agents.cron.hourly": "Saatte bir",
+  "agents.cron.daily": "Her gün {time}",
+  "agents.cron.weekdays": "Hafta içi her gün {time}",
+  "agents.cron.weekly": "Her {day} {time}",
+  "agents.cron.monthly": "Her ayın {dom}. günü {time}",
+  "agents.trigger.webhook": "Webhook ile",
+  "agents.trigger.manual": "Elle"
+}

@@ -270,6 +270,47 @@
       "expect_single_measure": true,
       "expect_citation": true,
       "expect_no_flow": true
+    },
+    {
+      "id": "page-delay-dashboard",
+      "question": "Son 14 günün rötar panosunu hazırla: günlük OTP, nedenlere göre dağılım, en çok rötar yapan 5 rota",
+      "expect_page": true,
+      "expect_page_charts": 3,
+      "expect_no_flow": true
+    },
+    {
+      "id": "page-ops-dashboard",
+      "question": "Son 14 günün operasyon panosunu hazırla: günlük sefer ve iptal sayısı, meydanlara göre sefer dağılımı; meydan filtresi olsun",
+      "expect_page": true,
+      "expect_page_charts": 2,
+      "expect_page_filter": true,
+      "expect_no_flow": true
+    },
+    {
+      "id": "page-none-single",
+      "question": "Dün kaç sefer vardı",
+      "expect_no_page": true,
+      "expect_no_chart": true,
+      "expect_no_flow": true
+    },
+    {
+      "id": "page-single-chart",
+      "question": "Departmanlara göre çalışan sayısını grafikle göster",
+      "expect_no_page": true,
+      "expect_chart": [
+        "bar",
+        "hbar"
+      ],
+      "expect_no_flow": true
+    },
+    {
+      "id": "page-followup-filter",
+      "question": "Son 7 günün sefer panosunu hazırla: günlük sefer sayısı ve meydanlara göre dağılım",
+      "followup": "Bu panoya meydan filtresi ekle",
+      "expect_page": true,
+      "expect_page_version": 2,
+      "expect_page_filter": true,
+      "expect_no_flow": true
     }
   ]
 }

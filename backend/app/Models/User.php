@@ -14,7 +14,7 @@ use Illuminate\Notifications\Notifiable;
 /**
  * Fortis kullanıcısı. Kayıt ekranı yok; kullanıcıyı admin ekler. Rol: user < builder < admin.
  */
-#[Fillable(['name', 'email', 'password', 'department_id', 'role', 'title', 'avatar_color', 'is_active', 'must_change_password', 'theme', 'last_login_at', 'entra_object_id'])]
+#[Fillable(['name', 'email', 'password', 'department_id', 'role', 'title', 'avatar_color', 'is_active', 'must_change_password', 'theme', 'locale', 'last_login_at', 'entra_object_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -30,6 +30,9 @@ class User extends Authenticatable
     public const ROLES = [self::ROLE_USER, self::ROLE_BUILDER, self::ROLE_ADMIN];
 
     public const THEMES = ['system', 'light', 'dark'];
+
+    /** Arayüz ve cevap dili. Varsayılan İngilizce. */
+    public const LOCALES = ['en', 'tr'];
 
     /** Avatar renkleri: arayüzde tema token'larına eşlenir (sabit renk kodu tutulmaz). */
     public const AVATAR_COLORS = ['crimson', 'blue', 'green', 'amber', 'violet', 'slate'];

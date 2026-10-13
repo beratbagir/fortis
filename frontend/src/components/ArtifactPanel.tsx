@@ -62,7 +62,7 @@ export function ArtifactCardView({ card, open, onOpen }: { card: ArtifactCard; o
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="truncate text-sm font-semibold text-ink">{card.title}</span>
         <span className="text-xs text-muted">
-          {KIND_LABELS[card.kind]} · sürüm {card.version}
+          {KIND_LABELS[card.kind as ArtifactKind]} · sürüm {card.version}
         </span>
       </span>
       <span className="text-xs font-semibold text-brand-fg">{open ? 'Açık' : 'Aç'}</span>

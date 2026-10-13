@@ -23,6 +23,8 @@ const auth = (admin = false): AuthState => ({
   setUser: () => {},
   logout: async () => {},
   setTheme: () => {},
+    locale: 'tr',
+    setLanguage: () => {},
 })
 
 const wrap = (node: ReactNode, admin = false) =>

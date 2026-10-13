@@ -1,0 +1,5 @@
+{
+  "api.request_failed": "İstek başarısız ({status})",
+  "api.upload_failed": "Yükleme başarısız ({status})",
+  "api.send_failed": "Mesaj gönderilemedi ({status})"
+}

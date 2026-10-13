@@ -2,7 +2,6 @@
   "app.name": "Fortis",
   "app.loading": "Yükleniyor…",
   "app.org": "Freebird Airlines",
-
   "nav.main": "Ana menü",
   "nav.new_chat": "Yeni sohbet",
   "nav.chats": "Sohbetler",
@@ -26,27 +25,22 @@
   "nav.open_menu": "Menüyü aç",
   "nav.close_menu": "Menüyü kapat",
   "nav.soon": "Yakında",
-
   "credits.title": "Bu ay harcanan",
   "credits.of_budget": "{limit} bütçenin %{pct}'i",
   "credits.no_limit": "Bütçe limiti yok",
-
   "theme.label": "Tema",
   "theme.light": "Açık",
   "theme.dark": "Koyu",
   "theme.system": "Sistem",
-
   "role.admin": "Admin",
   "role.builder": "Builder",
   "role.user": "Kullanıcı",
-
   "user_menu.open": "Kullanıcı menüsü",
   "user_menu.profile": "Profil",
   "user_menu.users": "Kullanıcılar",
   "user_menu.departments": "Departmanlar",
   "user_menu.settings": "Ayarlar",
   "user_menu.logout": "Çıkış",
-
   "login.subtitle": "Freebird'ün sistemleri üzerinde çalışan AI ekibi",
   "login.email": "E-posta",
   "login.password": "Şifre",
@@ -57,7 +51,6 @@
   "login.error_no_access": "Erişimin yok, yöneticine başvur.",
   "login.error_entra_failed": "Microsoft ile giriş tamamlanamadı. Tekrar dene.",
   "login.error_unavailable": "Sunucuya ulaşılamadı. Biraz sonra tekrar dene.",
-
   "password.title": "Şifreni değiştir",
   "password.required_note": "Geçici şifreyle giriş yaptın. Devam etmek için yeni bir şifre belirle.",
   "password.current": "Mevcut şifre",
@@ -66,14 +59,12 @@
   "password.hint": "En az {min} karakter.",
   "password.submit": "Şifreyi kaydet",
   "password.saved": "Şifren değiştirildi.",
-
   "profile.title": "Profil",
   "profile.department": "Departman",
   "profile.role": "Rol",
   "profile.job_title": "Unvan",
   "profile.last_login": "Son giriş",
   "profile.none": "—",
-
   "soon.note": "Bu ekran sonraki fazda gelecek.",
   "soon.inbox": "Onaylar, agentların soruları, bahsetmeler ve uyarılar tek yerde.",
   "soon.actions": "Sana atanan işler; kaynak sistemden otomatik doğrulanır.",
@@ -83,7 +74,6 @@
   "soon.memory": "Kişisel ve ortak bellek: tercihler, iş kuralları, profil.",
   "soon.knowledge": "Politika, sözleşme ve tanımların wiki'si ve graf görünümü.",
   "soon.skills": "KPI tanımları, EU261 gibi Freebird becerileri ve Fortis çıktı becerileri.",
-
   "admin.users.title": "Kullanıcılar",
   "admin.users.add": "Kullanıcı ekle",
   "admin.users.edit_short": "Düzenle",
@@ -106,7 +96,6 @@
   "admin.users.save": "Kaydet",
   "admin.users.cancel": "Vazgeç",
   "admin.users.empty": "Henüz kullanıcı yok.",
-
   "admin.departments.title": "Departmanlar",
   "admin.departments.add": "Departman ekle",
   "admin.departments.name": "Departman adı",
@@ -114,7 +103,7 @@
   "admin.departments.rename": "Yeniden adlandır",
   "admin.departments.save": "Kaydet",
   "admin.departments.cancel": "Vazgeç",
-
   "error.forbidden": "Bu sayfayı görme yetkin yok.",
-  "error.generic": "Bir şeyler ters gitti. Tekrar dene."
+  "error.generic": "Bir şeyler ters gitti. Tekrar dene.",
+  "language.label": "Dil"
 }

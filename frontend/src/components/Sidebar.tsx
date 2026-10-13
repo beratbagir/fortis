@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type ComponentType, type SVGProps } from '
 import { api, inboxApi } from '../api'
 import { useAuth } from '../auth/useAuth'
 import { usageApi } from '../editor/api'
-import { t } from '../i18n'
+import { LOCALES, t, type Locale } from '../i18n'
 import { href, type Route } from '../router'
 import { useTheme } from '../theme'
 import { money } from '../ui/format'
@@ -340,7 +340,7 @@ function UserButton({ narrow }: { narrow: boolean }) {
 }
 
 function UserMenu({ onClose }: { onClose: () => void }) {
-  const { user, logout, setTheme } = useAuth()
+  const { user, logout, setTheme, locale, setLanguage } = useAuth()
   const { preference } = useTheme()
 
   const link = (route: Route, label: string, Icon: Icon) => (
@@ -359,6 +359,16 @@ function UserMenu({ onClose }: { onClose: () => void }) {
           <option value="system">{t('theme.system')}</option>
           <option value="light">{t('theme.light')}</option>
           <option value="dark">{t('theme.dark')}</option>
+        </select>
+      </div>
+      <div className="flex items-center justify-between gap-2 px-2.5 py-1.5 text-ink-2">
+        <span>{t('language.label')}</span>
+        <select aria-label={t('language.label')} value={locale} onChange={(e) => setLanguage(e.target.value as Locale)} className="rounded-md border border-line bg-surface px-1.5 py-0.5 text-xs text-ink">
+          {LOCALES.map((l) => (
+            <option key={l.id} value={l.id}>
+              {l.label}
+            </option>
+          ))}
         </select>
       </div>
       {user?.abilities.admin && (

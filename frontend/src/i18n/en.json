@@ -2,7 +2,6 @@
   "app.name": "Fortis",
   "app.loading": "Loading…",
   "app.org": "Freebird Airlines",
-
   "nav.main": "Main menu",
   "nav.new_chat": "New chat",
   "nav.chats": "Chats",
@@ -26,27 +25,22 @@
   "nav.open_menu": "Open menu",
   "nav.close_menu": "Close menu",
   "nav.soon": "Soon",
-
   "credits.title": "Spent this month",
   "credits.of_budget": "{pct}% of {limit} budget",
   "credits.no_limit": "No budget limit",
-
   "theme.label": "Theme",
   "theme.light": "Light",
   "theme.dark": "Dark",
   "theme.system": "System",
-
   "role.admin": "Admin",
   "role.builder": "Builder",
   "role.user": "User",
-
   "user_menu.open": "User menu",
   "user_menu.profile": "Profile",
   "user_menu.users": "Users",
   "user_menu.departments": "Departments",
   "user_menu.settings": "Settings",
   "user_menu.logout": "Sign out",
-
   "login.subtitle": "The AI workforce on top of the systems Freebird already runs",
   "login.email": "Email",
   "login.password": "Password",
@@ -57,7 +51,6 @@
   "login.error_no_access": "You don't have access. Contact your administrator.",
   "login.error_entra_failed": "Microsoft sign-in could not be completed. Try again.",
   "login.error_unavailable": "Can't reach the server. Try again shortly.",
-
   "password.title": "Change your password",
   "password.required_note": "You signed in with a temporary password. Set a new one to continue.",
   "password.current": "Current password",
@@ -66,14 +59,12 @@
   "password.hint": "At least {min} characters.",
   "password.submit": "Save password",
   "password.saved": "Your password has been changed.",
-
   "profile.title": "Profile",
   "profile.department": "Department",
   "profile.role": "Role",
   "profile.job_title": "Title",
   "profile.last_login": "Last sign-in",
   "profile.none": "—",
-
   "soon.note": "This screen is coming in a later phase.",
   "soon.inbox": "Approvals, agent questions, mentions and alerts in one place.",
   "soon.actions": "Work assigned to you, verified automatically against the source system.",
@@ -83,7 +74,6 @@
   "soon.memory": "Personal and shared memory: preferences, business rules, profile.",
   "soon.knowledge": "A wiki and graph of policies, contracts and definitions.",
   "soon.skills": "Freebird skills such as KPI definitions and EU261, plus Fortis output skills.",
-
   "admin.users.title": "Users",
   "admin.users.add": "Add user",
   "admin.users.edit_short": "Edit",
@@ -106,7 +96,6 @@
   "admin.users.save": "Save",
   "admin.users.cancel": "Cancel",
   "admin.users.empty": "No users yet.",
-
   "admin.departments.title": "Departments",
   "admin.departments.add": "Add department",
   "admin.departments.name": "Department name",
@@ -114,7 +103,7 @@
   "admin.departments.rename": "Rename",
   "admin.departments.save": "Save",
   "admin.departments.cancel": "Cancel",
-
   "error.forbidden": "You don't have permission to view this page.",
-  "error.generic": "Something went wrong. Try again."
+  "error.generic": "Something went wrong. Try again.",
+  "language.label": "Language"
 }

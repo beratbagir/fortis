@@ -70,13 +70,13 @@ for (const theme of ['light', 'dark'] as const) {
     await page.evaluate((value) => localStorage.setItem('fortis.theme', value), theme)
     await page.reload()
 
-    const flights = page.getByRole('figure', { name: 'Günlük sefer sayısı, son 14 gün' })
+    const flights = page.getByRole('figure', { name: 'Günlük yolcu sayısı, son 14 gün' })
     const reasons = page.getByRole('figure', { name: 'Dün rötar nedenleri (dakika)' })
     await expect(flights.locator('.recharts-line-curve')).toHaveCount(2)
-    await expect(flights.locator('.recharts-legend-wrapper')).toContainText('Charter')
+    await expect(flights.locator('.recharts-legend-wrapper')).toContainText('Uçağa biniş')
     await expect(reasons.locator('.recharts-bar-rectangle').first()).toBeVisible()
     await expect(page.getByText('"type"')).toHaveCount(0)
-    await expect(flights.getByText('Kaynak [1]: IBS · Son 14 gün, günlük sefer sayısı')).toBeVisible()
+    await expect(flights.getByText('Kaynak [1]: IBS · Son 14 gün, günlük yolcu')).toBeVisible()
     await page.evaluate(() => document.fonts.ready)
     await page.mouse.move(0, 0)
     await flights.scrollIntoViewIfNeeded()
@@ -92,7 +92,9 @@ for (const theme of ['light', 'dark'] as const) {
     expect((await download).suggestedFilename()).toBe('dün-rötar-nedenleri-dakika.csv')
     const png = page.waitForEvent('download')
     await flights.getByRole('button', { name: 'PNG indir' }).click()
-    expect((await png).suggestedFilename()).toBe('günlük-sefer-sayısı-son-14-gün.png')
+    const pngFile = await png
+    expect(pngFile.suggestedFilename()).toBe('günlük-yolcu-sayısı-son-14-gün.png')
+    await pngFile.saveAs(test.info().outputPath(`chart-${theme}.png`))
 
     await page.setViewportSize({ width: 390, height: 844 })
     await reasons.getByRole('button', { name: 'Grafik' }).click()

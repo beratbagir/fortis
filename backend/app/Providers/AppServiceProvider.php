@@ -21,6 +21,7 @@ use App\Services\Voice\TranscriptFilter;
 use App\Services\Voice\WhisperClient;
 use App\Services\Warehouse\SqlGuard;
 use App\Services\Warehouse\Warehouse;
+use Illuminate\Auth\Events\Authenticated;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -139,6 +140,16 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('admin', fn (User $user) => $user->isAdmin());
         Gate::define('build', fn (User $user) => $user->canBuild());
 
+        // Sunucu mesajlarının çevirileri: kodda Türkçe kaynak metin __() ile, İngilizcesi lang/parts/<alan>/en.json'da.
+        foreach (glob(lang_path('parts/*'), GLOB_ONLYDIR) ?: [] as $dir) {
+            $this->app['translator']->addJsonPath($dir);
+        }
         Event::listen(SocialiteWasCalled::class, [MicrosoftExtendSocialite::class, 'handle']);
+        // Kullanıcı doğrulanınca dil onun tercihine geçer (giriş, Sanctum, testlerde actingAs).
+        Event::listen(Authenticated::class, function (Authenticated $event) {
+            if ($event->user instanceof User && in_array($event->user->locale, User::LOCALES, true)) {
+                app()->setLocale($event->user->locale);
+            }
+        });
     }
 }

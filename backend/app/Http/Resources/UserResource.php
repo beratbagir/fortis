@@ -26,6 +26,7 @@ class UserResource extends JsonResource
             'is_active' => $this->is_active,
             'must_change_password' => $this->must_change_password,
             'theme' => $this->theme,
+            'locale' => $this->locale ?? config('app.locale'),
             'last_login_at' => $this->last_login_at?->toIso8601String(),
             'department' => $this->department === null ? null : [
                 'id' => $this->department->id,

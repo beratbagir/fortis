@@ -1,21 +1,32 @@
 import type { ConnectorCard, ConnectorScope } from '../api'
+import { t } from '../i18n'
 
-export const CONNECTOR_STATUS: Record<ConnectorCard['status'], [string, string]> = {
-  connected: ['Bağlı', 'bg-ok-soft text-ok'],
-  attention: ['Dikkat', 'bg-warn-soft text-warn'],
-  not_configured: ['Kurulum gerekli', 'bg-raised text-ink-2'],
-  disabled: ['Kapalı', 'bg-bad-soft text-bad'],
+// Etiketler arayüz dilinde ve okunduğu anda üretilir (getter): dil çalışırken değişebilir.
+const TONES: Record<ConnectorCard['status'], string> = {
+  connected: 'bg-ok-soft text-ok',
+  attention: 'bg-warn-soft text-warn',
+  not_configured: 'bg-raised text-ink-2',
+  disabled: 'bg-bad-soft text-bad',
 }
 
-export const SCOPE_LABEL: Record<ConnectorScope, string> = { read: 'okuma', 'write·approval': 'yazma · onaylı', events: 'olaylar' }
+export const CONNECTOR_STATUS = {} as Record<ConnectorCard['status'], [string, string]>
+for (const status of Object.keys(TONES) as ConnectorCard['status'][]) {
+  Object.defineProperty(CONNECTOR_STATUS, status, { enumerable: true, get: () => [t(`connectors.status.${status}`), TONES[status]] })
+}
 
-export const CATEGORY_TITLE: Record<ConnectorCard['category'], [string, string]> = {
-  data: ['Havayolu sistemleri', 'Veri kaynakları; Fortis sadece okur.'],
-  channel: ['Teslim kanalları', 'Agent gönderimleri; her gönderim onaydan geçer.'],
-  setup: ['Kurulabilir', 'Bir agent ihtiyaç duyunca IT ile kurulur.'],
+const SCOPES: ConnectorScope[] = ['read', 'write·approval', 'events']
+const scopeKey = (scope: ConnectorScope) => (scope === 'write·approval' ? 'write_approval' : scope)
+export const SCOPE_LABEL = {} as Record<ConnectorScope, string>
+for (const scope of SCOPES) {
+  Object.defineProperty(SCOPE_LABEL, scope, { enumerable: true, get: () => t(`connectors.scope.${scopeKey(scope)}`) })
+}
+
+export const CATEGORY_TITLE = {} as Record<ConnectorCard['category'], [string, string]>
+for (const category of ['data', 'channel', 'setup'] as ConnectorCard['category'][]) {
+  Object.defineProperty(CATEGORY_TITLE, category, { enumerable: true, get: () => [t(`connectors.category.${category}.title`), t(`connectors.category.${category}.note`)] })
 }
 
 /** "IT'ye iletmek için kopyala" metni: düz metin, gizli bilgi yok. */
 export function setupText(c: { label: string; description: string | null; needs: string[] }): string {
-  return [`Fortis — ${c.label} bağlantısı için gerekenler`, c.description ?? '', '', ...c.needs.map((n) => `- ${n}`), '', 'Kimlik bilgileri Fortis sunucusunun .env dosyasına eklenir; arayüzden girilmez.'].join('\n')
+  return [t('connectors.setup_text.title', { label: c.label }), c.description ?? '', '', ...c.needs.map((n) => `- ${n}`), '', t('connectors.setup_text.footer')].join('\n')
 }

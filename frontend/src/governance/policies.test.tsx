@@ -12,6 +12,7 @@ const policies: PoliciesData = {
   default_model: 'claude-sonnet-5-5',
   data_question_model: 'claude-opus-5-5',
   fast_model: 'claude-sonnet-5-5',
+  page_model: 'claude-sonnet-5-5',
   budget_blocks_flow_ai_steps: false,
   allow_external_recipients: false,
   allowed_recipient_domains: ['freebird.com.tr'],

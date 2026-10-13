@@ -1,14 +1,15 @@
 import type { NodeProps } from '@xyflow/react'
 import { useContext } from 'react'
+import { t } from '../i18n'
 import { WarnIcon } from '../ui/icons'
 import type { BlockData, LabelData, SlotData } from './layout'
 import { CanvasContext } from './canvasContext'
 import { tone } from './tones'
 
 const MARK_STYLE = {
-  added: { border: '2px solid var(--success)', badge: 'Yeni', badgeClass: 'bg-ok-soft text-ok' },
-  changed: { border: '2px solid var(--warning)', badge: 'Değişti', badgeClass: 'bg-warn-soft text-warn' },
-  removed: { border: '2px dashed var(--danger)', badge: 'Silinecek', badgeClass: 'bg-bad-soft text-bad' },
+  added: { border: '2px solid var(--success)', badge: 'editor.mark.added', badgeClass: 'bg-ok-soft text-ok' },
+  changed: { border: '2px solid var(--warning)', badge: 'editor.mark.changed', badgeClass: 'bg-warn-soft text-warn' },
+  removed: { border: '2px dashed var(--danger)', badge: 'editor.mark.removed', badgeClass: 'bg-bad-soft text-bad' },
 } as const
 
 function frame(data: BlockData): { border: string; shadow: string } {
@@ -36,14 +37,14 @@ function Card({ data, flat = false }: { data: BlockData; flat?: boolean }) {
         </div>
         {data.errors.length > 0 && (
           <span className="flex items-center gap-1 rounded-full bg-bad-soft px-2 py-0.5 text-[11px] font-extrabold text-bad">
-            <WarnIcon /> Hata
+            <WarnIcon /> {t('editor.node.error')}
           </span>
         )}
-        {mark && <span className={`rounded-full px-2 py-0.5 text-[11px] font-extrabold ${MARK_STYLE[mark].badgeClass}`}>{MARK_STYLE[mark].badge}</span>}
-        {!mark && node.readonly && <span className="rounded-full bg-raised px-2 py-0.5 text-[11px] font-extrabold text-ink-2">Salt okunur</span>}
+        {mark && <span className={`rounded-full px-2 py-0.5 text-[11px] font-extrabold ${MARK_STYLE[mark].badgeClass}`}>{t(MARK_STYLE[mark].badge)}</span>}
+        {!mark && node.readonly && <span className="rounded-full bg-raised px-2 py-0.5 text-[11px] font-extrabold text-ink-2">{t('editor.node.read_only')}</span>}
         {!mark && !node.readonly && node.writes && (
-          <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-extrabold text-accent" title="Test çalıştırmada gerçekten gönderilmez">
-            Dış sisteme yazar
+          <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-extrabold text-accent" title={t('editor.node.writes_hint')}>
+            {t('editor.node.writes')}
           </span>
         )}
       </div>
@@ -63,8 +64,8 @@ function Card({ data, flat = false }: { data: BlockData; flat?: boolean }) {
 
 function describe(data: BlockData): string {
   const parts = [data.node.title ?? data.node.id, data.node.label]
-  if (data.mark) parts.push(MARK_STYLE[data.mark].badge)
-  if (data.errors.length) parts.push(`hata: ${data.errors.join(' ')}`)
+  if (data.mark) parts.push(t(MARK_STYLE[data.mark].badge))
+  if (data.errors.length) parts.push(t('editor.node.error_detail', { errors: data.errors.join(' ') }))
   return parts.join(', ')
 }
 

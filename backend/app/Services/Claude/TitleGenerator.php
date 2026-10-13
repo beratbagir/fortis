@@ -21,6 +21,8 @@ class TitleGenerator
 {
     private const SYSTEM = 'Sohbete kısa bir Türkçe başlık yaz: 6-8 kelime, nokta ve tırnak yok, sadece başlık. Kişi adı, e-posta, telefon gibi kişisel bilgi yazma.';
 
+    private const SYSTEM_EN = 'Write a short English title for the conversation: 6-8 words, no period or quotes, title only. Do not include personal data such as names, emails or phone numbers.';
+
     /** @var Closure(array<string, mixed>): BetaMessage */
     private Closure $send;
 
@@ -59,7 +61,8 @@ class TitleGenerator
             $response = ($this->send)([
                 'model' => $model,
                 'maxTokens' => 2000,
-                'system' => self::SYSTEM,
+                // Başlık sohbet sahibinin dilinde.
+                'system' => (($conversation->user?->locale ?? app()->getLocale()) === 'tr') ? self::SYSTEM : self::SYSTEM_EN,
                 'messages' => [['role' => 'user', 'content' => 'Soru: '.mb_substr($question, 0, 1000)."\n\nCevabın başı: ".mb_substr($answer, 0, 600)]],
                 'outputConfig' => ['effort' => 'low'],
             ]);

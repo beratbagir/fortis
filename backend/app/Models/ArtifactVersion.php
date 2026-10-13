@@ -7,9 +7,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Bir artifact'ın tek bir sürümü (tam içerik).
+ * Bir artifact'ın tek bir sürümü (tam içerik). Sayfa türünde ayrıca kaynak sorgular, enjekte edilen maskeli veri ve
+ * verinin zamanı.
  */
-#[Fillable(['artifact_id', 'number', 'title', 'content'])]
+#[Fillable(['artifact_id', 'number', 'title', 'content', 'sources', 'data', 'data_at', 'warning'])]
 class ArtifactVersion extends Model
 {
     public const UPDATED_AT = null;
@@ -25,6 +26,6 @@ class ArtifactVersion extends Model
      */
     protected function casts(): array
     {
-        return ['number' => 'integer'];
+        return ['number' => 'integer', 'sources' => 'array', 'data' => 'array', 'data_at' => 'datetime'];
     }
 }

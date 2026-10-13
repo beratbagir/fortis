@@ -1,5 +1,6 @@
 import Editor from '@monaco-editor/react'
 import { useState } from 'react'
+import { t } from '../i18n'
 import { useTheme } from '../theme'
 import { Dialog } from '../ui/Dialog'
 import { ApiError } from './api'
@@ -39,22 +40,22 @@ export default function YamlDialog({ yaml, version, onClose, onSave }: Props) {
 
   return (
     <Dialog
-      title={`YAML · sürüm ${version}`}
+      title={t('editor.yaml.title', { version })}
       onClose={onClose}
       wide
       actions={
         editing ? (
           <>
             <button type="button" onClick={() => { setEditing(false); setValue(yaml); setErrors([]) }} className="h-9 rounded-xl border border-line px-3 text-sm font-bold">
-              Vazgeç
+              {t('editor.common.cancel')}
             </button>
             <button type="button" disabled={saving} onClick={save} className="h-9 rounded-xl bg-brand px-3 text-sm font-bold text-on-brand disabled:opacity-60">
-              {saving ? 'Doğrulanıyor…' : 'Kaydet (yeni taslak)'}
+              {saving ? t('editor.yaml.validating') : t('editor.yaml.save')}
             </button>
           </>
         ) : (
           <button type="button" onClick={() => setEditing(true)} className="h-9 rounded-xl border border-line px-3 text-sm font-bold">
-            Düzenle
+            {t('editor.yaml.edit')}
           </button>
         )
       }

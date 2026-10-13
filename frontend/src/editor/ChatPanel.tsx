@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { api, isProposalCard, sendMessage, type Message, type MessageExtras, type ProposalCard, type ToolName } from '../api'
@@ -105,11 +106,11 @@ export function ChatPanel({ conversationId, previewId, onPreview, onApply, onRej
   const voice = useVoiceDraft({ text, setText, input, submit })
 
   return (
-    <section aria-label="AI ile düzenle" className={`min-h-0 flex-1 flex-col gap-3.5 px-4 pt-2 pb-4 ${active ? 'flex' : 'hidden'}`}>
+    <section aria-label={t('editor.chat.title')} className={`min-h-0 flex-1 flex-col gap-3.5 px-4 pt-2 pb-4 ${active ? 'flex' : 'hidden'}`}>
       <div className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto" aria-live="polite">
         {messages.length === 0 && !pending && (
           <p className="m-0 rounded-xl bg-canvas px-3 py-2.5 text-[13px] text-muted">
-            Akışta neyi değiştirmek istediğini yaz. Örneğin "Eşiği 3 saate indir, Teams'e de gönderilsin". Öneriyi tuvalde fark olarak göreceksin; Uygula demeden hiçbir şey değişmez.
+            {t('editor.chat.empty')}
           </p>
         )}
         {[...messages, ...(pending ? [pending] : [])].map((message) => (
@@ -152,23 +153,23 @@ export function ChatPanel({ conversationId, previewId, onPreview, onApply, onRej
       >
         {chip && (
           <span className="flex max-w-full items-center gap-1 self-start rounded-lg bg-brand-soft py-1 pr-1 pl-2 text-xs font-semibold text-brand-fg">
-            <span className="truncate">Seçili: {chip.title}</span>
-            <button type="button" aria-label="Seçili blok bağlamını kaldır" onClick={() => setDismissedId(chip.id)} className="flex size-5 items-center justify-center rounded hover:bg-surface/60">
+            <span className="truncate">{t('editor.chat.selected', { title: chip.title })}</span>
+            <button type="button" aria-label={t('editor.chat.remove_selected')} onClick={() => setDismissedId(chip.id)} className="flex size-5 items-center justify-center rounded hover:bg-surface/60">
               <CloseIcon width={12} height={12} />
             </button>
           </span>
         )}
         <VoiceHint fromVoice={voice.fromVoice} countdown={voice.countdown} />
         <label className="flex">
-          <span className="sr-only">Mesaj</span>
-          <input ref={input} value={text} onChange={(e) => setText(e.target.value)} placeholder="Akışta neyi değiştirelim?" className="h-9 flex-1 border-0 px-1.5 text-sm outline-none" />
+          <span className="sr-only">{t('editor.chat.message')}</span>
+          <input ref={input} value={text} onChange={(e) => setText(e.target.value)} placeholder={t('editor.chat.placeholder')} className="h-9 flex-1 border-0 px-1.5 text-sm outline-none" />
         </label>
         <div className="flex items-center justify-between gap-2">
           <span className="text-xs font-semibold text-faint">
-            Bu sohbet · {tokens(usage?.tokens ?? 0)} token · {money(usage?.cost_usd ?? 0)}
+            {t('editor.chat.usage', { tokens: tokens(usage?.tokens ?? 0), cost: money(usage?.cost_usd ?? 0) })}
           </span>
           <MicButton onText={voice.receive} pushToTalk onStart={onActivate} className="ml-auto" />
-          <button type="submit" aria-label="Gönder" disabled={stream !== null} className="flex size-[34px] items-center justify-center rounded-[10px] bg-brand text-on-brand disabled:opacity-50">
+          <button type="submit" aria-label={t('editor.chat.send')} disabled={stream !== null} className="flex size-[34px] items-center justify-center rounded-[10px] bg-brand text-on-brand disabled:opacity-50">
             <SendIcon />
           </button>
         </div>
@@ -177,7 +178,7 @@ export function ChatPanel({ conversationId, previewId, onPreview, onApply, onRej
   )
 }
 
-const STATUS_TEXT = { applied: 'Uygulandı', rejected: 'Geri alındı' } as const
+const STATUS_TEXT = { applied: 'editor.proposal.applied', rejected: 'editor.proposal.rejected' } as const
 
 function ProposalView({ card, previewing, onPreview, onApply, onReject }: { card: ProposalCard; previewing: boolean; onPreview: () => void; onApply: () => Promise<void>; onReject: () => Promise<void> }) {
   const proposal = useQuery({ queryKey: ['proposal', card.proposal_id], queryFn: () => editorApi.proposal(card.proposal_id) })
@@ -205,7 +206,7 @@ function ProposalView({ card, previewing, onPreview, onApply, onReject }: { card
     }
   }
 
-  const label = { added: ['Eklendi', 'bg-ok-soft', 'text-ok'], changed: ['Değişti', 'bg-warn-soft', 'text-warn'], removed: ['Silindi', 'bg-bad-soft', 'text-bad'] } as const
+  const label = { added: [t('editor.proposal.added'), 'bg-ok-soft', 'text-ok'], changed: [t('editor.proposal.changed'), 'bg-warn-soft', 'text-warn'], removed: [t('editor.proposal.removed'), 'bg-bad-soft', 'text-bad'] } as const
 
   return (
     <div className="flex gap-2.5">
@@ -226,22 +227,22 @@ function ProposalView({ card, previewing, onPreview, onApply, onReject }: { card
           </ul>
         )}
         {proposal.data && proposal.data.missing_secrets.length > 0 && (
-          <span className="text-xs text-warn">Tanımlı olmayan secret: {proposal.data.missing_secrets.join(', ')} (yayınlamadan önce eklenmeli)</span>
+          <span className="text-xs text-warn">{t('editor.proposal.missing_secrets', { names: proposal.data.missing_secrets.join(', ') })}</span>
         )}
         {card.status === 'pending' ? (
           <div className="flex flex-wrap gap-2">
             <button type="button" disabled={busy} onClick={() => run(onApply)} className="h-[38px] rounded-[10px] bg-ink px-4 text-[13px] font-bold text-bg disabled:opacity-60">
-              Uygula
+              {t('editor.proposal.apply')}
             </button>
             <button type="button" disabled={busy} onClick={() => run(onReject)} className="h-[38px] rounded-[10px] border border-line bg-surface px-4 text-[13px] font-bold">
-              Geri al
+              {t('editor.proposal.reject')}
             </button>
             <button type="button" aria-pressed={previewing} onClick={onPreview} className="h-[38px] rounded-[10px] px-2 text-[13px] font-bold text-brand-fg underline-offset-2 hover:underline">
-              {previewing ? 'Farkı gizle' : 'Tuvalde göster'}
+              {previewing ? t('editor.proposal.hide_diff') : t('editor.proposal.show_diff')}
             </button>
           </div>
         ) : (
-          <span className="text-xs font-bold text-muted">{card.status ? STATUS_TEXT[card.status] : ''}</span>
+          <span className="text-xs font-bold text-muted">{card.status ? t(STATUS_TEXT[card.status]) : ''}</span>
         )}
         {error && <span role="alert" className="text-xs text-bad">{error}</span>}
       </div>

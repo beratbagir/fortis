@@ -12,12 +12,16 @@ use Illuminate\Support\Str;
 /**
  * Sohbette üretilen bir arayüz, diyagram veya belge. id: art_<ulid>. İçerik sürümlerde (artifact_versions).
  */
-#[Fillable(['user_id', 'conversation_id', 'message_id', 'title', 'kind', 'latest_version'])]
+#[Fillable(['user_id', 'conversation_id', 'message_id', 'title', 'description', 'kind', 'latest_version'])]
 class Artifact extends Model
 {
     use HasOwner;
 
+    /** create_artifact türleri (veri içermeyen tasarım ve belgeler). */
     public const KINDS = ['html', 'svg', 'mermaid', 'markdown'];
+
+    /** create_page: şirket verisiyle çalışan HTML sayfa (pano, rapor); veri sunucudan enjekte edilir. */
+    public const PAGE = 'page';
 
     public $incrementing = false;
 

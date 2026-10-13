@@ -1,3 +1,5 @@
+import { intlLocale } from '../i18n'
+
 /** Zamanlama seçicisi: gün/saat seçimi ↔ cron. Seçiciye uymayan ifadeler "gelişmiş" olarak düzenlenir. */
 export type ScheduleMode = 'daily' | 'weekdays' | 'weekly' | 'custom'
 
@@ -9,7 +11,8 @@ export interface ScheduleParts {
   time: string
 }
 
-export const WEEK_DAYS = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi']
+/** Gün adları (0 = pazar), arayüz dilinde. 4 Ocak 2026 bir pazar günü. */
+export const weekDays = () => Array.from({ length: 7 }, (_, i) => new Date(2026, 0, 4 + i).toLocaleDateString(intlLocale(), { weekday: 'long' }))
 
 const pad = (n: number) => String(n).padStart(2, '0')
 

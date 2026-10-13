@@ -5,7 +5,7 @@ import type { BudgetsData, UsageReportData } from '../api'
 import { Budgets } from './Budgets'
 import { GovernanceUsageView } from './Usage'
 
-const empty = { chat: 0, agent: 0, title: 0, evaluation: 0, eval: 0, flow: 0 }
+const empty = { chat: 0, agent: 0, page: 0, title: 0, evaluation: 0, eval: 0, flow: 0 }
 
 const report = (credit: number | null): UsageReportData => ({
   range: { from: '2026-10-01', to: '2026-10-13' },

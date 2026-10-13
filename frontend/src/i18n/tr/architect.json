@@ -1,0 +1,9 @@
+{
+  "architect.step.trigger": "TETİKLEYİCİ",
+  "architect.step.read": "OKU",
+  "architect.step.lookup": "ARA",
+  "architect.step.decide": "KARAR",
+  "architect.step.draft": "TASLAK",
+  "architect.step.approve": "ONAY",
+  "architect.step.act": "GÖNDER"
+}

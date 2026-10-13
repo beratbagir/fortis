@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { ChartSpec, Message } from '../api'
 import { AnswerView } from './AnswerView'
 import { liveText, copyText } from './answerText'
-import { chartCsv, formatDate, formatValue, niceTicks, seriesColors } from './chartFormat'
+import { chartCsv, endLabelOffsets, endLabelText, formatDate, formatValue, niceTicks, seriesColors } from './chartFormat'
 
 // jsdom'da boyut yok: ResponsiveContainer yerine sabit boyutlu çizim.
 vi.mock('recharts', async (importOriginal) => {
@@ -106,7 +106,11 @@ describe('sohbet grafikleri', () => {
     fireEvent.click(within(card).getByRole('button', { name: 'Tablo' }))
     const table = within(card).getByRole('table')
     expect(within(table).getByText('1.250 adet')).toBeInTheDocument()
-    expect(within(table).getAllByRole('columnheader').map((h) => h.textContent)).toEqual(['Meydan', 'Tarifeli', 'Charter'])
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((h) => h.textContent),
+    ).toEqual(['Meydan', 'Tarifeli', 'Charter'])
   })
 
   it('geçersiz veya doğrulanamayan grafikte veri yok, not var', () => {
@@ -139,6 +143,24 @@ describe('sohbet grafikleri', () => {
     expect(niceTicks(line)).toEqual([0, 20, 40, 60, 80, 100])
     expect(niceTicks(bar)).toEqual([0, 250, 500, 750, 1000, 1250])
     expect(niceTicks({ ...bar, type: 'stacked_bar' }, true)).toEqual([0, 250, 500, 750, 1000, 1250])
+  })
+
+  it('çizgi sonu etiketleri üst üste binmez, uzun ad kısalır', () => {
+    const close: ChartSpec = {
+      ...line,
+      y: { unit: 'adet', label: null, min: 0 },
+      series: [
+        { name: 'Check-in', field: 'checkin' },
+        { name: 'Uçağa biniş', field: 'boarded' },
+      ],
+      data: [{ date: '2026-10-12', checkin: 8150, boarded: 7900 }],
+    }
+    const offsets = endLabelOffsets(close, new Set(), [0, 12500], 200)
+    const y = (name: string, value: number) => (1 - value / 12500) * 200 + offsets.get(name)!
+    expect(y('Uçağa biniş', 7900) - y('Check-in', 8150)).toBeGreaterThanOrEqual(13)
+    // Gizlenen seri yer kaplamaz.
+    expect(endLabelOffsets(close, new Set(['Check-in']), [0, 12500], 200).get('Uçağa biniş')).toBe(0)
+    expect(endLabelText('Uçağa binen yolcu sayısı (tarifeli)')).toBe('Uçağa binen yolcu…')
   })
 
   it('akan metinde ve kopyalamada blok gizlenir', () => {

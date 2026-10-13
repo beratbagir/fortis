@@ -114,7 +114,9 @@ class ClaudeChat
     {
         $this->tools->startTurn($conversation);
         $this->dataQuestion = false;
-        $this->clock = PromptClock::block();
+        // Cevap dili: kullanıcının tercihi (agent çalışmasında sahibi), yoksa geçerli dil.
+        $locale = (auth()->user() ?? $conversation->user)?->locale ?? app()->getLocale();
+        $this->clock = PromptClock::block()."\n\n".PromptClock::language($locale);
         $this->trace = new AnswerTrace($emit, auth()->user());
 
         // Soru kartının cevabıyla devam: önceki adımlar ve sorgular bu cevabın parçası.
@@ -123,6 +125,7 @@ class ClaudeChat
             && ! $conversation->messages()->where('id', '>', $asked->id)->where('role', Message::ROLE_ASSISTANT)->exists()) {
             $this->trace->resume($asked->meta['answer']);
             $this->dataQuestion = $this->trace->queries() !== [];
+            $this->tools->rememberQueries($this->trace->queries());
         } else {
             $this->trace->scope($this->scopeSources($conversation));
         }
@@ -524,6 +527,8 @@ class ClaudeChat
             'stop_reason' => $response->stopReason,
             'request_id' => $response->id,
             'agent_run_id' => $this->agent?->run->id,
+            // Sayfa üretimi ayrı amaçla kaydedilir (Kullanım ekranında "Sayfa"); diğerleri varsayılan 'chat'.
+            ...(collect($response->content)->contains(fn ($block) => ($block->type ?? null) === 'tool_use' && ($block->name ?? null) === 'create_page') ? ['purpose' => AiCall::PURPOSE_PAGE] : []),
         ]);
     }
 

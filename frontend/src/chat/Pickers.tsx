@@ -4,6 +4,7 @@ import { api, type ConnectorStatus } from '../api'
 import { usageApi } from '../editor/api'
 import { DATA_SOURCES } from './chatUtils'
 import { ChevronIcon, LockIcon, SearchIcon, SlidersIcon, SparkIcon } from '../ui/icons'
+import { intlLocale, t } from '../i18n'
 
 /** Dışarı tıklayınca veya Esc ile kapanan açılır panel. Buton ekranın alt yarısındaysa yukarı açılır. */
 function Popover({ open, onClose, children, label, align = 'right' }: { open: boolean; onClose: () => void; children: ReactNode; label: string; align?: 'left' | 'right' }) {
@@ -48,7 +49,7 @@ export function ModelPicker({ value, onChange }: { value: string; onChange: (mod
   const [search, setSearch] = useState('')
   const settings = useQuery({ queryKey: ['ai-settings'], queryFn: usageApi.settings, staleTime: 60_000 })
   const models = settings.data?.models ?? []
-  const filtered = models.filter((m) => `${m.label} ${m.strength ?? ''}`.toLocaleLowerCase('tr').includes(search.toLocaleLowerCase('tr')))
+  const filtered = models.filter((m) => `${m.label} ${m.strength ?? ''}`.toLocaleLowerCase(intlLocale()).includes(search.toLocaleLowerCase(intlLocale())))
   const current = value === 'auto' ? 'Auto' : (models.find((m) => m.id === value)?.label.replace('Claude ', '') ?? value)
 
   const choose = (model: string) => {
@@ -62,11 +63,11 @@ export function ModelPicker({ value, onChange }: { value: string; onChange: (mod
         {current}
         <ChevronIcon open={open} width={12} height={12} />
       </button>
-      <Popover open={open} onClose={() => setOpen(false)} label="Model seçimi">
+      <Popover open={open} onClose={() => setOpen(false)} label={t('chat.model.picker')}>
         <div className="flex w-[min(420px,calc(100vw-48px))] flex-col">
           <label className="m-2 flex items-center gap-2 rounded-lg bg-canvas px-2.5 py-1.5 text-muted">
             <SearchIcon width={14} height={14} />
-            <input autoFocus value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Model ara…" aria-label="Model ara" className="flex-1 bg-transparent text-[13px] text-ink outline-none" />
+            <input autoFocus value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('chat.model.search_placeholder')} aria-label={t('chat.model.search')} className="flex-1 bg-transparent text-[13px] text-ink outline-none" />
           </label>
           <button
             type="button"
@@ -76,8 +77,8 @@ export function ModelPicker({ value, onChange }: { value: string; onChange: (mod
           >
             <SparkIcon className="text-brand-fg" />
             <span className="font-medium text-ink">Auto</span>
-            <span className="flex-1 truncate text-xs text-muted">Her adım için uygun modeli seçer</span>
-            {value === 'auto' && <span className="font-mono text-[11px] text-brand-fg">Seçili</span>}
+            <span className="flex-1 truncate text-xs text-muted">{t('chat.model.auto_hint')}</span>
+            {value === 'auto' && <span className="font-mono text-[11px] text-brand-fg">{t('chat.model.selected')}</span>}
           </button>
           <div className="mt-2 grid grid-cols-[140px_1fr] border-t border-line">
             <div className="border-r border-line p-2">
@@ -97,7 +98,7 @@ export function ModelPicker({ value, onChange }: { value: string; onChange: (mod
                   </button>
                 </li>
               ))}
-              {filtered.length === 0 && <li className="px-2 py-1.5 text-xs text-muted">Eşleşen model yok.</li>}
+              {filtered.length === 0 && <li className="px-2 py-1.5 text-xs text-muted">{t('chat.model.no_match')}</li>}
             </ul>
           </div>
           {settings.data?.policy_note && (
@@ -113,7 +114,7 @@ export function ModelPicker({ value, onChange }: { value: string; onChange: (mod
 }
 
 
-const STATUS_TEXT: Record<ConnectorStatus['status'], string> = { connected: 'Bağlı', attention: 'Dikkat', not_configured: 'Kurulum bekliyor', disabled: 'Yönetici kapattı' }
+const statusText = (status: ConnectorStatus['status']) => t(`chat.source.status.${status}`)
 
 export function SourcePicker({ disabled, onChange }: { disabled: string[]; onChange: (disabled: string[]) => void }) {
   const [open, setOpen] = useState(false)
@@ -128,9 +129,9 @@ export function SourcePicker({ disabled, onChange }: { disabled: string[]; onCha
     <div className="relative">
       <button type="button" aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen((o) => !o)} className="flex h-7 items-center gap-1.5 rounded-md px-2 text-xs text-muted hover:bg-raised hover:text-ink">
         <SlidersIcon />
-        {active} kaynak
+        {t('chat.sources_count', { count: active })}
       </button>
-      <Popover open={open} onClose={() => setOpen(false)} label="Kaynaklar" align="left">
+      <Popover open={open} onClose={() => setOpen(false)} label={t('chat.sources')} align="left">
         <ul className="m-0 flex w-64 list-none flex-col gap-0.5 p-2">
           {sources.map((c) => {
             const configured = c.status !== 'not_configured' && c.status !== 'disabled'
@@ -140,15 +141,15 @@ export function SourcePicker({ disabled, onChange }: { disabled: string[]; onCha
                   <input type="checkbox" disabled={!configured} checked={configured && !disabled.includes(c.key)} onChange={() => toggle(c.key)} className="accent-[var(--brand)]" />
                   <span className="flex-1 text-ink">{c.label}</span>
                   <span className={`text-[11px] ${c.status === 'connected' ? 'text-ok' : c.status === 'attention' ? 'text-warn' : 'text-faint'}`} title={c.detail ?? undefined}>
-                    {STATUS_TEXT[c.status]}
+                    {statusText(c.status)}
                   </span>
                 </label>
               </li>
             )
           })}
-          {sources.length === 0 && <li className="px-2 py-1.5 text-xs text-muted">Yükleniyor…</li>}
+          {sources.length === 0 && <li className="px-2 py-1.5 text-xs text-muted">{t('app.loading')}</li>}
         </ul>
-        <p className="m-0 border-t border-line px-3 py-2 text-[11px] text-muted">Kapatılan kaynak bu sohbette kullanılmaz.</p>
+        <p className="m-0 border-t border-line px-3 py-2 text-[11px] text-muted">{t('chat.source.off_note')}</p>
       </Popover>
     </div>
   )

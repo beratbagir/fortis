@@ -1,4 +1,5 @@
 import type { Node } from '@xyflow/react'
+import { getLocale, t } from '../i18n'
 import type { BlockDef, DiffMark, EditError, FlowGraph, GraphNode, InsertPoint } from './types'
 
 // Ölçüler BlockNode'daki sabit yüksekliklerle aynı olmalı (kart: 14 dolgu, 38 başlık, satır başına 33 + 6 boşluk).
@@ -61,7 +62,7 @@ const samePoint = (a: InsertPoint | null | undefined, b: InsertPoint) =>
 /** Kartta gösterilen en fazla üç ayar: şemadaki sırayla, boş olmayanlar. */
 export function cardFields(node: GraphNode, def: BlockDef | undefined): CardField[] {
   if (node.readonly) {
-    return [{ k: 'Tür', v: node.raw_type?.split('.').slice(-2).join('.') ?? 'bilinmiyor' }]
+    return [{ k: t('editor.layout.type'), v: node.raw_type?.split('.').slice(-2).join('.') ?? t('editor.layout.unknown') }]
   }
 
   const props = def?.settings_schema.properties ?? {}
@@ -203,7 +204,7 @@ export function layoutGraph(graph: FlowGraph, options: LayoutOptions): Node[] {
       branches.forEach((branch, i) => {
         const bcx = x + measured[i].w / 2
         if (branches.length > 1) branchLabels.push({ key: branch.key, label: branch.label, x: bcx - left, y: header + GROUP_PAD })
-        placeList(branch.list, node.id, branch.key, bcx, top, `"${node.title ?? node.id}" ${branch.label ? branch.label.toLocaleLowerCase('tr') + ' dalının' : 'içinin'}`)
+        placeList(branch.list, node.id, branch.key, bcx, top, branch.label ? t('editor.layout.where_branch', { title: node.title ?? node.id, branch: branch.label.toLocaleLowerCase(getLocale()) }) : t('editor.layout.where_inner', { title: node.title ?? node.id }))
         x += measured[i].w + BRANCH_GAP
       })
     }
@@ -211,14 +212,14 @@ export function layoutGraph(graph: FlowGraph, options: LayoutOptions): Node[] {
 
   const placeList = (list: GraphNode[], parentId: string | null, branch: string, cx: number, y: number, where: string) => {
     let cursor = y
-    slot({ parentId, branch, afterId: null }, cx, cursor, `${where} başına blok ekle`)
+    slot({ parentId, branch, afterId: null }, cx, cursor, t('editor.layout.add_at_start', { where }))
     cursor += SLOT_H
 
     for (const node of list) {
       placeBlock(node, cx, cursor)
       cursor += measure(node).h
       if (node.id && marks.get(node.id) !== 'removed') {
-        slot({ parentId, branch, afterId: node.id }, cx, cursor, `"${node.title ?? node.id}" adımından sonra blok ekle`)
+        slot({ parentId, branch, afterId: node.id }, cx, cursor, t('editor.layout.add_after', { title: node.title ?? node.id }))
       }
       cursor += SLOT_H
     }
@@ -229,7 +230,7 @@ export function layoutGraph(graph: FlowGraph, options: LayoutOptions): Node[] {
   // Tetikleyiciler
   let y = 0
   if (graph.triggers.length === 0) {
-    nodes.push({ id: 'label:manual', type: 'label', position: { x: -BLOCK_W / 2, y }, width: BLOCK_W, height: 40, draggable: false, selectable: false, data: { text: 'Tetikleyici yok · elle veya testle çalışır' } })
+    nodes.push({ id: 'label:manual', type: 'label', position: { x: -BLOCK_W / 2, y }, width: BLOCK_W, height: 40, draggable: false, selectable: false, data: { text: t('editor.layout.no_trigger') } })
     y += 40
   }
   graph.triggers.forEach((trigger, i) => {
@@ -238,14 +239,14 @@ export function layoutGraph(graph: FlowGraph, options: LayoutOptions): Node[] {
     y += measure(trigger).h
   })
 
-  y = placeList(graph.tasks, null, 'tasks', 0, y, 'Akışın')
+  y = placeList(graph.tasks, null, 'tasks', 0, y, t('editor.layout.where_flow'))
 
-  for (const [list, text] of [['errors', 'Hata olursa'], ['finally', 'Her durumda en sonda']] as const) {
+  for (const [list, text] of [['errors', t('editor.layout.errors')], ['finally', t('editor.layout.finally')]] as const) {
     if (graph[list].length === 0) continue
     y += 20
     nodes.push({ id: `label:${list}`, type: 'label', position: { x: -BLOCK_W / 2, y }, width: BLOCK_W, height: SECTION_LABEL_H, draggable: false, selectable: false, data: { text } })
     y += SECTION_LABEL_H
-    y = placeList(graph[list], null, list, 0, y, `"${text}" bölümünün`)
+    y = placeList(graph[list], null, list, 0, y, t('editor.layout.where_section', { section: text }))
   }
 
   // React Flow sürüklenemeyen/seçilemeyen düğümlerde tıklamayı kapatır; düğümlerdeki düğmeler çalışsın.

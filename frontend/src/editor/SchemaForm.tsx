@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 import { useId } from 'react'
 import type { JsonSchema, Settings } from './types'
 
@@ -39,7 +40,7 @@ function Field({ name, schema, value, required, readOnly, onChange }: FieldProps
   const label = (
     <label htmlFor={id} className="text-[13px] font-bold text-ink-2">
       {schema.title ?? name}
-      {required && <span className="font-semibold text-muted"> (zorunlu)</span>}
+      {required && <span className="font-semibold text-muted"> {t('editor.form.required')}</span>}
     </label>
   )
   const description = schema.description && (
@@ -77,7 +78,7 @@ function Field({ name, schema, value, required, readOnly, onChange }: FieldProps
       {label}
       {schema.enum ? (
         <select id={id} value={text} disabled={readOnly} aria-describedby={help} onChange={(e) => onChange(e.target.value === '' ? null : e.target.value)} className={`${inputClass} h-10`}>
-          {!required && <option value="">{schema.default ? `Varsayılan (${labelOf(schema, String(schema.default))})` : 'Varsayılan'}</option>}
+          {!required && <option value="">{schema.default ? t('editor.form.default_value', { value: labelOf(schema, String(schema.default)) }) : t('editor.form.default')}</option>}
           {schema.enum.map((option) => (
             <option key={option} value={option}>
               {labelOf(schema, option)}
@@ -115,10 +116,10 @@ function KeyValueEditor({ value, onChange, readOnly, label }: { value: Record<st
     <div className="flex flex-col gap-1.5">
       {entries.map(([k, v], i) => (
         <div key={i} className="flex gap-1.5">
-          <input aria-label={`${label}: ${i + 1}. anahtar`} value={k} readOnly={readOnly} onChange={(e) => update(i, e.target.value, v)} className={`${fieldClass} h-9 w-2/5 min-w-0 shrink-0 font-mono text-xs`} />
-          <input aria-label={`${label}: ${k || i + 1} değeri`} value={v} readOnly={readOnly} onChange={(e) => update(i, k, e.target.value)} className={`${fieldClass} h-9 min-w-0 flex-1 font-mono text-xs`} />
+          <input aria-label={t('editor.form.key', { label, n: i + 1 })} value={k} readOnly={readOnly} onChange={(e) => update(i, e.target.value, v)} className={`${fieldClass} h-9 w-2/5 min-w-0 shrink-0 font-mono text-xs`} />
+          <input aria-label={t('editor.form.value', { label, key: k || i + 1 })} value={v} readOnly={readOnly} onChange={(e) => update(i, k, e.target.value)} className={`${fieldClass} h-9 min-w-0 flex-1 font-mono text-xs`} />
           {!readOnly && (
-            <button type="button" aria-label={`${k || i + 1} parametresini kaldır`} onClick={() => onChange(Object.fromEntries(entries.filter((_, j) => j !== i)))} className="h-9 w-9 shrink-0 rounded-xl border border-line text-faint hover:text-bad">
+            <button type="button" aria-label={t('editor.form.remove_param', { key: k || i + 1 })} onClick={() => onChange(Object.fromEntries(entries.filter((_, j) => j !== i)))} className="h-9 w-9 shrink-0 rounded-xl border border-line text-faint hover:text-bad">
               ×
             </button>
           )}
@@ -126,7 +127,7 @@ function KeyValueEditor({ value, onChange, readOnly, label }: { value: Record<st
       ))}
       {!readOnly && (
         <button type="button" onClick={() => onChange({ ...value, [entries.some(([k]) => k === '') ? `param_${entries.length + 1}` : '']: '' })} className="h-9 self-start rounded-xl border border-line px-3 text-xs font-bold text-ink hover:bg-canvas">
-          Parametre ekle
+          {t('editor.form.add_param')}
         </button>
       )}
     </div>

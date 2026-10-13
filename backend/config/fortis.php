@@ -10,8 +10,8 @@ return [
     // İlk kurulumda (db:seed) oluşturulan admin. Şifre konsola yazılır, ilk girişte değiştirilmesi istenir.
     'admin_email' => env('FORTIS_ADMIN_EMAIL'),
 
-    // Arayüz dilleri. Seçili dil: config('app.locale').
-    'locales' => ['tr', 'en'],
+    // Arayüz dilleri. Varsayılan config('app.locale') (en); her kullanıcı kendi dilini seçer (users.locale).
+    'locales' => ['en', 'tr'],
 
     'login' => [
         // Bu kadar hatalı denemeden sonra e-posta + IP için kilit.

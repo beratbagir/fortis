@@ -24,6 +24,7 @@ class Policies
         'default_model' => AppSettings::DEFAULT_MODEL,
         'data_question_model' => AppSettings::DATA_QUESTION_MODEL,
         'fast_model' => AppSettings::FAST_MODEL,
+        'page_model' => AppSettings::PAGE_MODEL,
         'budget_blocks_flow_ai_steps' => AppSettings::BLOCKS_FLOW_AI_STEPS,
         'allow_external_recipients' => AppSettings::ALLOW_EXTERNAL_RECIPIENTS,
         'allowed_recipient_domains' => AppSettings::RECIPIENT_DOMAINS,
@@ -44,6 +45,7 @@ class Policies
             'default_model' => $this->settings->defaultModel(),
             'data_question_model' => $this->settings->dataQuestionModel(),
             'fast_model' => $this->settings->fastModel(),
+            'page_model' => $this->settings->pageModel(),
             'budget_blocks_flow_ai_steps' => $this->settings->blocksFlowAiSteps(),
             'allow_external_recipients' => $this->settings->allowExternalRecipients(),
             'allowed_recipient_domains' => $this->settings->recipientDomains(),
@@ -84,6 +86,7 @@ class Policies
             'default_model' => ['sometimes', 'string', Rule::in($catalog)],
             'data_question_model' => ['sometimes', 'string', Rule::in($catalog)],
             'fast_model' => ['sometimes', 'string', Rule::in($catalog)],
+            'page_model' => ['sometimes', 'string', Rule::in($catalog)],
             'budget_blocks_flow_ai_steps' => ['sometimes', 'boolean'],
             'allow_external_recipients' => ['sometimes', 'boolean'],
             'allowed_recipient_domains' => ['sometimes', 'array', 'min:1', 'max:20'],
@@ -99,7 +102,7 @@ class Policies
 
         // Seçili modeller izinli listede olmalı (liste değişiyorsa yenisine göre).
         $allowed = $validated['allowed_models'] ?? array_keys($this->settings->models());
-        foreach (['default_model' => 'Genel varsayılan model', 'data_question_model' => 'Veri sorusu modeli', 'fast_model' => 'Hızlı model'] as $field => $label) {
+        foreach (['default_model' => 'Genel varsayılan model', 'data_question_model' => 'Veri sorusu modeli', 'fast_model' => 'Hızlı model', 'page_model' => 'Sayfa modeli'] as $field => $label) {
             $model = $validated[$field] ?? $this->values()[$field];
             if (! in_array($model, $allowed, true) && ($field === 'default_model' || array_key_exists($field, $validated))) {
                 throw ValidationException::withMessages([$field => "{$label} izinli modellerden biri olmalı."]);

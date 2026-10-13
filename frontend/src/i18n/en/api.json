@@ -1,0 +1,5 @@
+{
+  "api.request_failed": "Request failed ({status})",
+  "api.upload_failed": "Upload failed ({status})",
+  "api.send_failed": "Message could not be sent ({status})"
+}

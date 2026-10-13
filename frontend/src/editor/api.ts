@@ -1,4 +1,5 @@
 // Editör, çalışmalar ve kullanım ekranlarının Laravel API'si. React sadece Laravel ile konuşur.
+import { t } from '../i18n'
 import type { Execution, LogLine } from '../api'
 import type { Catalog, EditError, EditorFlow, FlowGraph, Operation } from './types'
 import { apiFetch } from '../http'
@@ -24,7 +25,7 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const json = response.status === 204 ? {} : await response.json().catch(() => ({}))
 
   if (!response.ok) {
-    throw new ApiError(response.status, json.message ?? `İstek başarısız (${response.status})`, json.errors ?? [], json.latest_version ?? null)
+    throw new ApiError(response.status, json.message ?? t('api.request_failed', { status: response.status }), json.errors ?? [], json.latest_version ?? null)
   }
 
   return json as T
