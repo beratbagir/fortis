@@ -1,0 +1,77 @@
+id: city-wind-watch
+namespace: fortis.chat
+description: "Her sabah 08:00'de İstanbul, Ankara ve İzmir için sıcaklık ve rüzgar hızını alır; rüzgar eşiği geçerse ve son değere göre 15 km/s'ten fazla değişirse loglar."
+inputs:
+  - id: wind_threshold
+    type: FLOAT
+    defaults: 40
+tasks:
+  - id: each_city
+    type: io.kestra.plugin.core.flow.ForEach
+    values:
+      - '{"name": "Istanbul", "lat": 41.01, "lon": 28.98}'
+      - '{"name": "Ankara", "lat": 39.93, "lon": 32.86}'
+      - '{"name": "Izmir", "lat": 38.42, "lon": 27.14}'
+    tasks:
+      - id: fetch
+        type: io.kestra.plugin.core.http.Request
+        uri: 'https://api.open-meteo.com/v1/forecast?latitude={{ fromJson(taskrun.value).lat }}&longitude={{ fromJson(taskrun.value).lon }}&current=temperature_2m,wind_speed_10m'
+        method: GET
+        allowFailure: true
+        options:
+          allowFailed: true
+      - id: ok
+        type: io.kestra.plugin.core.flow.If
+        condition: '{{ outputs.fetch[taskrun.value].code is defined and outputs.fetch[taskrun.value].code == 200 }}'
+        then:
+          - id: parse
+            type: io.kestra.plugin.core.output.OutputValues
+            values:
+              temp: "{{ outputs.fetch[parent.taskrun.value].body | jq('.current.temperature_2m') | first }}"
+              wind: "{{ outputs.fetch[parent.taskrun.value].body | jq('.current.wind_speed_10m') | first }}"
+          - id: log_weather
+            type: io.kestra.plugin.core.log.Log
+            message: "{{ fromJson(parent.taskrun.value).name }}: {{ outputs.fetch[parent.taskrun.value].body | jq('.current.temperature_2m') | first }} °C, rüzgar {{ outputs.fetch[parent.taskrun.value].body | jq('.current.wind_speed_10m') | first }} km/s"
+        else:
+          - id: log_error
+            type: io.kestra.plugin.core.log.Log
+            level: ERROR
+            message: '{{ fromJson(parent.taskrun.value).name }} için veri alınamadı; diğer şehirlerle devam ediliyor.'
+      - id: previous
+        type: io.kestra.plugin.core.kv.Get
+        key: 'last_wind_{{ fromJson(taskrun.value).name }}'
+        errorOnMissing: false
+      - id: too_windy
+        type: io.kestra.plugin.core.flow.If
+        condition: '{{ outputs.parse[taskrun.value] is defined and (outputs.parse[taskrun.value].values.wind | number) > inputs.wind_threshold }}'
+        then:
+          - id: log_windy
+            type: io.kestra.plugin.core.log.Log
+            level: WARN
+            message: 'UYARI: {{ fromJson(parent.taskrun.value).name }} rüzgar hızı {{ outputs.parse[parent.taskrun.value].values.wind }} km/s, eşik {{ inputs.wind_threshold }} km/s.'
+          - id: tag_windy
+            type: io.kestra.plugin.core.execution.Labels
+            labels:
+              wind_alert: 'true'
+      - id: big_change
+        type: io.kestra.plugin.core.flow.If
+        condition: '{{ outputs.parse[taskrun.value] is defined and outputs.previous[taskrun.value].value is defined and outputs.previous[taskrun.value].value is not null and (((outputs.parse[taskrun.value].values.wind | number) - (outputs.previous[taskrun.value].value | number)) | abs) > 15 }}'
+        then:
+          - id: log_change
+            type: io.kestra.plugin.core.log.Log
+            level: WARN
+            message: 'DEĞİŞİM: {{ fromJson(parent.taskrun.value).name }} rüzgar {{ outputs.previous[parent.taskrun.value].value }} km/s → {{ outputs.parse[parent.taskrun.value].values.wind }} km/s'
+      - id: remember
+        type: io.kestra.plugin.core.flow.If
+        condition: '{{ outputs.parse[taskrun.value] is defined }}'
+        then:
+          - id: save_wind
+            type: io.kestra.plugin.core.kv.Set
+            key: 'last_wind_{{ fromJson(parent.taskrun.value).name }}'
+            value: '{{ outputs.parse[parent.taskrun.value].values.wind }}'
+            overwrite: true
+triggers:
+  - id: every_morning
+    type: io.kestra.plugin.core.trigger.Schedule
+    cron: '0 8 * * *'
+    timezone: Europe/Istanbul

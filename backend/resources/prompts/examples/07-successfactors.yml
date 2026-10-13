@@ -1,0 +1,33 @@
+# SuccessFactors (İK): hazır istek + jq ile sayım + döngüyle özet.
+id: hr-daily-changes
+namespace: fortis.chat
+description: Her sabah son bir günde değişen çalışan iş kayıtlarını SuccessFactors'tan alır, sayısını ve departmanlarını loglar.
+
+tasks:
+  - id: changed_jobs
+    type: io.kestra.plugin.core.http.Request
+    uri: "https://api55.sapsf.eu/odata/v2/EmpJob?$format=JSON&$expand=jobCodeNav,companyNav,departmentNav&$select=userId,lastModifiedDateTime,company,location,department,jobCode,jobCodeNav/name,companyNav/name,departmentNav/name&$filter=lastModifiedDateTime%20gt%20datetimeoffset'{{ now() | dateAdd(-1, 'DAYS') | date('yyyy-MM-dd') }}T00:00:00'"
+    method: GET
+    options:
+      auth:
+        type: BASIC
+        username: "{{ secret('SF_USERNAME') }}"
+        password: "{{ secret('SF_PASSWORD') }}"
+
+  - id: log_count
+    type: io.kestra.plugin.core.log.Log
+    message: "Son bir günde değişen iş kaydı: {{ outputs.changed_jobs.body | jq('.d.results | length') | first }}"
+
+  - id: each_change
+    type: io.kestra.plugin.core.flow.ForEach
+    values: "{{ outputs.changed_jobs.body | jq('[.d.results[] | {department: (.departmentNav.name // \"-\"), company: (.companyNav.name // \"-\")}]') | first }}"
+    tasks:
+      - id: log_change
+        type: io.kestra.plugin.core.log.Log
+        message: "{{ fromJson(taskrun.value).company }} / {{ fromJson(taskrun.value).department }}"
+
+triggers:
+  - id: every_morning
+    type: io.kestra.plugin.core.trigger.Schedule
+    cron: "0 7 * * 1-5"
+    timezone: Europe/Istanbul

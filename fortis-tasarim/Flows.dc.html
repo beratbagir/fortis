@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Fortis · Akışlar</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Manrope',system-ui,sans-serif;color:#111827;background:#F5F7FA}
+a{color:#0B2A4A}a:hover{color:#0B2A4A}
+button,input,select{font-family:inherit}
+</style>
+</helmet>
+<div style="min-height: 760px; display: flex; flex-direction: column; background: #F5F7FA">
+
+<header style="display: flex; align-items: center; gap: 10px; padding: 12px 20px; background: #FFFFFF; border-bottom: 1px solid #E4E8EE">
+<div style="width: 28px; height: 28px; border-radius: 7px; background: #111827; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px">F</div>
+<span style="font-weight: 700; font-size: 16px">Fortis</span>
+</header>
+
+<div style="display: flex; flex-wrap: wrap; flex: 1 1 auto">
+<nav aria-label="Ana menü" style="flex: 0 0 200px; padding: 16px 12px; background: #FFFFFF; border-right: 1px solid #E4E8EE; display: flex; flex-direction: column; gap: 4px; font-size: 14px">
+<a href="#" style="padding: 10px 12px; border-radius: 12px; color: #111827; text-decoration: none">Sohbet</a>
+<a href="Flows.dc.html" style="padding: 10px 12px; border-radius: 12px; color: #0B2A4A; background: #E6EDF5; font-weight: 700; text-decoration: none">Akışlar</a>
+<a href="Runs.dc.html" style="padding: 10px 12px; border-radius: 12px; color: #111827; text-decoration: none">Çalışmalar</a>
+<a href="#" style="padding: 10px 12px; border-radius: 12px; color: #111827; text-decoration: none">Veri kaynakları</a>
+<a href="Usage.dc.html" style="padding: 10px 12px; border-radius: 12px; color: #111827; text-decoration: none">Kullanım ve maliyet</a>
+<a href="#" style="padding: 10px 12px; border-radius: 12px; color: #111827; text-decoration: none">Ayarlar</a>
+</nav>
+
+<main style="flex: 999 1 560px; min-width: 0; padding: 28px 32px; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px">
+<h1 style="margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.02em">Akışlar</h1>
+<div style="flex: 1 1 auto"></div>
+<label style="display: flex">
+<span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Akış ara</span>
+<input type="search" placeholder="Akış ara" style="height: 40px; width: 240px; padding: 0 12px; border: 1px solid #D9DFE7; border-radius: 12px; font-size: 14px; background: #FFFFFF">
+</label>
+<button type="button" style="height: 40px; padding: 0 16px; border: 0; border-radius: 12px; background: #0B2A4A; color: #FFFFFF; font-size: 14px; font-weight: 700">Sohbetle yeni akış</button>
+</div>
+
+<div style="overflow-x: auto; background: #FFFFFF; border: 1px solid #E4E8EE; border-radius: 18px">
+<table style="width: 100%; min-width: 860px; border-collapse: collapse; font-size: 14px">
+<thead>
+<tr style="text-align: left; color: #5B6676; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em">
+<th style="padding: 12px 16px; font-weight: 700; border-bottom: 1px solid #E4E8EE">Akış</th>
+<th style="padding: 12px 16px; font-weight: 700; border-bottom: 1px solid #E4E8EE">Durum</th>
+<th style="padding: 12px 16px; font-weight: 700; border-bottom: 1px solid #E4E8EE">Tetikleyici</th>
+<th style="padding: 12px 16px; font-weight: 700; border-bottom: 1px solid #E4E8EE">Kaynaklar</th>
+<th style="padding: 12px 16px; font-weight: 700; border-bottom: 1px solid #E4E8EE">Son çalışma</th>
+<th style="padding: 12px 16px; font-weight: 700; border-bottom: 1px solid #E4E8EE">Bu ay maliyet</th>
+</tr>
+</thead>
+<tbody>
+<sc-for list="{{flows}}" as="f" hint-placeholder-count="5">
+<tr>
+<td style="padding: 14px 16px; border-bottom: 1px solid #EEF2F6"><a href="Main.dc.html" style="color: #111827; font-weight: 700; text-decoration: none">{{f.name}}</a><div style="font-size: 12px; color: #5B6676; font-family: 'JetBrains Mono', monospace">{{f.id}}</div></td>
+<td style="padding: 14px 16px; border-bottom: 1px solid #EEF2F6"><span style="font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 999px; color: {{f.statusColor}}; background: {{f.statusBg}}">{{f.status}}</span></td>
+<td style="padding: 14px 16px; border-bottom: 1px solid #EEF2F6; color: #3F4A5A">{{f.trigger}}</td>
+<td style="padding: 14px 16px; border-bottom: 1px solid #EEF2F6; color: #3F4A5A">{{f.sources}}</td>
+<td style="padding: 14px 16px; border-bottom: 1px solid #EEF2F6; color: #3F4A5A">{{f.last}}</td>
+<td style="padding: 14px 16px; border-bottom: 1px solid #EEF2F6; font-family: 'JetBrains Mono', monospace">{{f.cost}}</td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+<p style="margin: 0; font-size: 13px; color: #5B6676">Örnek veriler. Maliyet, akışın oluşturulması ve düzenlenmesi için yapılan AI çağrıları ile akış içindeki AI adımlarının toplamıdır.</p>
+</main>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const S = {
+      on: ['Yayında', '#157F3B', '#E7F5EC'],
+      draft: ['Taslak', '#5B6676', '#EEF2F6'],
+      off: ['Durduruldu', '#A15C00', '#FFF4E0'],
+      err: ['Hata', '#B42318', '#FDECEA']
+    };
+    const rows = [
+      ['Uzun rötar bildirimi', 'long_delay_notice', 'on', 'Her 15 dk', 'APM · E-posta · Teams', '6 dk önce · başarılı', '$0.42'],
+      ['Departman değişikliği özeti', 'hr_dept_changes_daily', 'on', 'Her gün 08:45', 'SuccessFactors · E-posta', 'Bugün 08:45 · başarılı', '$0.18'],
+      ['İptal edilen uçuşlar raporu', 'cancelled_flights_report', 'err', 'Her gün 07:00', 'APM · Teams', 'Bugün 07:00 · hata', '$0.09'],
+      ['Uçak değişikliği uyarısı', 'aircraft_swap_alert', 'draft', 'Her 10 dk', 'APM', '—', '$0.31'],
+      ['Haftalık rötar özeti (AI)', 'weekly_delay_digest', 'off', 'Pazartesi 09:00', 'IBS · AI adımı · E-posta', '29 Eyl · başarılı', '$1.12']
+    ];
+    return {
+      flows: rows.map((r) => ({ name: r[0], id: r[1], status: S[r[2]][0], statusColor: S[r[2]][1], statusBg: S[r[2]][2], trigger: r[3], sources: r[4], last: r[5], cost: r[6] }))
+    };
+  }
+}
+</script>
+</body>
+</html>

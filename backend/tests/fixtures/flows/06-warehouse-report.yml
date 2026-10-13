@@ -1,0 +1,44 @@
+# Veri ambarı: hazır sorgu + parametreler + sonuçla koşul.
+id: daily-sales-check
+namespace: fortis.chat
+description: Her sabah dünün PNR satış özetini veri ambarından alır, EUR net tutarı eşiğin altındaysa uyarır.
+
+inputs:
+  - id: min_eur
+    type: FLOAT
+    defaults: 50000
+
+tasks:
+  - id: daily_sales
+    type: io.kestra.plugin.jdbc.mysql.Query
+    url: "{{ secret('IBS_JDBC_URL') }}"
+    username: "{{ secret('IBS_DB_USERNAME') }}"
+    password: "{{ secret('IBS_DB_PASSWORD') }}"
+    fetchType: FETCH
+    sql: "SELECT /*+ MAX_EXECUTION_TIME(60000) */ d.actual_date AS tarih, COALESCE(s.currency, 'Bilinmiyor') AS para_birimi, COUNT(*) AS islem_sayisi, ROUND(SUM(s.amount), 2) AS net_tutar FROM ires_fact_pnr_sales s JOIN ires_dim_date d ON d.date_id = s.modified_date_ltc_id WHERE s.modified_date_ltc_id BETWEEN (SELECT date_id FROM ires_dim_date WHERE actual_date = :baslangic) AND (SELECT date_id FROM ires_dim_date WHERE actual_date = :bitis) GROUP BY d.actual_date, para_birimi ORDER BY d.actual_date, para_birimi LIMIT 1000"
+    parameters:
+      baslangic: "{{ now() | dateAdd(-1, 'DAYS') | date('yyyy-MM-dd') }}"
+      bitis: "{{ now() | dateAdd(-1, 'DAYS') | date('yyyy-MM-dd') }}"
+
+  - id: each_currency
+    type: io.kestra.plugin.core.flow.ForEach
+    values: "{{ outputs.daily_sales.rows }}"
+    tasks:
+      - id: log_currency
+        type: io.kestra.plugin.core.log.Log
+        message: "{{ fromJson(taskrun.value).tarih }} {{ fromJson(taskrun.value).para_birimi }}: {{ fromJson(taskrun.value).islem_sayisi }} işlem, net {{ fromJson(taskrun.value).net_tutar }}"
+
+      - id: low_eur
+        type: io.kestra.plugin.core.flow.If
+        condition: "{{ fromJson(taskrun.value).para_birimi == 'EUR' and fromJson(taskrun.value).net_tutar < inputs.min_eur }}"
+        then:
+          - id: log_low
+            type: io.kestra.plugin.core.log.Log
+            level: WARN
+            message: "UYARI: dünkü EUR net satış {{ fromJson(parent.taskrun.value).net_tutar }}, eşik {{ inputs.min_eur }}."
+
+triggers:
+  - id: every_morning
+    type: io.kestra.plugin.core.trigger.Schedule
+    cron: "0 7 * * *"
+    timezone: Europe/Istanbul

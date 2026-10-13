@@ -1,0 +1,9 @@
+.DS_Store
+graphify-out/
+
+# Playwright
+frontend/test-results/
+frontend/playwright-report/
+
+# Gerçek kimlik bilgisi içeren yerel referans dosyaları (git'e girmez)
+success-factor.postman_collection*.json

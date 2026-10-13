@@ -1,0 +1,286 @@
+@import 'tailwindcss';
+
+/*
+ * Fortis Aero tema token'ları. Bütün renkler burada; bileşenlerde sabit renk kodu kullanılmaz.
+ * Değerler tasarım PDF'inden (docs/design/fortis-aero-product-screens.pdf) ölçüldü. Metin token'ları her iki temada
+ * kullanıldıkları yüzeylerde en az 4.5:1 kontrastlı.
+ * Koyu tema: <html data-theme="dark">. Tercih index.html'deki küçük script ile sayfa çizilmeden ayarlanır.
+ */
+:root {
+  color-scheme: light;
+
+  --brand: #b42a3f; /* buton, seçili durum dolgusu */
+  --brand-hover: #9e2236;
+  --brand-fg: #b42a3f; /* bağlantı, vurgulu metin */
+  --brand-soft: #f8e7ea;
+  --brand-tint: #fcf3f4;
+  --on-brand: #ffffff;
+
+  --bg: #ffffff;
+  --bg-subtle: #f7f6f6; /* kenar çubuğu, iç kutular */
+  --surface: #ffffff; /* kart */
+  --surface-raised: #f2f0f0; /* üzerine gelme, seçili satır */
+  --border: #ece9e9;
+  --border-strong: #dcd6d7;
+
+  --text: #150c13;
+  --text-2: #3d3438;
+  --text-muted: #605357;
+  --text-faint: #6b6266;
+
+  --success: #2f6b3f;
+  --success-soft: #e6f2e9;
+  --warning: #8a5300;
+  --warning-soft: #fdf3e1;
+  --danger: #b42318;
+  --danger-soft: #fdecea;
+  --info: #2b4c7e;
+  --info-soft: #e8eef7;
+  --accent: #b24a12;
+  --accent-soft: #fdeadb;
+
+  --inverse: #150c13; /* kod blokları, ipuçları */
+  --on-inverse: #f3edee;
+  --overlay: rgb(21 12 19 / 0.4);
+  --shadow: rgb(21 12 19 / 0.14);
+  --canvas-dot: #ddd7d8;
+  --focus: var(--brand-fg);
+
+  /* Grafik serileri (Kullanım ekranı) */
+  --chart-1: #2b4c7e;
+  --chart-2: #c4651f;
+  --chart-grid: #f2f0f0;
+
+  /* Avatar renkleri */
+  --avatar-crimson: #8e1f31;
+  --avatar-blue: #2b4c7e;
+  --avatar-green: #2f6b3f;
+  --avatar-amber: #8a5300;
+  --avatar-violet: #5b3d8a;
+  --avatar-slate: #4a4245;
+
+  /* Blok ikon tonları (editör): arka plan / yazı */
+  --tone-navy-bg: #e8eef7;
+  --tone-navy-fg: #1f3a63;
+  --tone-teal-bg: #ddf3ee;
+  --tone-teal-fg: #0d6e5e;
+  --tone-blue-bg: #e6eeff;
+  --tone-blue-fg: #2d55c8;
+  --tone-orange-bg: #ffeadb;
+  --tone-orange-fg: #b24a12;
+  --tone-pink-bg: #ffe6f0;
+  --tone-pink-fg: #a8245b;
+  --tone-amber-bg: #fff1d9;
+  --tone-amber-fg: #8a5300;
+  --tone-cyan-bg: #e1f2f7;
+  --tone-cyan-fg: #0e6680;
+  --tone-slate-bg: #f2f0f0;
+  --tone-slate-fg: #3d3438;
+  --tone-rose-bg: #fff0f6;
+  --tone-rose-fg: #a8245b;
+  --tone-green-bg: #e3f6ea;
+  --tone-green-fg: #15703a;
+  --tone-red-bg: #fde8e6;
+  --tone-red-fg: #b42318;
+}
+
+/* Marka rengi koyu zeminde kontrast için açıldı (tasarım notu). */
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --brand: #d2404f;
+  --brand-hover: #e0475e;
+  --brand-fg: #ec6a7c;
+  --brand-soft: #3a1b22;
+  --brand-tint: #2a171c;
+  --on-brand: #ffffff;
+
+  --bg: #1a1216;
+  --bg-subtle: #130c10;
+  --surface: #20171b;
+  --surface-raised: #2a2025;
+  --border: #2f2529;
+  --border-strong: #44383d;
+
+  --text: #f3edee;
+  --text-2: #d9d0d3;
+  --text-muted: #b5a8ac;
+  --text-faint: #a3969b;
+
+  --success: #6dc48a;
+  --success-soft: #16281c;
+  --warning: #d9b54a;
+  --warning-soft: #2a2412;
+  --danger: #f2797a;
+  --danger-soft: #2e151b;
+  --info: #8db2f0;
+  --info-soft: #18233a;
+  --accent: #f0915a;
+  --accent-soft: #2e1d14;
+
+  --inverse: #0d080b;
+  --on-inverse: #f3edee;
+  --overlay: rgb(0 0 0 / 0.6);
+  --shadow: rgb(0 0 0 / 0.5);
+  --canvas-dot: #3a2f33;
+
+  --chart-1: #8db2f0;
+  --chart-2: #f0915a;
+  --chart-grid: #2f2529;
+
+  --avatar-crimson: #a8304a;
+  --avatar-blue: #3a5f96;
+  --avatar-green: #3c7a4d;
+  --avatar-amber: #8f6a12;
+  --avatar-violet: #6e52a0;
+  --avatar-slate: #5a5055;
+
+  --tone-navy-bg: #18233a;
+  --tone-navy-fg: #a9c4f2;
+  --tone-teal-bg: #12302a;
+  --tone-teal-fg: #7fd6c4;
+  --tone-blue-bg: #18213d;
+  --tone-blue-fg: #a3b8f5;
+  --tone-orange-bg: #33200f;
+  --tone-orange-fg: #f2a774;
+  --tone-pink-bg: #341626;
+  --tone-pink-fg: #f19bc0;
+  --tone-amber-bg: #2e2510;
+  --tone-amber-fg: #e5c062;
+  --tone-cyan-bg: #10292f;
+  --tone-cyan-fg: #82cde3;
+  --tone-slate-bg: #2a2025;
+  --tone-slate-fg: #d9d0d3;
+  --tone-rose-bg: #341626;
+  --tone-rose-fg: #f19bc0;
+  --tone-green-bg: #16281c;
+  --tone-green-fg: #7fd09b;
+  --tone-red-bg: #2e151b;
+  --tone-red-fg: #f2797a;
+}
+
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+@theme inline {
+  --font-sans: 'Geist', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Source Serif 4', ui-serif, Georgia, serif;
+  --font-mono: 'Geist Mono', ui-monospace, monospace;
+
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-fg: var(--brand-fg);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-tint: var(--brand-tint);
+  --color-on-brand: var(--on-brand);
+
+  --color-bg: var(--bg);
+  --color-canvas: var(--bg-subtle);
+  --color-surface: var(--surface);
+  --color-raised: var(--surface-raised);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+
+  --color-ink: var(--text);
+  --color-ink-2: var(--text-2);
+  --color-muted: var(--text-muted);
+  --color-faint: var(--text-faint);
+
+  --color-ok: var(--success);
+  --color-ok-soft: var(--success-soft);
+  --color-warn: var(--warning);
+  --color-warn-soft: var(--warning-soft);
+  --color-bad: var(--danger);
+  --color-bad-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+
+  --color-inverse: var(--inverse);
+  --color-on-inverse: var(--on-inverse);
+  --color-overlay: var(--overlay);
+  --color-shadow: var(--shadow);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-bg font-sans text-ink antialiased;
+}
+
+/* Tuvalin noktalı arka planı */
+.dots {
+  background-color: var(--bg-subtle);
+  background-image: radial-gradient(var(--canvas-dot) 1.2px, transparent 1.2px);
+  background-size: 22px 22px;
+}
+
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+}
+
+/* Cevabın sonuç paragrafı: serif, biraz büyük (tasarım sayfa 5) */
+.answer-lead > p:first-child {
+  @apply font-serif text-[17px] leading-relaxed text-ink;
+}
+
+/* Asistan mesajlarındaki markdown */
+.prose-chat {
+  @apply text-[15px] leading-relaxed;
+}
+.prose-chat > * + * {
+  @apply mt-3;
+}
+.prose-chat ul {
+  @apply list-disc space-y-1 pl-5;
+}
+.prose-chat ol {
+  @apply list-decimal space-y-1 pl-5;
+}
+.prose-chat strong {
+  @apply font-semibold;
+}
+.prose-chat a {
+  @apply text-brand-fg underline;
+}
+.prose-chat code {
+  @apply rounded bg-raised px-1 py-0.5 font-mono text-[13px];
+}
+.prose-chat pre {
+  @apply overflow-x-auto rounded-lg bg-inverse p-3 text-on-inverse;
+}
+.prose-chat pre code {
+  @apply bg-transparent p-0 text-on-inverse;
+}
+.prose-chat h1,
+.prose-chat h2,
+.prose-chat h3 {
+  @apply font-semibold;
+}
+.prose-chat .table-scroll {
+  @apply -mx-1 overflow-x-auto px-1;
+}
+.prose-chat table {
+  @apply w-full border-collapse text-sm;
+}
+.prose-chat th,
+.prose-chat td {
+  @apply border border-line px-2 py-1 text-left whitespace-nowrap;
+}
+.prose-chat th {
+  @apply bg-canvas font-semibold;
+}
+/* Markdown'da ---: ile sağa hizalanan sütunlar (sayılar) */
+.prose-chat th[style*='right'],
+.prose-chat td[style*='right'],
+.prose-chat th[align='right'],
+.prose-chat td[align='right'] {
+  @apply text-right font-mono tabular-nums;
+}

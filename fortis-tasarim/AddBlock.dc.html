@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Fortis · Blok ekle</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Manrope',system-ui,sans-serif;color:#111827;background:#F5F7FA}
+a{color:#0B2A4A}a:hover{color:#0B2A4A}
+button,input{font-family:inherit}
+.dots{background-color:#F5F7FA;background-image:radial-gradient(#D5DCE5 1.2px,transparent 1.2px);background-size:22px 22px}
+</style>
+</helmet>
+<div style="min-height: 1140px; display: flex; flex-wrap: wrap; background: #F5F7FA">
+
+<nav aria-label="Ana menü" style="flex: 0 0 72px; padding: 20px 12px; background: #FFFFFF; border-right: 1px solid #E4E8EE; display: flex; flex-direction: column; align-items: center; gap: 10px">
+<div style="width: 32px; height: 32px; border-radius: 10px; background: #0B2A4A; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 16px; margin-bottom: 10px">F</div>
+<a href="Flows.dc.html" aria-label="Akışlar" style="width: 44px; height: 44px; border-radius: 12px; background: #E6EDF5; color: #0B2A4A; display: flex; align-items: center; justify-content: center">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="2"></rect><rect x="14" y="14" width="7" height="7" rx="2"></rect><path d="M6.5 10v4a3 3 0 0 0 3 3H14"></path></svg></a>
+<a href="Runs.dc.html" aria-label="Çalışmalar" style="width: 44px; height: 44px; border-radius: 12px; color: #3F4A5A; display: flex; align-items: center; justify-content: center">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3l14 9-14 9V3z"></path></svg></a>
+<a href="Usage.dc.html" aria-label="Kullanım ve maliyet" style="width: 44px; height: 44px; border-radius: 12px; color: #3F4A5A; display: flex; align-items: center; justify-content: center">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10"></path><path d="M10 20V4"></path><path d="M16 20v-7"></path><path d="M22 20H2"></path></svg></a>
+</nav>
+
+<main class="dots" style="flex: 999 1 520px; min-width: 0; padding: 40px 24px; display: flex; flex-direction: column; align-items: center">
+<div style="align-self: stretch; display: flex; align-items: center; gap: 10px; margin-bottom: 28px">
+<span style="font-size: 18px; font-weight: 800">Uzun rötar bildirimi</span>
+<span style="font-size: 12px; font-weight: 700; color: #8A5300; background: #FFF6E5; padding: 4px 10px; border-radius: 999px">Taslak</span>
+</div>
+
+<sc-for list="{{nodes}}" as="n" hint-placeholder-count="4">
+<div style="display: flex; flex-direction: column; align-items: center">
+<sc-if value="{{n.notFirst}}" hint-placeholder-val="{{ true }}">
+<div style="width: 2px; height: 28px; background: #C5CDD8"></div>
+</sc-if>
+<div style="width: 340px; box-sizing: border-box; background: #FFFFFF; border: 1px solid #E4E8EE; border-radius: 18px; padding: 14px; display: flex; align-items: center; gap: 12px; box-shadow: 0 2px 10px #1118270A">
+<div style="width: 38px; height: 38px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; background: {{n.bg}}; color: {{n.fg}}">{{n.glyph}}</div>
+<div style="display: flex; flex-direction: column; gap: 1px">
+<span style="font-size: 15px; font-weight: 800">{{n.title}}</span>
+<span style="font-size: 12px; font-weight: 600; color: #6E7987">{{n.kind}}</span>
+</div>
+</div>
+</div>
+</sc-for>
+
+<div style="width: 2px; height: 20px; background: #C5CDD8"></div>
+<button type="button" aria-label="Blok ekleniyor" aria-pressed="true" style="width: 34px; height: 34px; border-radius: 999px; border: 0; background: #F26B1D; color: #FFFFFF; font-size: 18px; font-weight: 800; line-height: 1; box-shadow: 0 0 0 6px #FDDCC8">+</button>
+<div style="width: 2px; height: 20px; background: #C5CDD8"></div>
+<div style="width: 340px; height: 74px; box-sizing: border-box; border: 2px dashed #F5A06E; border-radius: 18px; background: #FFF7F1; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #0B2A4A">Yeni blok buraya eklenecek</div>
+</main>
+
+<aside aria-label="Blok ve uygulama kütüphanesi" style="flex: 1 1 420px; max-width: 460px; min-width: 320px; background: #FFFFFF; border-left: 1px solid #E4E8EE; box-shadow: -12px 0 32px #1118270F; display: flex; flex-direction: column">
+
+<div style="padding: 20px 20px 12px; display: flex; flex-direction: column; gap: 14px; border-bottom: 1px solid #E4E8EE">
+<div style="display: flex; align-items: flex-start; gap: 12px">
+<div style="flex: 1 1 auto; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 18px; font-weight: 800">Blok ekle</span>
+<span style="font-size: 13px; font-weight: 600; color: #5B6676">“OCC nöbetçiye e-posta” adımından sonra</span>
+</div>
+<button type="button" aria-label="Kapat" style="width: 36px; height: 36px; border: 1px solid #E4E8EE; border-radius: 10px; background: #FFFFFF; color: #3F4A5A; display: flex; align-items: center; justify-content: center">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg></button>
+</div>
+<label style="display: flex; align-items: center; gap: 8px; height: 42px; padding: 0 12px; border: 1px solid #D9DFE7; border-radius: 12px; background: #FFFFFF">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6E7987" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg>
+<span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Uygulama veya blok ara</span>
+<input type="search" placeholder="Uygulama veya aksiyon ara" style="flex: 1 1 auto; border: 0; height: 38px; font-size: 14px; outline: none">
+</label>
+<div style="display: flex; flex-wrap: wrap; gap: 6px">
+<sc-for list="{{chips}}" as="c" hint-placeholder-count="6">
+<button type="button" style="height: 32px; padding: 0 12px; border-radius: 999px; font-size: 12px; font-weight: 700; border: {{c.border}}; background: {{c.bg}}; color: {{c.fg}}">{{c.label}}</button>
+</sc-for>
+</div>
+</div>
+
+<div style="flex: 1 1 auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 18px">
+
+<section style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 12px; font-weight: 800; color: #6E7987; letter-spacing: 0.04em">BAĞLI UYGULAMALAR</span>
+
+<div style="border: 2px solid #0B2A4A; border-radius: 16px; overflow: hidden">
+<div style="display: flex; align-items: center; gap: 12px; padding: 12px">
+<div style="width: 40px; height: 40px; border-radius: 12px; background: #E6EDF5; color: #0B2A4A; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800">T</div>
+<div style="flex: 1 1 auto; display: flex; flex-direction: column">
+<span style="font-size: 15px; font-weight: 800">Microsoft Teams</span>
+<span style="font-size: 12px; font-weight: 600; color: #15703A">Bağlı · fortis@gozendigital.com</span>
+</div>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3F4A5A" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 15l6-6 6 6"></path></svg>
+</div>
+<div style="display: flex; flex-direction: column; padding: 0 8px 8px; gap: 2px">
+<sc-for list="{{teamsActions}}" as="a" hint-placeholder-count="3">
+<button type="button" style="display: flex; align-items: center; gap: 10px; padding: 10px; border: 0; border-radius: 10px; background: {{a.bg}}; text-align: left">
+<span style="flex: 1 1 auto; display: flex; flex-direction: column; gap: 1px">
+<span style="font-size: 14px; font-weight: 700; color: #111827">{{a.name}}</span>
+<span style="font-size: 12px; font-weight: 500; color: #5B6676">{{a.desc}}</span>
+</span>
+<span style="font-size: 12px; font-weight: 800; color: #0B2A4A">Ekle</span>
+</button>
+</sc-for>
+</div>
+</div>
+
+<sc-for list="{{connected}}" as="app" hint-placeholder-count="4">
+<button type="button" style="display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid #E4E8EE; border-radius: 16px; background: #FFFFFF; text-align: left">
+<div style="width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; background: {{app.bg}}; color: {{app.fg}}">{{app.glyph}}</div>
+<span style="flex: 1 1 auto; display: flex; flex-direction: column">
+<span style="font-size: 15px; font-weight: 800; color: #111827">{{app.name}}</span>
+<span style="font-size: 12px; font-weight: 600; color: #5B6676">{{app.desc}}</span>
+</span>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6E7987" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>
+</button>
+</sc-for>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 12px; font-weight: 800; color: #6E7987; letter-spacing: 0.04em">MANTIK VE AI</span>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+<sc-for list="{{logic}}" as="l" hint-placeholder-count="6">
+<button type="button" style="display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px solid #E4E8EE; border-radius: 14px; background: #FFFFFF; text-align: left">
+<span style="width: 32px; height: 32px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; background: {{l.bg}}; color: {{l.fg}}">{{l.glyph}}</span>
+<span style="font-size: 13px; font-weight: 700; color: #111827">{{l.name}}</span>
+</button>
+</sc-for>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 12px; font-weight: 800; color: #6E7987; letter-spacing: 0.04em">BAĞLANABİLECEK UYGULAMALAR</span>
+<sc-for list="{{available}}" as="app" hint-placeholder-count="4">
+<div style="display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px dashed #D9DFE7; border-radius: 16px; background: #FAFBFC">
+<div style="width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; background: {{app.bg}}; color: {{app.fg}}">{{app.glyph}}</div>
+<div style="flex: 1 1 auto; display: flex; flex-direction: column">
+<span style="font-size: 15px; font-weight: 800">{{app.name}}</span>
+<span style="font-size: 12px; font-weight: 600; color: #5B6676">{{app.desc}}</span>
+</div>
+<button type="button" style="height: 34px; padding: 0 14px; border: 0; border-radius: 10px; background: #111827; color: #FFFFFF; font-size: 13px; font-weight: 700">Bağla</button>
+</div>
+</sc-for>
+<span style="font-size: 12px; font-weight: 600; color: #5B6676; line-height: 1.5">Yeni bir uygulamayı bağlamak yönetici onayı gerektirir. Bağlantı bilgileri Fortis'te şifreli saklanır, akışlarda ve AI'da görünmez.</span>
+</section>
+</div>
+
+<div style="padding: 14px 20px 20px; border-top: 1px solid #E4E8EE; display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 12px; font-weight: 800; color: #0B2A4A">AI'A TARİF ET</span>
+<div style="display: flex; gap: 8px; padding: 8px; border: 1px solid #C9D6E6; border-radius: 14px; background: #FFF7F1">
+<label style="flex: 1 1 auto; display: flex">
+<span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Ne eklensin</span>
+<input type="text" placeholder="Örn. rötar 5 saati geçerse müdüre de mail at" style="flex: 1 1 auto; border: 0; background: transparent; font-size: 14px; outline: none">
+</label>
+<button type="button" style="height: 34px; padding: 0 14px; border: 0; border-radius: 10px; background: #0B2A4A; color: #FFFFFF; font-size: 13px; font-weight: 700">Öner</button>
+</div>
+</div>
+</aside>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1140}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const nodes = [
+      ['ZM', '#E6EDF5', '#0B2A4A', 'Her 15 dakikada', 'Tetikleyici · Zaman'],
+      ['API', '#DDF3EE', '#0D6E5E', 'Rötarlı uçuşları getir', 'Veri · APM'],
+      ['DÖN', '#E6EEFF', '#2D55C8', 'Her uçuş için', 'Döngü'],
+      ['@', '#FFEADB', '#B24A12', 'OCC nöbetçiye e-posta', 'Outlook · E-posta gönder']
+    ].map((n, i) => ({ notFirst: i > 0, glyph: n[0], bg: n[1], fg: n[2], title: n[3], kind: n[4] }));
+    const chips = ['Tümü', 'Microsoft 365', 'Havayolu verisi', 'İK', 'Mantık', 'AI'].map((l, i) => ({
+      label: l,
+      bg: i === 0 ? '#111827' : '#FFFFFF',
+      fg: i === 0 ? '#FFFFFF' : '#3F4A5A',
+      border: i === 0 ? '1px solid #111827' : '1px solid #E4E8EE'
+    }));
+    const teamsActions = [
+      ['Kanala mesaj gönder', 'Bir ekip kanalına metin veya kart', true],
+      ['Kişiye mesaj gönder', 'Birebir sohbet olarak', false],
+      ['Onay kartı gönder', 'Onayla / Reddet butonlu kart, cevabı bekler', false]
+    ].map((a) => ({ name: a[0], desc: a[1], bg: a[2] ? '#EEF3F9' : '#FFFFFF' }));
+    const connected = [
+      ['O', '#E3EEFB', '#1F5FA8', 'Outlook', 'E-posta gönder, takvim etkinliği oluştur'],
+      ['APM', '#DDF3EE', '#0D6E5E', 'APM', 'Uçuşlar, rötarlar, uçak değişiklikleri · salt okunur'],
+      ['IBS', '#E1F2F7', '#0E6680', 'IBS', 'Rezervasyon ve uçuş verisi · salt okunur'],
+      ['SF', '#FFF1D9', '#8A5300', 'SuccessFactors', 'Departman, pozisyon, personel değişiklikleri · salt okunur']
+    ].map((a) => ({ glyph: a[0], bg: a[1], fg: a[2], name: a[3], desc: a[4] }));
+    const logic = [
+      ['IF', 'Koşul', '#E6EEFF', '#2D55C8'], ['DÖN', 'Döngü', '#E6EEFF', '#2D55C8'],
+      ['OK', 'Onay bekle', '#E6EDF5', '#0B2A4A'], ['SA', 'Bekle / gecikme', '#EEF2F6', '#3F4A5A'],
+      ['AI', 'Özetle', '#FFF0F6', '#A8245B'], ['AI', 'Sınıflandır', '#FFF0F6', '#A8245B']
+    ].map((l) => ({ glyph: l[0], name: l[1], bg: l[2], fg: l[3] }));
+    const available = [
+      ['SP', '#E2F4EF', '#0D6E5E', 'SharePoint', 'Dosya kaydet, listeye satır ekle'],
+      ['XL', '#E3F6EA', '#15703A', 'Excel Online', 'Tabloya satır ekle, rapor oluştur'],
+      ['SMS', '#FDE8E6', '#B42318', 'SMS', 'Kısa mesaj gönder (sağlayıcı seçilecek)'],
+      ['JR', '#E6EEFF', '#2D55C8', 'Jira', 'Kayıt (ticket) oluştur']
+    ].map((a) => ({ glyph: a[0], bg: a[1], fg: a[2], name: a[3], desc: a[4] }));
+    return { nodes, chips, teamsActions, connected, logic, available };
+  }
+}
+</script>
+</body>
+</html>

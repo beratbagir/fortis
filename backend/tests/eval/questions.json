@@ -1,0 +1,192 @@
+{
+  "_note": "Faz A1 değerlendirme seti. php artisan fortis:eval ile gerçek modele sorulur (ai.data_access = masked olmalı). expect_tools: beklenen araçlardan en az biri kullanılmalı. expect_no_flow: akış önerilmemeli. expect_flow: akış önerilmeli. expect_table / expect_source: cevapta markdown tablo / 'Kaynak:' satırı olmalı.",
+  "questions": [
+    {
+      "id": "apm-top-delays",
+      "question": "Dün en çok rötar yapan 5 uçuş hangileri?",
+      "expect_tools": [
+        "query_apm"
+      ],
+      "expect_no_flow": true,
+      "expect_table": true,
+      "expect_source": true
+    },
+    {
+      "id": "apm-ayt-delays-week",
+      "question": "AYT'de bu hafta kaç rötar oldu?",
+      "expect_tools": [
+        "query_apm"
+      ],
+      "expect_no_flow": true,
+      "expect_no_table": true,
+      "expect_citation": true
+    },
+    {
+      "id": "apm-cancellations",
+      "question": "Dün iptal edilen uçuş var mı, varsa hangileri?",
+      "expect_tools": [
+        "query_apm"
+      ],
+      "expect_no_flow": true,
+      "expect_source": true
+    },
+    {
+      "id": "apm-delay-codes",
+      "question": "Dünkü rötarlarda en sık görülen rötar kodları neler, ne anlama geliyorlar?",
+      "expect_tools": [
+        "query_apm"
+      ],
+      "expect_no_flow": true,
+      "expect_table": true,
+      "expect_source": true
+    },
+    {
+      "id": "apm-aircraft",
+      "question": "Dün TC-FHB hangi seferleri uçtu?",
+      "expect_tools": [
+        "query_apm"
+      ],
+      "expect_no_flow": true,
+      "expect_source": true
+    },
+    {
+      "id": "apm-otp-ayt",
+      "question": "Dün AYT'den zamanında kalkış oranımız neydi?",
+      "expect_tools": [
+        "query_apm"
+      ],
+      "expect_no_flow": true,
+      "expect_no_table": true,
+      "expect_citation": true
+    },
+    {
+      "id": "apm-fleet",
+      "question": "Filomuzda kaç uçak var, tiplerine göre dağılımı nasıl?",
+      "expect_tools": [
+        "query_apm"
+      ],
+      "expect_no_flow": true,
+      "expect_table": true,
+      "expect_source": true
+    },
+    {
+      "id": "apm-flights-yesterday",
+      "question": "Dün kaç sefer vardı?",
+      "expect_tools": [
+        "query_apm"
+      ],
+      "expect_no_flow": true,
+      "expect_no_table": true,
+      "expect_citation": true
+    },
+    {
+      "id": "apm-cancel-count",
+      "question": "Dün kaç sefer iptal edildi?",
+      "expect_tools": [
+        "query_apm"
+      ],
+      "expect_no_flow": true,
+      "expect_no_table": true,
+      "expect_citation": true
+    },
+    {
+      "id": "ibs-load-factor-week",
+      "question": "Bu hafta AYT çıkışlı uçuşlarda ortalama doluluk nasıl, geçen haftayla karşılaştır.",
+      "expect_tools": [
+        "query_warehouse"
+      ],
+      "expect_no_flow": true,
+      "expect_table": true,
+      "expect_source": true
+    },
+    {
+      "id": "ibs-worst-routes",
+      "question": "Dün yük faktörü en düşük rotalar hangileriydi?",
+      "expect_tools": [
+        "query_warehouse"
+      ],
+      "expect_no_flow": true,
+      "expect_table": true,
+      "expect_source": true
+    },
+    {
+      "id": "ibs-sales-yesterday",
+      "question": "Dün kaç bilet sattık, toplam tutar ne kadar?",
+      "expect_tools": [
+        "query_warehouse"
+      ],
+      "expect_no_flow": true,
+      "expect_no_table": true,
+      "expect_citation": true
+    },
+    {
+      "id": "ibs-channel-mix",
+      "question": "Geçen hafta satışların kanallara göre dağılımı nasıldı?",
+      "expect_tools": [
+        "query_warehouse"
+      ],
+      "expect_no_flow": true,
+      "expect_table": true,
+      "expect_source": true
+    },
+    {
+      "id": "ibs-pax-count",
+      "question": "Yarın AYT'den kaç yolcu uçacak?",
+      "expect_tools": [
+        "query_warehouse"
+      ],
+      "expect_no_flow": true,
+      "expect_no_table": true,
+      "expect_citation": true
+    },
+    {
+      "id": "sf-finance-joiners",
+      "question": "Finans departmanında son bir ayda kimler işe başladı?",
+      "expect_tools": [
+        "query_successfactors"
+      ],
+      "expect_no_flow": true,
+      "expect_table": true,
+      "expect_source": true
+    },
+    {
+      "id": "sf-headcount",
+      "question": "Şirkette şu an kaç aktif çalışan var?",
+      "expect_tools": [
+        "query_successfactors"
+      ],
+      "expect_no_flow": true,
+      "expect_no_table": true,
+      "expect_citation": true
+    },
+    {
+      "id": "sf-department-sizes",
+      "question": "Departmanlara göre çalışan sayıları nasıl?",
+      "expect_tools": [
+        "query_successfactors"
+      ],
+      "expect_no_flow": true,
+      "expect_table": true,
+      "expect_source": true
+    },
+    {
+      "id": "automation-morning",
+      "question": "Her sabah 08:00'de dünkü rötarları bana e-postayla gönder.",
+      "expect_flow": true
+    },
+    {
+      "id": "automation-threshold",
+      "question": "Bir uçuşun rötarı 4 saati geçerse ops ekibine Teams'ten haber ver.",
+      "expect_flow": true
+    },
+    {
+      "id": "file-request",
+      "question": "Dünkü uçuşların listesini Excel olarak ver.",
+      "expect_tools": [
+        "create_report",
+        "list_report_sources"
+      ],
+      "expect_no_flow": true
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+# Webhook ile tetiklenen + Slack bildirimi
+id: new-order-alert
+namespace: fortis.chat
+description: Sipariş sisteminden webhook gelince tutar 10.000'i geçiyorsa Slack'e haber verir.
+
+tasks:
+  - id: is_large
+    type: io.kestra.plugin.core.flow.If
+    condition: "{{ trigger.body.amount > 10000 }}"
+    then:
+      - id: notify_slack
+        type: io.kestra.plugin.slack.notifications.SlackIncomingWebhook
+        url: "{{ secret('SLACK_WEBHOOK_URL') }}"
+        messageText: "Büyük sipariş: {{ trigger.body.orderId }} ({{ trigger.body.amount }} TL)"
+
+triggers:
+  - id: on_order
+    type: io.kestra.plugin.core.trigger.Webhook
+    key: 9kR3vT7mQ2xW5nB8pL4sYd6H

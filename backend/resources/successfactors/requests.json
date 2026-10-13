@@ -1,0 +1,324 @@
+{
+  "connection": {
+    "description": "SAP SuccessFactors OData v2 (İK sistemi). Adres: https://api55.sapsf.eu/odata/v2/. Basic auth, entegrasyon kullanıcısı.",
+    "base_url": "https://api55.sapsf.eu/odata/v2/",
+    "required_secrets": [
+      "SF_USERNAME",
+      "SF_PASSWORD"
+    ]
+  },
+  "requests": [
+    {
+      "name": "sf_lokasyonlar",
+      "title": "Lokasyonlar (FOLocation)",
+      "description": "Lokasyon kodu ve adı. since tarihinden sonra değişenler.",
+      "entity": "FOLocation",
+      "personal_data": false,
+      "parameters": [
+        {
+          "name": "since",
+          "description": "Bu tarihten sonra değişenler (YYYY-MM-DDTHH:MM:SS)"
+        }
+      ],
+      "path": "FOLocation?$format=JSON&$select=externalCode,name,lastModifiedDateTime&$filter=lastModifiedDateTime%20gt%20datetimeoffset'{since}'"
+    },
+    {
+      "name": "sf_sirketler",
+      "title": "Şirketler (FOCompany)",
+      "description": "Şirket (legal entity) kodu ve adı.",
+      "entity": "FOCompany",
+      "personal_data": false,
+      "parameters": [
+        {
+          "name": "since",
+          "description": "Bu tarihten sonra değişenler"
+        }
+      ],
+      "path": "FOCompany?$format=JSON&$select=externalCode,name_en_US,name,lastModifiedDateTime&$filter=lastModifiedDateTime%20gt%20datetimeoffset'{since}'"
+    },
+    {
+      "name": "sf_pozisyonlar",
+      "title": "Pozisyon kodları (FOJobCode)",
+      "description": "Pozisyon kodu, adı ve bağlı olduğu şirket.",
+      "entity": "FOJobCode",
+      "personal_data": false,
+      "parameters": [
+        {
+          "name": "since",
+          "description": "Bu tarihten sonra değişenler"
+        }
+      ],
+      "path": "FOJobCode?$format=JSON&$select=externalCode,name_en_US,name,lastModifiedDateTime,cust_toLegalEntity/externalCode&$expand=cust_toLegalEntity&$filter=lastModifiedDateTime%20gt%20datetimeoffset'{since}'"
+    },
+    {
+      "name": "sf_departmanlar",
+      "title": "Departmanlar (FODepartment)",
+      "description": "Departman kodu, adı ve bağlı olduğu şirket.",
+      "entity": "FODepartment",
+      "personal_data": false,
+      "parameters": [
+        {
+          "name": "since",
+          "description": "Bu tarihten sonra değişenler"
+        }
+      ],
+      "path": "FODepartment?$format=JSON&$select=externalCode,name_en_US,name,lastModifiedDateTime,cust_toLegalEntity/externalCode&$expand=cust_toLegalEntity&$filter=lastModifiedDateTime%20gt%20datetimeoffset'{since}'"
+    },
+    {
+      "name": "sf_is_kayitlari",
+      "title": "Çalışan iş kayıtları (EmpJob)",
+      "description": "Çalışanın şirket, lokasyon, departman ve pozisyonu (adlarıyla). since tarihinden sonra değişen kayıtlar. Kişisel bilgi içermez (sadece userId).",
+      "entity": "EmpJob",
+      "personal_data": false,
+      "parameters": [
+        {
+          "name": "since",
+          "description": "Bu tarihten sonra değişenler"
+        }
+      ],
+      "path": "EmpJob?$format=JSON&$expand=jobCodeNav,companyNav,departmentNav&$select=userId,lastModifiedDateTime,company,location,department,jobCode,jobCodeNav/name,companyNav/name,departmentNav/name&$filter=lastModifiedDateTime%20gt%20datetimeoffset'{since}'"
+    },
+    {
+      "name": "sf_calisan_listesi",
+      "title": "Çalışan listesi (EmpJob, ayrıntılı)",
+      "description": "Birincil atamadaki çalışanlar: ad-soyad, kullanıcı adı, şirket, departman, pozisyon, lokasyon, telefon. Kişisel veri içerir (ad-soyad ve telefon gösterilebilir, TC kimlik yok). since tarihinden sonra değişenler.",
+      "entity": "EmpJob",
+      "personal_data": true,
+      "parameters": [
+        {
+          "name": "since",
+          "description": "Bu tarihten sonra değişenler"
+        }
+      ],
+      "path": "EmpJob?$format=JSON&$expand=jobCodeNav,companyNav,departmentNav,userNav,employmentNav/personNav/personalInfoNav,employmentNav/personNav/phoneNav,locationNav,userNav/personKeyNav&$select=userId,lastModifiedDateTime,company,location,department,jobCode,jobCodeNav/name,companyNav/name,departmentNav/name,locationNav/name,userNav/firstName,userNav/lastName,userNav/username,userNav/isPrimaryAssignment,userNav/personKeyNav/personIdExternal,employmentNav/personNav/personalInfoNav/middleName,employmentNav/personNav/phoneNav/phoneNumber,employmentNav/personNav/phoneNav/isPrimary&$filter=userNav/isPrimaryAssignment%20eq%20true%20and%20lastModifiedDateTime%20gt%20datetimeoffset'{since}'"
+    },
+    {
+      "name": "sf_kullanici",
+      "title": "Kullanıcı (User)",
+      "description": "Tek bir kullanıcının bilgileri (userId ile). KİŞİSEL VERİ içerir.",
+      "entity": "User",
+      "personal_data": true,
+      "parameters": [
+        {
+          "name": "userId",
+          "description": "SuccessFactors userId (ör. 3882)"
+        }
+      ],
+      "path": "User('{userId}')?$format=JSON&$select=userId,username,firstName,lastName,status,department,location,lastModifiedDateTime"
+    },
+    {
+      "name": "sf_telefonlar",
+      "title": "Telefonlar (PerPhone)",
+      "description": "Kişi telefonları ve adları. KİŞİSEL VERİ içerir.",
+      "entity": "PerPhone",
+      "personal_data": true,
+      "parameters": [],
+      "path": "PerPhone?$format=JSON&$expand=personNav/personalInfoNav&$select=personIdExternal,lastModifiedDateTime,areaCode,phoneNumber,personNav/personalInfoNav/firstName,personNav/personalInfoNav/lastName"
+    },
+    {
+      "name": "sf_izinler",
+      "title": "İzinler (EmployeeTime)",
+      "description": "from-to arasına değen izin kayıtları (iptal edilenler hariç): çalışan adı-soyadı, izin türü, başlangıç-bitiş, gün sayısı, onay durumu (APPROVED/PENDING) ve çalışanın şirket kodu. Şirkete göre süzmek için jq'daki select kalıbını kullan (notlara bak). Kişisel veri içerir (ad-soyad gösterilebilir).",
+      "entity": "EmployeeTime",
+      "personal_data": true,
+      "parameters": [
+        {
+          "name": "from",
+          "description": "Aralık başı (YYYY-MM-DD)"
+        },
+        {
+          "name": "to",
+          "description": "Aralık sonu (YYYY-MM-DD)"
+        }
+      ],
+      "path": "EmployeeTime?$format=JSON&$expand=userIdNav,userIdNav/empInfo/jobInfoNav,timeTypeNav&$select=userId,startDate,endDate,quantityInDays,approvalStatus,timeTypeNav/externalName_defaultValue,userIdNav/firstName,userIdNav/lastName,userIdNav/empInfo/jobInfoNav/company&$filter=startDate%20le%20datetime'{to}T00:00:00'%20and%20endDate%20ge%20datetime'{from}T00:00:00'%20and%20approvalStatus%20ne%20'CANCELLED'"
+    },
+    {
+      "name": "sf_aktif_calisanlar",
+      "title": "Aktif çalışanlar (şirket)",
+      "description": "Bir şirketin aktif çalışanları: ad-soyad, unvan, departman, pozisyon, lokasyon, yönetici adı, işe/pozisyona başlangıç (startDate). Sayım, departman/lokasyon dağılımı, yöneticiye göre ekip, unvan arama için temel istek.",
+      "entity": "EmpJob",
+      "personal_data": true,
+      "parameters": [
+        {
+          "name": "company",
+          "description": "Şirket kodu, ör. GDA"
+        }
+      ],
+      "path": "EmpJob?$format=JSON&$top=1000&$expand=userNav,departmentNav,positionNav,locationNav,managerUserNav&$select=userId,startDate,company,jobTitle,managerId,userNav/firstName,userNav/lastName,departmentNav/name,positionNav/externalName_defaultValue,locationNav/name,managerUserNav/firstName,managerUserNav/lastName&$filter=emplStatusNav/externalCode%20eq%20'A'%20and%20company%20eq%20'{company}'"
+    },
+    {
+      "name": "sf_ise_girenler",
+      "title": "İşe girenler",
+      "description": "from-to arasında işe başlayanlar (yeniden girişler dahil): ad-soyad, başlangıç, ilk giriş tarihi, şirket ve unvan (jobInfoNav.results[] listesi).",
+      "entity": "EmpEmployment",
+      "personal_data": true,
+      "parameters": [
+        {
+          "name": "from",
+          "description": "Aralık başı (YYYY-MM-DD)"
+        },
+        {
+          "name": "to",
+          "description": "Aralık sonu (YYYY-MM-DD)"
+        }
+      ],
+      "path": "EmpEmployment?$format=JSON&$expand=userNav,jobInfoNav&$select=userId,startDate,originalStartDate,userNav/firstName,userNav/lastName,jobInfoNav/company,jobInfoNav/jobTitle&$filter=startDate%20ge%20datetime'{from}T00:00:00'%20and%20startDate%20le%20datetime'{to}T00:00:00'"
+    },
+    {
+      "name": "sf_isten_ayrilanlar",
+      "title": "İşten ayrılanlar",
+      "description": "from-to arasında işten ayrılanlar: ad-soyad (personNav.personalInfoNav.results[0]), ayrılış tarihi, şirket, unvan, ayrılma nedeni, yeniden işe alınabilir mi. Not: ayrılanların userNav'ı boştur; ad için personNav kullan. jobInfoNav burada tek nesnedir (liste değil).",
+      "entity": "EmpEmploymentTermination",
+      "personal_data": true,
+      "parameters": [
+        {
+          "name": "from",
+          "description": "Aralık başı (YYYY-MM-DD)"
+        },
+        {
+          "name": "to",
+          "description": "Aralık sonu (YYYY-MM-DD)"
+        }
+      ],
+      "path": "EmpEmploymentTermination?$format=JSON&$expand=personNav/personalInfoNav,jobInfoNav,jobInfoNav/eventReasonNav&$select=userId,endDate,okToRehire,personNav/personalInfoNav/firstName,personNav/personalInfoNav/lastName,jobInfoNav/company,jobInfoNav/jobTitle,jobInfoNav/eventReasonNav/name&$filter=endDate%20ge%20datetime'{from}T00:00:00'%20and%20endDate%20le%20datetime'{to}T00:00:00'"
+    },
+    {
+      "name": "sf_dogum_tarihleri",
+      "title": "Doğum tarihleri (şirket)",
+      "description": "Bir şirketin aktif çalışanlarının doğum tarihleri (employmentNav.personNav.dateOfBirth). Doğum günü / yaş soruları için; ay-gün süzmesi jq'da sfdate ile yapılır (notlara bak).",
+      "entity": "EmpJob",
+      "personal_data": true,
+      "parameters": [
+        {
+          "name": "company",
+          "description": "Şirket kodu, ör. GDA"
+        }
+      ],
+      "path": "EmpJob?$format=JSON&$top=1000&$expand=userNav,employmentNav/personNav&$select=userId,userNav/firstName,userNav/lastName,employmentNav/personNav/dateOfBirth&$filter=emplStatusNav/externalCode%20eq%20'A'%20and%20company%20eq%20'{company}'"
+    },
+    {
+      "name": "sf_kidem",
+      "title": "İşe giriş tarihleri (şirket)",
+      "description": "Bir şirketin aktif çalışanlarının ilk işe giriş ve kıdem tarihleri (employmentNav.originalStartDate, seniorityDate). İş yıldönümü / kıdem soruları için.",
+      "entity": "EmpJob",
+      "personal_data": true,
+      "parameters": [
+        {
+          "name": "company",
+          "description": "Şirket kodu, ör. GDA"
+        }
+      ],
+      "path": "EmpJob?$format=JSON&$top=1000&$expand=userNav,employmentNav&$select=userId,userNav/firstName,userNav/lastName,employmentNav/originalStartDate,employmentNav/seniorityDate&$filter=emplStatusNav/externalCode%20eq%20'A'%20and%20company%20eq%20'{company}'"
+    },
+    {
+      "name": "sf_sozlesme_bitenler",
+      "title": "Sözleşmesi bitenler",
+      "description": "from-to arasında sözleşmesi biten aktif çalışanlar: ad-soyad, şirket, sözleşme bitişi.",
+      "entity": "EmpJob",
+      "personal_data": true,
+      "parameters": [
+        {
+          "name": "from",
+          "description": "Aralık başı (YYYY-MM-DD)"
+        },
+        {
+          "name": "to",
+          "description": "Aralık sonu (YYYY-MM-DD)"
+        }
+      ],
+      "path": "EmpJob?$format=JSON&$expand=userNav&$select=userId,company,contractEndDate,userNav/firstName,userNav/lastName&$filter=emplStatusNav/externalCode%20eq%20'A'%20and%20contractEndDate%20ge%20datetime'{from}T00:00:00'%20and%20contractEndDate%20le%20datetime'{to}T00:00:00'"
+    },
+    {
+      "name": "sf_deneme_suresi_bitenler",
+      "title": "Deneme süresi bitenler",
+      "description": "from-to arasında deneme süresi biten aktif çalışanlar.",
+      "entity": "EmpJob",
+      "personal_data": true,
+      "parameters": [
+        {
+          "name": "from",
+          "description": "Aralık başı (YYYY-MM-DD)"
+        },
+        {
+          "name": "to",
+          "description": "Aralık sonu (YYYY-MM-DD)"
+        }
+      ],
+      "path": "EmpJob?$format=JSON&$expand=userNav&$select=userId,company,probationPeriodEndDate,userNav/firstName,userNav/lastName&$filter=emplStatusNav/externalCode%20eq%20'A'%20and%20probationPeriodEndDate%20ge%20datetime'{from}T00:00:00'%20and%20probationPeriodEndDate%20le%20datetime'{to}T00:00:00'"
+    },
+    {
+      "name": "sf_belge_bitenler",
+      "title": "Süresi dolan belgeler",
+      "description": "from-to arasında süresi dolan belgeler (pasaport, çalışma izni vb.): çalışan, belge türü (documentTypeNav.picklistLabels, tr_TR etiketi), bitiş tarihi, ülke. Ayrılmış çalışanların userNav'ı boş olabilir.",
+      "entity": "EmpWorkPermit",
+      "personal_data": true,
+      "parameters": [
+        {
+          "name": "from",
+          "description": "Aralık başı (YYYY-MM-DD)"
+        },
+        {
+          "name": "to",
+          "description": "Aralık sonu (YYYY-MM-DD)"
+        }
+      ],
+      "path": "EmpWorkPermit?$format=JSON&$expand=userNav,documentTypeNav/picklistLabels&$select=userId,expirationDate,country,userNav/firstName,userNav/lastName,documentTypeNav/externalCode,documentTypeNav/picklistLabels/label,documentTypeNav/picklistLabels/locale&$filter=expirationDate%20ge%20datetime'{from}T00:00:00'%20and%20expirationDate%20le%20datetime'{to}T00:00:00'"
+    },
+    {
+      "name": "sf_bos_pozisyonlar",
+      "title": "Boş pozisyonlar (şirket)",
+      "description": "Bir şirkette boş (vacant) ve etkin pozisyonlar: kod, ad, departman.",
+      "entity": "Position",
+      "personal_data": false,
+      "parameters": [
+        {
+          "name": "company",
+          "description": "Şirket kodu, ör. GDA"
+        }
+      ],
+      "path": "Position?$format=JSON&$expand=departmentNav&$select=code,externalName_defaultValue,company,departmentNav/name&$filter=vacant%20eq%20true%20and%20effectiveStatus%20eq%20'A'%20and%20company%20eq%20'{company}'"
+    },
+    {
+      "name": "sf_kisi_ara",
+      "title": "Kişi arama (soyada göre)",
+      "description": "Soyadında verilen metin geçen kullanıcılar: ad-soyad, e-posta, departman, unvan. name URL kodlu olmalı (ı = %C4%B1, ş = %C5%9F, ğ = %C4%9F, ü = %C3%BC, ö = %C3%B6, ç = %C3%A7, İ = %C4%B0). Ayrılmışlar da gelebilir; aktiflik için EmpJob'a bak.",
+      "entity": "User",
+      "personal_data": true,
+      "parameters": [
+        {
+          "name": "name",
+          "description": "Soyad parçası (URL kodlu)"
+        }
+      ],
+      "path": "User?$format=JSON&$select=userId,firstName,lastName,email,department,title&$filter=substringof('{name}',lastName)"
+    },
+    {
+      "name": "sf_resmi_tatiller",
+      "title": "Resmi tatil takvimleri",
+      "description": "Tatil takvimleri ve tarihleri (holidayAssignments.results[]: date, holiday). Tüm yılları içerir; tarihe göre jq ile süz.",
+      "entity": "HolidayCalendar",
+      "personal_data": false,
+      "parameters": [],
+      "path": "HolidayCalendar?$format=JSON&$expand=holidayAssignments&$select=externalCode,name_defaultValue,holidayAssignments/date,holidayAssignments/holiday"
+    }
+  ],
+  "notes": [
+    "Yanıt: d.results[] (liste) veya d (tek kayıt, ör. User('id')). Kestra'da: outputs.<id>.body | jq('.d.results') | first.",
+    "Sayfalama: tek yanıtta en fazla 1000 kayıt. Daha fazlası için $top ve $skip kullan veya filtreyle daralt. Kayıt sayısı: <Varlık>/$count (düz metin sayı döner).",
+    "OData v2 filtre: eq, ne, gt, lt, ge, le, and, or. Tarih: lastModifiedDateTime gt datetimeoffset'2026-10-01T00:00:00'. Metin: externalCode eq 'TUR_ANK_0001'. Boşluklar URL'de %20 olmalı.",
+    "$select ile sadece gerekli alanları iste; $expand ile ilişkili varlıkları (Nav ile biten alanlar) getir.",
+    "Bazı alanlar /Date(1696118400000)/ biçiminde gelir (milisaniye).",
+    "Şirketler (FOCompany kodu = ad): AFSC = AFSC, FAFS = Freebird Airlines Germany, FBT = Free Bird Travel, FHM = Freebird Airlines Europe, FHY = Freebird Airlines TUR, GAS = Gözen Air Services, GDA = Gözen Digital Aviation, HEM = HEM, HLD = Gözen Holding, IFTC = IFTC. Kullanıcı şirket adı veya kısaltma söylerse bu kodu kullan.",
+    "Bir çalışanın şirketi EmpJob.company'dir (User.custom03 boş, kullanma). EmpJob'da doğrudan: $filter=company%20eq%20'GDA'. Başka bir varlıktan (ör. EmployeeTime) çalışanın şirketine: $expand=userIdNav/empInfo/jobInfoNav ve $select=userIdNav/empInfo/jobInfoNav/company; süzme jq ile: select([(.userIdNav.empInfo.jobInfoNav.results // [])[].company] | contains([\"GDA\"])).",
+    "/Date(1791763200000)/ biçimindeki tarihi Kestra'da okunur yap: {{ x | replace({'/Date(': '', ')/': ''}) | number | date('dd.MM.yyyy', timeZone='Europe/Istanbul') }} (x metin olmalı). jq'da strftime/todate/capture çalışmaz.",
+    "Bu hafta (pazartesi-pazar): pazartesi {{ now() | dateAdd(0 - ((now() | date('e', timeZone='Europe/Istanbul') | number) + 5) % 7, 'DAYS') | date('yyyy-MM-dd') }}, pazar {{ now() | dateAdd(6 - ((now() | date('e', timeZone='Europe/Istanbul') | number) + 5) % 7, 'DAYS') | date('yyyy-MM-dd') }}.",
+    "Aktif çalışan: EmpJob'da $filter=emplStatusNav/externalCode%20eq%20'A' (A = Etkin, T = Sonlandırıldı, U = Ücretsiz izin). Bu süzme olmadan işten ayrılanlar da gelir. Tüm şirketlerde ~1400 aktif çalışan var: tek yanıt en fazla 1000 kayıt döndüğü için şirket bazında süz, sadece sayı gerekiyorsa EmpJob/$count kullan.",
+    "Konu → varlık: çalışan, unvan, departman, lokasyon, yönetici → EmpJob; işe giriş → EmpEmployment.startDate (ilk giriş originalStartDate); işten ayrılma → EmpEmploymentTermination.endDate; doğum tarihi → PerPerson.dateOfBirth (EmpJob'dan employmentNav/personNav); izin → EmployeeTime; izin türleri → TimeType; belge/pasaport/çalışma izni → EmpWorkPermit.expirationDate; boş pozisyon → Position.vacant; e-posta/telefon → PerEmail/PerPhone (personIdExternal) veya User.email; resmi tatil → HolidayCalendar.holidayAssignments. Önce bu konulara uyan hazır isteğe bak.",
+    "Seçim listesi (picklist) alanları kod döner (ör. documentType 10877). Türkçe etiket için $expand=<alan>Nav/picklistLabels ve jq: (.<alan>Nav.picklistLabels.results[] | select(.locale == \"tr_TR\") | .label).",
+    "Yanıt yapısı: tekil ilişkiler nesnedir (.userNav.firstName), çoğul ilişkiler {results: [...]} (.jobInfoNav.results[0].company, .personNav.personalInfoNav.results[0].firstName). Emin değilsen preview_successfactors ile bak. İlişki boş olabilir (null); jq'da // \"-\" kullan.",
+    "jq'da tarih (yyyy-MM-dd metni) için bu tanımı ifadenin başına koy ve .alan | sfdate ile kullan; [5:7] ay, [8:10] gün, [0:4] yıl verir. YAML'da çift tırnaklı metin içindeyken her \" işaretini \\\" yaz. def sfdate: (split(\"(\")[1] | split(\")\")[0] | tonumber / 86400000 | floor) as $z | ($z + 719468) as $z2 | ((if $z2 >= 0 then $z2 else $z2 - 146096 end) / 146097 | floor) as $era | ($z2 - $era * 146097) as $doe | (($doe - ($doe / 1460 | floor) + ($doe / 36524 | floor) - ($doe / 146096 | floor)) / 365 | floor) as $yoe | ($doe - (365 * $yoe + ($yoe / 4 | floor) - ($yoe / 100 | floor))) as $doy | ((5 * $doy + 2) / 153 | floor) as $mp | (($doy - ((153 * $mp + 2) / 5 | floor) + 1) | floor) as $d | ((if $mp < 10 then $mp + 3 else $mp - 9 end) | floor) as $m | (($yoe + $era * 400 + (if $m <= 2 then 1 else 0 end)) | floor) as $y | ($y | tostring) + \"-\" + (if $m < 10 then \"0\" else \"\" end) + ($m | tostring) + \"-\" + (if $d < 10 then \"0\" else \"\" end) + ($d | tostring);",
+    "Bugünün tarihini jq'ya vermek için jq metnini Pebble ~ ile birleştir: jq('... select(.bd[5:7] == \"' ~ (now() | date('MM', timeZone='Europe/Istanbul')) ~ '\") ...'). Örnek (Kestra'da doğrulandı, bu ay doğum günü olanlar): [.d.results[] | select(.employmentNav.personNav.dateOfBirth != null) | {name: (.userNav.firstName + \" \" + .userNav.lastName), bd: (.employmentNav.personNav.dateOfBirth | sfdate)} | select(.bd[5:7] == \"<ay>\")] | sort_by(.bd[5:10]).",
+    "jq'da çalışanlar: group_by, sort_by, unique, map, select, length, add, join, test (regex), ascii_downcase, startswith, limit, def. Çalışmayanlar: strftime, todate, capture. Dağılım örneği: [.d.results[] | {k: (.departmentNav.name // \"-\")}] | group_by(.k) | map({departman: .[0].k, kisi: length}) | sort_by(-.kisi)."
+  ]
+}

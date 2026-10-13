@@ -1,0 +1,17 @@
+id: fortis-smoke-test
+namespace: fortis.dev
+description: Faz 0 bağlantı testi. Sadece çekirdek görevleri kullanır.
+
+inputs:
+  - id: name
+    type: STRING
+    defaults: Fortis
+
+tasks:
+  - id: hello
+    type: io.kestra.plugin.core.log.Log
+    message: "Merhaba {{ inputs.name }}, Laravel'den gelen çalışma: {{ execution.id }}"
+
+  - id: result
+    type: io.kestra.plugin.core.debug.Return
+    format: "smoke-ok:{{ inputs.name }}"

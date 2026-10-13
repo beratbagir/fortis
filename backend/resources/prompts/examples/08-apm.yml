@@ -1,0 +1,42 @@
+# APM (uçuş operasyonları): token görevi + Bearer ile okuma + jq ile sayım + döngüyle özet.
+id: apm-yesterday-legs
+namespace: fortis.chat
+description: Her sabah dünkü uçuş bacaklarını APM'den alır, toplam sayısını ve her uçuşun rotasını loglar.
+
+tasks:
+  - id: apm_token
+    type: io.kestra.plugin.core.http.Request
+    uri: "http://172.17.0.1:14070/test-restapi/oauth/token"
+    method: POST
+    contentType: application/x-www-form-urlencoded
+    formData:
+      grant_type: client_credentials
+      client_id: "{{ secret('APM_CLIENT_ID') }}"
+      client_secret: "{{ secret('APM_CLIENT_SECRET') }}"
+
+  - id: legs
+    type: io.kestra.plugin.core.http.Request
+    uri: "http://172.17.0.1:14070/test-restapi/api/legs?dateFrom={{ now() | dateAdd(-1, 'DAYS') | date('yyyy-MM-dd', timeZone='UTC') }}T00:00:00Z&dateTo={{ now() | date('yyyy-MM-dd', timeZone='UTC') }}T00:00:00Z"
+    method: GET
+    options:
+      auth:
+        type: BEARER
+        token: "{{ outputs.apm_token.body | jq('.access_token') | first }}"
+
+  - id: log_count
+    type: io.kestra.plugin.core.log.Log
+    message: "Dünkü uçuş bacağı: {{ outputs.legs.body | jq('.totalNumberOfItems') | first }}"
+
+  - id: each_leg
+    type: io.kestra.plugin.core.flow.ForEach
+    values: "{{ outputs.legs.body | jq('[.legs.content[] | {flight: ((.flightNumberInfo.designator // \"\") + (.flightNumberInfo.flightNumber // \"-\")), route: ((.airportsInfo.scheduledDepartureAirportCode // \"-\") + \"-\" + (.airportsInfo.scheduledArrivalAirportCode // \"-\"))}]') | first }}"
+    tasks:
+      - id: log_leg
+        type: io.kestra.plugin.core.log.Log
+        message: "{{ fromJson(taskrun.value).flight }} {{ fromJson(taskrun.value).route }}"
+
+triggers:
+  - id: every_morning
+    type: io.kestra.plugin.core.trigger.Schedule
+    cron: "0 7 * * *"
+    timezone: Europe/Istanbul

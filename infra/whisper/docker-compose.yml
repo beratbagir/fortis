@@ -1,0 +1,23 @@
+# Fortis Whisper servisi (ses → metin). Sadece Laravel erişir.
+# Laravel aynı Docker ağındaysa `ports` satırını silip WHISPER_URL=http://whisper:9000 kullanın.
+# Laravel host üzerinde çalışıyorsa port sadece 127.0.0.1'e açılır; dışarıdan erişilemez.
+services:
+  whisper:
+    build: .
+    environment:
+      WHISPER_MODEL: ${WHISPER_MODEL:-small}
+      WHISPER_MAX_CONCURRENT: ${WHISPER_MAX_CONCURRENT:-2}
+    volumes:
+      - whisper-models:/home/whisper/.cache/huggingface
+    # Geçici ses dosyaları bellekte; diske yazılmaz.
+    tmpfs:
+      - /tmp
+    expose:
+      - "9000"
+    ports:
+      - "127.0.0.1:9000:9000"
+    read_only: true
+    restart: unless-stopped
+
+volumes:
+  whisper-models:

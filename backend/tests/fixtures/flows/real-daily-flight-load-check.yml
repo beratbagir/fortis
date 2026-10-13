@@ -1,0 +1,58 @@
+id: daily-flight-load-check
+namespace: fortis.chat
+description: "Her sabah 08:30'da dünün uçuş doluluğunu kontrol eder, %60 altındakileri uyarı olarak loglar; dün kesilen bilet ve iade sayısını loglar."
+inputs:
+  - id: min_load
+    type: FLOAT
+    defaults: 60
+tasks:
+  - id: flight_load
+    type: io.kestra.plugin.jdbc.mysql.Query
+    url: "{{ secret('IBS_JDBC_URL') }}"
+    username: "{{ secret('IBS_DB_USERNAME') }}"
+    password: "{{ secret('IBS_DB_PASSWORD') }}"
+    fetchType: FETCH
+    sql: "SELECT /*+ MAX_EXECUTION_TIME(90000) */ x.ucus, x.kalkis, x.varis, x.kalkis_saati, COALESCE(x.durum, 'Bilinmiyor') AS durum, COALESCE(x.kapasite, 0) AS kapasite, x.yolcu_kaydi, x.binen, COALESCE(ROUND(100 * x.yolcu_kaydi / NULLIF(x.kapasite, 0), 1), -1) AS doluluk_yuzde FROM (SELECT CONCAT(l.flight_carrier, l.flight_number, COALESCE(NULLIF(l.flight_suffix, '*'), '')) AS ucus, l.bd_airport_code AS kalkis, l.off_airport_code AS varis, l.dep_time_ltc AS kalkis_saati, l.leg_status AS durum, (SELECT MAX(c.auth_nested_capacity) FROM ires_dim_flt_cap c WHERE c.flight_id = l.flight_id AND c.bd_airport_code = l.bd_airport_code) AS kapasite, (SELECT COUNT(*) FROM ires_dim_chk_passenger p WHERE p.airline_iata_code = l.airline_iata_code AND p.flight_carrier = l.flight_carrier AND p.flight_number = l.flight_number AND p.flight_suffix = l.flight_suffix AND p.flight_date = l.flight_date AND p.bd_airport_code = l.bd_airport_code) AS yolcu_kaydi, (SELECT COUNT(*) FROM ires_dim_chk_passenger p WHERE p.airline_iata_code = l.airline_iata_code AND p.flight_carrier = l.flight_carrier AND p.flight_number = l.flight_number AND p.flight_suffix = l.flight_suffix AND p.flight_date = l.flight_date AND p.bd_airport_code = l.bd_airport_code AND p.checkin_status = 'BOARDED') AS binen FROM ires_dim_flt_leg l WHERE l.flight_date = :ucus_tarihi AND l.deletion_ind = 0 AND l.leg_status <> 'CANCELLED') x ORDER BY x.kalkis_saati LIMIT 500"
+    parameters:
+      ucus_tarihi: "{{ now() | dateAdd(-1, 'DAYS') | date('yyyy-MM-dd') }}"
+  - id: log_flight_count
+    type: io.kestra.plugin.core.log.Log
+    message: 'Dün {{ outputs.flight_load.size }} uçuş bacağı kontrol edildi.'
+  - id: each_flight
+    type: io.kestra.plugin.core.flow.ForEach
+    values: '{{ outputs.flight_load.rows }}'
+    tasks:
+      - id: low_load
+        type: io.kestra.plugin.core.flow.If
+        condition: '{{ fromJson(taskrun.value).doluluk_yuzde >= 0 and fromJson(taskrun.value).doluluk_yuzde < inputs.min_load }}'
+        then:
+          - id: log_low_load
+            type: io.kestra.plugin.core.log.Log
+            level: WARN
+            message: 'UYARI: {{ fromJson(parent.taskrun.value).ucus }} ({{ fromJson(parent.taskrun.value).kalkis }}-{{ fromJson(parent.taskrun.value).varis }}) doluluk %{{ fromJson(parent.taskrun.value).doluluk_yuzde }}, eşik %{{ inputs.min_load }} (kapasite {{ fromJson(parent.taskrun.value).kapasite }}, yolcu {{ fromJson(parent.taskrun.value).yolcu_kaydi }}).'
+  - id: ticket_ops
+    type: io.kestra.plugin.jdbc.mysql.Query
+    url: "{{ secret('IBS_JDBC_URL') }}"
+    username: "{{ secret('IBS_DB_USERNAME') }}"
+    password: "{{ secret('IBS_DB_PASSWORD') }}"
+    fetchType: FETCH
+    sql: "SELECT /*+ MAX_EXECUTION_TIME(60000) */ CASE t.ticket_status WHEN 'N' THEN 'Kesildi' WHEN 'REF' THEN 'İade' WHEN 'V' THEN 'İptal' WHEN 'RI' THEN 'Değişim' ELSE COALESCE(t.ticket_status, 'Bilinmiyor') END AS islem, COALESCE(t.currency, 'Bilinmiyor') AS para_birimi, COUNT(*) AS kupon_sayisi, COUNT(DISTINCT t.ticket_number) AS bilet_sayisi, ROUND(SUM(t.prorated_amount), 2) AS tutar FROM ires_fact_ticket_sales t WHERE t.modified_date_ltc_id BETWEEN (SELECT date_id FROM ires_dim_date WHERE actual_date = :baslangic) AND (SELECT date_id FROM ires_dim_date WHERE actual_date = :bitis) GROUP BY islem, para_birimi ORDER BY kupon_sayisi DESC LIMIT 100"
+    parameters:
+      baslangic: "{{ now() | dateAdd(-1, 'DAYS') | date('yyyy-MM-dd') }}"
+      bitis: "{{ now() | dateAdd(-1, 'DAYS') | date('yyyy-MM-dd') }}"
+  - id: each_ticket_row
+    type: io.kestra.plugin.core.flow.ForEach
+    values: '{{ outputs.ticket_ops.rows }}'
+    tasks:
+      - id: relevant
+        type: io.kestra.plugin.core.flow.If
+        condition: "{{ fromJson(taskrun.value).islem == 'Kesildi' or fromJson(taskrun.value).islem == 'İade' }}"
+        then:
+          - id: log_ticket
+            type: io.kestra.plugin.core.log.Log
+            message: "Dün {{ fromJson(parent.taskrun.value).islem }} ({{ fromJson(parent.taskrun.value).para_birimi | default('Bilinmiyor') }}): {{ fromJson(parent.taskrun.value).bilet_sayisi }} bilet, {{ fromJson(parent.taskrun.value).kupon_sayisi }} kupon, tutar {{ fromJson(parent.taskrun.value).tutar | default('-') }}"
+triggers:
+  - id: every_morning
+    type: io.kestra.plugin.core.trigger.Schedule
+    cron: '30 8 * * *'
+    timezone: Europe/Istanbul

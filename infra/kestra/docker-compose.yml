@@ -1,0 +1,76 @@
+# Fortis — Kestra (sunucu ve yerel geliştirme için aynı dosya)
+# Sabit sürüm, slim imaj, eklenti otomatik kurulumu kapalı, basic auth açık,
+# PostgreSQL backend, Docker soketi bağlı değil. Port sadece 127.0.0.1'e açılır:
+# sunucuda arayüze ve API'ye SSH tüneliyle (veya VPC özel IP'sinden) erişilir.
+#
+# Kullanım:  cp .env.example .env  (değerleri doldur)  &&  docker compose up -d
+
+name: fortis-kestra
+
+volumes:
+  postgres-data:
+  kestra-data:
+
+services:
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    environment:
+      POSTGRES_DB: kestra
+      POSTGRES_USER: kestra
+      POSTGRES_PASSWORD: ${KESTRA_DB_PASSWORD:?KESTRA_DB_PASSWORD gerekli}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d kestra -U kestra"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # Kestra imajı uid 1000 ile çalışır; yeni volume root sahipliğinde oluşur.
+  # Kestra'yı root çalıştırmak yerine volume sahipliğini bir kez düzeltiriz.
+  storage-init:
+    image: busybox:1.37
+    command: chown -R 1000:1000 /app/storage
+    volumes:
+      - kestra-data:/app/storage
+
+  kestra:
+    image: kestra/kestra:${KESTRA_VERSION:?KESTRA_VERSION gerekli}-slim
+    restart: unless-stopped
+    stop_grace_period: 6m
+    command: server standalone
+    volumes:
+      - kestra-data:/app/storage
+    environment:
+      # slim imaj varsayılan olarak eklentileri Maven'dan otomatik indirir. Kapalı olmalı:
+      # aksi halde izin listesinde olmayan (ör. script) bir görev eklentisini kendisi çeker.
+      KESTRA_PLUGINS_AUTO_INSTALL_ENABLED: "false"
+      KESTRA_CONFIGURATION: |
+        datasources:
+          postgres:
+            url: jdbc:postgresql://postgres:5432/kestra
+            driverClassName: org.postgresql.Driver
+            username: kestra
+            password: ${KESTRA_DB_PASSWORD}
+        kestra:
+          server:
+            basic-auth:
+              username: ${KESTRA_USERNAME:?KESTRA_USERNAME gerekli}
+              password: ${KESTRA_PASSWORD:?KESTRA_PASSWORD gerekli}
+          repository:
+            type: postgres
+          storage:
+            type: local
+            local:
+              base-path: "/app/storage"
+          queue:
+            type: postgres
+          url: ${KESTRA_PUBLIC_URL:-http://localhost:8080/}
+    ports:
+      - "127.0.0.1:${KESTRA_PORT:-8080}:8080"
+    depends_on:
+      storage-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy

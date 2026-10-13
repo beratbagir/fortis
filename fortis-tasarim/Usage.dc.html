@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Fortis · Kullanım ve maliyet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Manrope',system-ui,sans-serif;color:#111827;background:#F5F7FA}
+a{color:#0B2A4A}a:hover{color:#0B2A4A}
+button,select{font-family:inherit}
+</style>
+</helmet>
+<div style="min-height: 980px; display: flex; flex-direction: column; background: #F5F7FA">
+
+<header style="display: flex; align-items: center; gap: 10px; padding: 12px 20px; background: #FFFFFF; border-bottom: 1px solid #E4E8EE">
+<div style="width: 28px; height: 28px; border-radius: 7px; background: #111827; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px">F</div>
+<span style="font-weight: 700; font-size: 16px">Fortis</span>
+</header>
+
+<div style="display: flex; flex-wrap: wrap; flex: 1 1 auto">
+<nav aria-label="Ana menü" style="flex: 0 0 200px; padding: 16px 12px; background: #FFFFFF; border-right: 1px solid #E4E8EE; display: flex; flex-direction: column; gap: 4px; font-size: 14px">
+<a href="#" style="padding: 10px 12px; border-radius: 12px; color: #111827; text-decoration: none">Sohbet</a>
+<a href="Flows.dc.html" style="padding: 10px 12px; border-radius: 12px; color: #111827; text-decoration: none">Akışlar</a>
+<a href="Runs.dc.html" style="padding: 10px 12px; border-radius: 12px; color: #111827; text-decoration: none">Çalışmalar</a>
+<a href="#" style="padding: 10px 12px; border-radius: 12px; color: #111827; text-decoration: none">Veri kaynakları</a>
+<a href="Usage.dc.html" style="padding: 10px 12px; border-radius: 12px; color: #0B2A4A; background: #E6EDF5; font-weight: 700; text-decoration: none">Kullanım ve maliyet</a>
+<a href="#" style="padding: 10px 12px; border-radius: 12px; color: #111827; text-decoration: none">Ayarlar</a>
+</nav>
+
+<main style="flex: 999 1 560px; min-width: 0; padding: 28px 32px; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px">
+<h1 style="margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.02em">Kullanım ve maliyet</h1>
+<div style="flex: 1 1 auto"></div>
+<label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #5B6676">Dönem
+<select style="height: 38px; padding: 0 10px; border: 1px solid #D9DFE7; border-radius: 12px; background: #FFFFFF; font-size: 14px; color: #111827"><option>Ekim 2026</option><option>Eylül 2026</option></select>
+</label>
+<button type="button" style="height: 38px; padding: 0 14px; border: 1px solid #E4E8EE; border-radius: 12px; background: #FFFFFF; font-size: 14px; color: #111827">CSV indir</button>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px">
+<sc-for list="{{kpis}}" as="k" hint-placeholder-count="4">
+<div style="background: #FFFFFF; border: 1px solid #E4E8EE; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 4px">
+<span style="font-size: 13px; color: #5B6676">{{k.label}}</span>
+<span style="font-size: 28px; font-weight: 700; font-family: 'JetBrains Mono', monospace">{{k.value}}</span>
+<span style="font-size: 12px; color: #5B6676">{{k.sub}}</span>
+</div>
+</sc-for>
+</div>
+
+<div style="background: #FFFFFF; border: 1px solid #E4E8EE; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px">
+<span style="font-size: 15px; font-weight: 700">Aylık bütçe</span>
+<span style="font-size: 13px; color: #5B6676">$48.20 / $100 · %48</span>
+<div style="flex: 1 1 auto"></div>
+<button type="button" style="height: 32px; padding: 0 12px; border: 1px solid #E4E8EE; border-radius: 12px; background: #FFFFFF; font-size: 13px; color: #111827">Limiti düzenle</button>
+</div>
+<div role="meter" aria-label="Bütçe kullanımı" aria-valuenow="48" aria-valuemin="0" aria-valuemax="100" style="height: 10px; background: #EEF2F6; border-radius: 999px; overflow: hidden">
+<div style="width: 48%; height: 100%; background: #0B2A4A; border-radius: 999px"></div>
+</div>
+<span style="font-size: 12px; color: #5B6676">%80'de e-posta uyarısı, %100'de yeni AI istekleri durur. Akış çalışmaları etkilenmez.</span>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 20px">
+<section style="flex: 2 1 520px; min-width: 0; background: #FFFFFF; border: 1px solid #E4E8EE; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 14px">
+<h2 style="margin: 0; font-size: 15px; font-weight: 700">Günlük maliyet</h2>
+<div style="flex: 1 1 auto"></div>
+<span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #3F4A5A"><span style="width: 10px; height: 10px; border-radius: 2px; background: #0B2A4A"></span>Sohbet (akış oluşturma)</span>
+<span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #3F4A5A"><span style="width: 10px; height: 10px; border-radius: 2px; background: #E8913A"></span>Akış içi AI adımları</span>
+</div>
+<div style="height: 180px; display: flex; align-items: flex-end; gap: 4px; border-bottom: 1px solid #E4E8EE">
+<sc-for list="{{days}}" as="d" hint-placeholder-count="30">
+<div style="flex: 1 1 0; display: flex; flex-direction: column; justify-content: flex-end; gap: 1px; height: 100%" title="{{d.tip}}">
+<div style="height: {{d.b}}px; background: #E8913A; border-radius: 2px 2px 0 0"></div>
+<div style="height: {{d.a}}px; background: #0B2A4A"></div>
+</div>
+</sc-for>
+</div>
+<div style="display: flex; justify-content: space-between; font-size: 12px; color: #5B6676"><span>1 Eki</span><span>15 Eki</span><span>30 Eki</span></div>
+</section>
+
+<section style="flex: 1 1 280px; min-width: 0; background: #FFFFFF; border: 1px solid #E4E8EE; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 14px">
+<h2 style="margin: 0; font-size: 15px; font-weight: 700">Modele göre</h2>
+<sc-for list="{{models}}" as="m" hint-placeholder-count="2">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; justify-content: space-between; font-size: 14px"><span>{{m.name}}</span><span style="font-family: 'JetBrains Mono', monospace">{{m.cost}}</span></div>
+<div style="height: 8px; background: #EEF2F6; border-radius: 999px"><div style="height: 100%; width: {{m.pct}}; background: #111827; border-radius: 999px"></div></div>
+<span style="font-size: 12px; color: #5B6676">{{m.tokens}}</span>
+</div>
+</sc-for>
+<p style="margin: 0; font-size: 12px; color: #5B6676; line-height: 1.5">Kestra ile çalışan akışlar AI kullanmadığı sürece token harcamaz. Maliyetin çoğu akış oluşturma ve düzenleme sohbetlerinden gelir.</p>
+</section>
+</div>
+
+<div style="overflow-x: auto; background: #FFFFFF; border: 1px solid #E4E8EE; border-radius: 18px">
+<table style="width: 100%; min-width: 820px; border-collapse: collapse; font-size: 14px">
+<thead>
+<tr style="text-align: left; color: #5B6676; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em">
+<th style="padding: 12px 16px; font-weight: 700; border-bottom: 1px solid #E4E8EE">Akış / sohbet</th>
+<th style="padding: 12px 16px; font-weight: 700; border-bottom: 1px solid #E4E8EE">Model</th>
+<th style="padding: 12px 16px; font-weight: 700; border-bottom: 1px solid #E4E8EE; text-align: right">Çağrı</th>
+<th style="padding: 12px 16px; font-weight: 700; border-bottom: 1px solid #E4E8EE; text-align: right">Girdi token</th>
+<th style="padding: 12px 16px; font-weight: 700; border-bottom: 1px solid #E4E8EE; text-align: right">Çıktı token</th>
+<th style="padding: 12px 16px; font-weight: 700; border-bottom: 1px solid #E4E8EE; text-align: right">Maliyet</th>
+</tr>
+</thead>
+<tbody>
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="5">
+<tr>
+<td style="padding: 12px 16px; border-bottom: 1px solid #EEF2F6; font-weight: 700">{{r.name}}</td>
+<td style="padding: 12px 16px; border-bottom: 1px solid #EEF2F6; color: #3F4A5A">{{r.model}}</td>
+<td style="padding: 12px 16px; border-bottom: 1px solid #EEF2F6; text-align: right; font-family: 'JetBrains Mono', monospace">{{r.calls}}</td>
+<td style="padding: 12px 16px; border-bottom: 1px solid #EEF2F6; text-align: right; font-family: 'JetBrains Mono', monospace">{{r.inT}}</td>
+<td style="padding: 12px 16px; border-bottom: 1px solid #EEF2F6; text-align: right; font-family: 'JetBrains Mono', monospace">{{r.outT}}</td>
+<td style="padding: 12px 16px; border-bottom: 1px solid #EEF2F6; text-align: right; font-family: 'JetBrains Mono', monospace">{{r.cost}}</td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+<p style="margin: 0; font-size: 13px; color: #5B6676">Örnek veriler. Fiyatlar milyon token başına: Sonnet 5.5 $2 girdi / $10 çıktı, Opus 5.5 $4 / $20.</p>
+</main>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":980}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const kpis = [
+      { label: 'Toplam maliyet', value: '$48.20', sub: 'Geçen aya göre +%12' },
+      { label: 'Token', value: '7.4M', sub: '6.3M girdi · 1.1M çıktı' },
+      { label: 'AI çağrısı', value: '1,284', sub: 'Ortalama $0.04 / çağrı' },
+      { label: 'Akış çalışması', value: '3,920', sub: '41 tanesi AI adımı içeriyor' }
+    ];
+    const a = [40, 52, 30, 64, 70, 22, 18, 58, 90, 76, 48, 60, 26, 20, 66, 84, 72, 54, 62, 24, 16, 70, 88, 64, 50, 46, 22, 18, 60, 74];
+    const b = [8, 8, 8, 8, 30, 4, 4, 8, 8, 8, 8, 30, 4, 4, 8, 8, 8, 8, 30, 4, 4, 8, 8, 8, 8, 30, 4, 4, 8, 8];
+    const days = a.map((v, i) => ({ a: v, b: b[i], tip: (i + 1) + ' Eki' }));
+    const models = [
+      { name: 'Claude Sonnet 5.5', cost: '$36.90', pct: '77%', tokens: '6.5M token · 1,190 çağrı' },
+      { name: 'Claude Opus 5.5', cost: '$11.30', pct: '23%', tokens: '0.9M token · 94 çağrı' }
+    ];
+    const rows = [
+      ['Sohbet: akış oluşturma', 'Sonnet 5.5', '842', '3.9M', '0.62M', '$14.00'],
+      ['Haftalık rötar özeti (AI adımı)', 'Opus 5.5', '18', '0.41M', '0.12M', '$4.04'],
+      ['Uzun rötar bildirimi (düzenlemeler)', 'Sonnet 5.5', '96', '0.52M', '0.08M', '$1.84'],
+      ['Uçak değişikliği uyarısı (taslak)', 'Opus 5.5', '76', '0.38M', '0.09M', '$3.32'],
+      ['Diğer', '—', '252', '1.09M', '0.19M', '$25.00']
+    ].map((r) => ({ name: r[0], model: r[1], calls: r[2], inT: r[3], outT: r[4], cost: r[5] }));
+    return { kpis, days, models, rows };
+  }
+}
+</script>
+</body>
+</html>

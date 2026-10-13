@@ -1,0 +1,750 @@
+{
+  "note": "Rapora eklenebilecek alanlar. TC kimlik, telefon, doğum tarihi gibi alanlar bilerek yok. aggregatable: Claude'a giden toplamlarda (sayım/toplam) kullanılabilir; kişi adı, sicil, uçuş no gibi satır düzeyi alanlar hiçbir zaman aggregatable olmaz.",
+  "sources": [
+    {
+      "name": "apm_ucuslar",
+      "title": "Uçuşlar (APM)",
+      "system": "apm",
+      "description": "Tarih aralığındaki planlı uçuş bacakları: uçuş no, kalkış/varış, planlanan saatler, uçak tipi, iptal ve rötar bilgisi. Tarih aralığı UTC gün sınırlarıdır.",
+      "params": [
+        {
+          "name": "from",
+          "label": "Başlangıç günü",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "to",
+          "label": "Bitiş günü (hariç)",
+          "type": "date",
+          "required": true
+        }
+      ],
+      "request": {
+        "path": "/api/legs?dateFrom={from}T00:00:00Z&dateTo={to}T00:00:00Z",
+        "rows": "legs.content",
+        "page_param": "page",
+        "total_pages": "totalNumberOfPages"
+      },
+      "fields": {
+        "flight_no": {
+          "label": "Uçuş No",
+          "type": "string",
+          "paths": [
+            "flightNumberInfo.designator",
+            "flightNumberInfo.flightNumber"
+          ]
+        },
+        "dep_airport": {
+          "label": "Kalkış",
+          "type": "string",
+          "path": "airportsInfo.scheduledDepartureAirportCode",
+          "aggregatable": true
+        },
+        "arr_airport": {
+          "label": "Varış",
+          "type": "string",
+          "path": "airportsInfo.scheduledArrivalAirportCode",
+          "aggregatable": true
+        },
+        "std": {
+          "label": "Planlanan Kalkış",
+          "type": "datetime",
+          "path": "flightTimes.scheduledTimeDeparture"
+        },
+        "sta": {
+          "label": "Planlanan Varış",
+          "type": "datetime",
+          "path": "flightTimes.scheduledTimeArrival"
+        },
+        "atd": {
+          "label": "Gerçekleşen Kalkış",
+          "type": "datetime",
+          "path": "flightTimes.actualTimeDeparture"
+        },
+        "aircraft_type": {
+          "label": "Uçak Tipi",
+          "type": "string",
+          "path": "aircraftInfo.aircraftTypeCode",
+          "aggregatable": true
+        },
+        "registration": {
+          "label": "Tescil",
+          "type": "string",
+          "path": "aircraftInfo.actualAircraftRegistration"
+        },
+        "cancelled": {
+          "label": "İptal",
+          "type": "boolean",
+          "path": "statusInfo.cancelled",
+          "aggregatable": true
+        },
+        "delay_minutes": {
+          "label": "Rötar (dk)",
+          "type": "integer",
+          "path": "delaysInfo.departureDelay1.delayDurationInMinutes",
+          "aggregatable": true
+        },
+        "delay_code": {
+          "label": "Rötar Kodu",
+          "type": "string",
+          "path": "delaysInfo.departureDelay1.delayCode",
+          "aggregatable": true
+        }
+      }
+    },
+    {
+      "name": "ibs_ucus_doluluk",
+      "title": "Uçuş doluluğu (IBS)",
+      "system": "ibs",
+      "query": "ucus_doluluk",
+      "description": "Bir günün uçuş bacakları için kapasite, yolcu kaydı, binen yolcu ve doluluk yüzdesi (kapasite bilinmiyorsa -1).",
+      "params": [
+        {
+          "name": "ucus_tarihi",
+          "label": "Uçuş tarihi",
+          "type": "date",
+          "required": true
+        }
+      ],
+      "fields": {
+        "ucus": {
+          "label": "Uçuş",
+          "type": "string"
+        },
+        "kalkis": {
+          "label": "Kalkış",
+          "type": "string",
+          "aggregatable": true
+        },
+        "varis": {
+          "label": "Varış",
+          "type": "string",
+          "aggregatable": true
+        },
+        "kalkis_saati": {
+          "label": "Kalkış Saati",
+          "type": "datetime"
+        },
+        "durum": {
+          "label": "Durum",
+          "type": "string",
+          "aggregatable": true
+        },
+        "kapasite": {
+          "label": "Kapasite",
+          "type": "integer",
+          "aggregatable": true
+        },
+        "yolcu_kaydi": {
+          "label": "Yolcu Kaydı",
+          "type": "integer",
+          "aggregatable": true
+        },
+        "binen": {
+          "label": "Binen",
+          "type": "integer",
+          "aggregatable": true
+        },
+        "doluluk_yuzde": {
+          "label": "Doluluk (%)",
+          "type": "number"
+        }
+      }
+    },
+    {
+      "name": "ibs_gunluk_satis",
+      "title": "Günlük satış özeti (IBS)",
+      "system": "ibs",
+      "query": "gunluk_satis_ozeti",
+      "description": "Gün ve para birimine göre PNR satış hareketi sayısı ve net tutar.",
+      "params": [
+        {
+          "name": "baslangic",
+          "label": "Başlangıç tarihi",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "bitis",
+          "label": "Bitiş tarihi (dahil)",
+          "type": "date",
+          "required": true
+        }
+      ],
+      "fields": {
+        "tarih": {
+          "label": "Tarih",
+          "type": "date"
+        },
+        "para_birimi": {
+          "label": "Para Birimi",
+          "type": "string",
+          "aggregatable": true
+        },
+        "islem_sayisi": {
+          "label": "İşlem Sayısı",
+          "type": "integer",
+          "aggregatable": true
+        },
+        "net_tutar": {
+          "label": "Net Tutar",
+          "type": "number",
+          "aggregatable": true
+        }
+      }
+    },
+    {
+      "name": "ibs_kanal_satis",
+      "title": "Kanal bazlı satış (IBS)",
+      "system": "ibs",
+      "query": "kanal_bazli_satis",
+      "description": "Satış kanalına göre işlem sayısı ve net tutar.",
+      "params": [
+        {
+          "name": "baslangic",
+          "label": "Başlangıç tarihi",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "bitis",
+          "label": "Bitiş tarihi (dahil)",
+          "type": "date",
+          "required": true
+        }
+      ],
+      "fields": {
+        "kanal": {
+          "label": "Kanal",
+          "type": "string",
+          "aggregatable": true
+        },
+        "kanal_tipi": {
+          "label": "Kanal Tipi",
+          "type": "string",
+          "aggregatable": true
+        },
+        "para_birimi": {
+          "label": "Para Birimi",
+          "type": "string",
+          "aggregatable": true
+        },
+        "islem_sayisi": {
+          "label": "İşlem Sayısı",
+          "type": "integer",
+          "aggregatable": true
+        },
+        "net_tutar": {
+          "label": "Net Tutar",
+          "type": "number",
+          "aggregatable": true
+        }
+      }
+    },
+    {
+      "name": "ibs_acente_satis",
+      "title": "En çok satan acenteler (IBS)",
+      "system": "ibs",
+      "query": "acente_satis_top",
+      "description": "En çok satış yapan 20 acente.",
+      "params": [
+        {
+          "name": "baslangic",
+          "label": "Başlangıç tarihi",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "bitis",
+          "label": "Bitiş tarihi (dahil)",
+          "type": "date",
+          "required": true
+        }
+      ],
+      "fields": {
+        "acente_kodu": {
+          "label": "Acente Kodu",
+          "type": "string"
+        },
+        "acente": {
+          "label": "Acente",
+          "type": "string",
+          "aggregatable": true
+        },
+        "acente_tipi": {
+          "label": "Acente Tipi",
+          "type": "string",
+          "aggregatable": true
+        },
+        "para_birimi": {
+          "label": "Para Birimi",
+          "type": "string",
+          "aggregatable": true
+        },
+        "islem_sayisi": {
+          "label": "İşlem Sayısı",
+          "type": "integer",
+          "aggregatable": true
+        },
+        "net_tutar": {
+          "label": "Net Tutar",
+          "type": "number",
+          "aggregatable": true
+        }
+      }
+    },
+    {
+      "name": "ibs_odeme_ozeti",
+      "title": "Ödeme özeti (IBS)",
+      "system": "ibs",
+      "query": "odeme_ozeti",
+      "description": "Ödeme yöntemi ve durumuna göre işlem sayısı ve tutar.",
+      "params": [
+        {
+          "name": "baslangic",
+          "label": "Başlangıç tarihi",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "bitis",
+          "label": "Bitiş tarihi (dahil)",
+          "type": "date",
+          "required": true
+        }
+      ],
+      "fields": {
+        "odeme_yontemi": {
+          "label": "Ödeme Yöntemi",
+          "type": "string",
+          "aggregatable": true
+        },
+        "durum": {
+          "label": "Durum",
+          "type": "string",
+          "aggregatable": true
+        },
+        "para_birimi": {
+          "label": "Para Birimi",
+          "type": "string",
+          "aggregatable": true
+        },
+        "islem_sayisi": {
+          "label": "İşlem Sayısı",
+          "type": "integer",
+          "aggregatable": true
+        },
+        "tutar": {
+          "label": "Tutar",
+          "type": "number",
+          "aggregatable": true
+        }
+      }
+    },
+    {
+      "name": "ibs_bilet_islemleri",
+      "title": "Bilet işlemleri (IBS)",
+      "system": "ibs",
+      "query": "bilet_islemleri",
+      "description": "Kesildi/iade/iptal/değişim bilet ve kupon sayıları.",
+      "params": [
+        {
+          "name": "baslangic",
+          "label": "Başlangıç tarihi",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "bitis",
+          "label": "Bitiş tarihi (dahil)",
+          "type": "date",
+          "required": true
+        }
+      ],
+      "fields": {
+        "islem": {
+          "label": "İşlem",
+          "type": "string",
+          "aggregatable": true
+        },
+        "para_birimi": {
+          "label": "Para Birimi",
+          "type": "string",
+          "aggregatable": true
+        },
+        "kupon_sayisi": {
+          "label": "Kupon Sayısı",
+          "type": "integer",
+          "aggregatable": true
+        },
+        "bilet_sayisi": {
+          "label": "Bilet Sayısı",
+          "type": "integer",
+          "aggregatable": true
+        },
+        "tutar": {
+          "label": "Tutar",
+          "type": "number",
+          "aggregatable": true
+        }
+      }
+    },
+    {
+      "name": "sf_izinler",
+      "title": "İzinler (SuccessFactors)",
+      "system": "successfactors",
+      "request": "sf_izinler",
+      "personal_data": true,
+      "description": "Tarih aralığıyla kesişen izinler (iptaller hariç): çalışan, şirket, izin türü, tarihler, gün, onay durumu.",
+      "params": [
+        {
+          "name": "from",
+          "label": "Aralık başı",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "to",
+          "label": "Aralık sonu",
+          "type": "date",
+          "required": true
+        }
+      ],
+      "fields": {
+        "sicil": {
+          "label": "Sicil",
+          "type": "string",
+          "path": "userId"
+        },
+        "ad": {
+          "label": "Ad",
+          "type": "string",
+          "path": "userIdNav.firstName"
+        },
+        "soyad": {
+          "label": "Soyad",
+          "type": "string",
+          "path": "userIdNav.lastName"
+        },
+        "sirket": {
+          "label": "Şirket",
+          "type": "string",
+          "path": "userIdNav.empInfo.jobInfoNav.results.0.company",
+          "aggregatable": true
+        },
+        "izin_turu": {
+          "label": "İzin Türü",
+          "type": "string",
+          "path": "timeTypeNav.externalName_defaultValue",
+          "aggregatable": true
+        },
+        "baslangic": {
+          "label": "Başlangıç",
+          "type": "date",
+          "path": "startDate"
+        },
+        "bitis": {
+          "label": "Bitiş",
+          "type": "date",
+          "path": "endDate"
+        },
+        "gun": {
+          "label": "Gün",
+          "type": "number",
+          "path": "quantityInDays",
+          "aggregatable": true
+        },
+        "durum": {
+          "label": "Onay Durumu",
+          "type": "string",
+          "path": "approvalStatus",
+          "aggregatable": true
+        }
+      }
+    },
+    {
+      "name": "sf_isten_ayrilanlar",
+      "title": "İşten ayrılanlar (SuccessFactors)",
+      "system": "successfactors",
+      "request": "sf_isten_ayrilanlar",
+      "personal_data": true,
+      "description": "Tarih aralığında işten ayrılanlar: şirket, unvan, ayrılış tarihi ve nedeni, yeniden işe alınabilirlik.",
+      "params": [
+        {
+          "name": "from",
+          "label": "Aralık başı",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "to",
+          "label": "Aralık sonu",
+          "type": "date",
+          "required": true
+        }
+      ],
+      "fields": {
+        "sicil": {
+          "label": "Sicil",
+          "type": "string",
+          "path": "userId"
+        },
+        "ad": {
+          "label": "Ad",
+          "type": "string",
+          "path": "personNav.personalInfoNav.results.0.firstName"
+        },
+        "soyad": {
+          "label": "Soyad",
+          "type": "string",
+          "path": "personNav.personalInfoNav.results.0.lastName"
+        },
+        "sirket": {
+          "label": "Şirket",
+          "type": "string",
+          "path": "jobInfoNav.company",
+          "aggregatable": true
+        },
+        "unvan": {
+          "label": "Unvan",
+          "type": "string",
+          "path": "jobInfoNav.jobTitle",
+          "aggregatable": true
+        },
+        "ayrilis": {
+          "label": "Ayrılış Tarihi",
+          "type": "date",
+          "path": "endDate"
+        },
+        "neden": {
+          "label": "Ayrılış Nedeni",
+          "type": "string",
+          "path": "jobInfoNav.eventReasonNav.name",
+          "aggregatable": true
+        },
+        "tekrar_alinabilir": {
+          "label": "Yeniden İşe Alınabilir",
+          "type": "boolean",
+          "path": "okToRehire",
+          "aggregatable": true
+        }
+      }
+    },
+    {
+      "name": "sf_ise_girenler",
+      "title": "İşe girenler (SuccessFactors)",
+      "system": "successfactors",
+      "request": "sf_ise_girenler",
+      "personal_data": true,
+      "description": "Tarih aralığında işe girenler: şirket, unvan, giriş tarihleri.",
+      "params": [
+        {
+          "name": "from",
+          "label": "Aralık başı",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "to",
+          "label": "Aralık sonu",
+          "type": "date",
+          "required": true
+        }
+      ],
+      "fields": {
+        "sicil": {
+          "label": "Sicil",
+          "type": "string",
+          "path": "userId"
+        },
+        "ad": {
+          "label": "Ad",
+          "type": "string",
+          "path": "userNav.firstName"
+        },
+        "soyad": {
+          "label": "Soyad",
+          "type": "string",
+          "path": "userNav.lastName"
+        },
+        "sirket": {
+          "label": "Şirket",
+          "type": "string",
+          "path": "jobInfoNav.results.0.company",
+          "aggregatable": true
+        },
+        "unvan": {
+          "label": "Unvan",
+          "type": "string",
+          "path": "jobInfoNav.results.0.jobTitle",
+          "aggregatable": true
+        },
+        "giris": {
+          "label": "İşe Giriş",
+          "type": "date",
+          "path": "startDate"
+        },
+        "ilk_giris": {
+          "label": "İlk Giriş",
+          "type": "date",
+          "path": "originalStartDate"
+        }
+      }
+    },
+    {
+      "name": "sf_aktif_calisanlar",
+      "title": "Aktif çalışanlar (SuccessFactors)",
+      "system": "successfactors",
+      "request": "sf_aktif_calisanlar",
+      "personal_data": true,
+      "description": "Bir şirketin aktif çalışanları: departman, pozisyon, lokasyon, unvan, işe başlama.",
+      "params": [
+        {
+          "name": "company",
+          "label": "Şirket kodu (ör. GDA)",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "fields": {
+        "sicil": {
+          "label": "Sicil",
+          "type": "string",
+          "path": "userId"
+        },
+        "ad": {
+          "label": "Ad",
+          "type": "string",
+          "path": "userNav.firstName"
+        },
+        "soyad": {
+          "label": "Soyad",
+          "type": "string",
+          "path": "userNav.lastName"
+        },
+        "sirket": {
+          "label": "Şirket",
+          "type": "string",
+          "path": "company",
+          "aggregatable": true
+        },
+        "departman": {
+          "label": "Departman",
+          "type": "string",
+          "path": "departmentNav.name",
+          "aggregatable": true
+        },
+        "pozisyon": {
+          "label": "Pozisyon",
+          "type": "string",
+          "path": "positionNav.externalName_defaultValue",
+          "aggregatable": true
+        },
+        "lokasyon": {
+          "label": "Lokasyon",
+          "type": "string",
+          "path": "locationNav.name",
+          "aggregatable": true
+        },
+        "unvan": {
+          "label": "Unvan",
+          "type": "string",
+          "path": "jobTitle",
+          "aggregatable": true
+        },
+        "baslangic": {
+          "label": "Başlangıç",
+          "type": "date",
+          "path": "startDate"
+        }
+      }
+    },
+    {
+      "name": "sf_belge_bitenler",
+      "title": "Süresi dolan belgeler (SuccessFactors)",
+      "system": "successfactors",
+      "request": "sf_belge_bitenler",
+      "personal_data": true,
+      "description": "Tarih aralığında süresi dolan pasaport, vize ve çalışma izinleri.",
+      "params": [
+        {
+          "name": "from",
+          "label": "Aralık başı",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "to",
+          "label": "Aralık sonu",
+          "type": "date",
+          "required": true
+        }
+      ],
+      "fields": {
+        "sicil": {
+          "label": "Sicil",
+          "type": "string",
+          "path": "userId"
+        },
+        "belge_turu": {
+          "label": "Belge Türü",
+          "type": "string",
+          "path": "documentTypeNav.picklistLabels.results.0.label",
+          "aggregatable": true
+        },
+        "ulke": {
+          "label": "Ülke",
+          "type": "string",
+          "path": "country",
+          "aggregatable": true
+        },
+        "bitis": {
+          "label": "Bitiş Tarihi",
+          "type": "date",
+          "path": "expirationDate"
+        }
+      }
+    },
+    {
+      "name": "sf_bos_pozisyonlar",
+      "title": "Boş pozisyonlar (SuccessFactors)",
+      "system": "successfactors",
+      "request": "sf_bos_pozisyonlar",
+      "description": "Bir şirketteki boş pozisyonlar ve departmanları.",
+      "params": [
+        {
+          "name": "company",
+          "label": "Şirket kodu (ör. GDA)",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "fields": {
+        "kod": {
+          "label": "Pozisyon Kodu",
+          "type": "string",
+          "path": "code"
+        },
+        "pozisyon": {
+          "label": "Pozisyon",
+          "type": "string",
+          "path": "externalName_defaultValue",
+          "aggregatable": true
+        },
+        "sirket": {
+          "label": "Şirket",
+          "type": "string",
+          "path": "company",
+          "aggregatable": true
+        },
+        "departman": {
+          "label": "Departman",
+          "type": "string",
+          "path": "departmentNav.name",
+          "aggregatable": true
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,118 @@
+<?php
+
+namespace App\Console\Commands;
+
+use App\Models\Conversation;
+use App\Models\Message;
+use App\Services\Claude\ClaudeChat;
+use App\Services\Claude\ClaudeException;
+use App\Services\Settings\AppSettings;
+use Illuminate\Console\Attributes\Description;
+use Illuminate\Console\Attributes\Signature;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Storage;
+
+#[Signature('fortis:eval {--only= : Sadece bu soru id\'leri (virgülle)} {--path= : Soru dosyası (varsayılan tests/eval/questions.json)}')]
+#[Description('Değerlendirme setini gerçek modele sorar: doğru araç, gereksiz akış, tablo ve kaynak. Gerçek API çağrısı yapar (ücretli).')]
+class RunEval extends Command
+{
+    public function handle(AppSettings $settings): int
+    {
+        if (! $settings->dataAccessEnabled()) {
+            $this->error('AI veri erişimi kapalı (ai.data_access = off). Değerlendirme veri sorgularını ölçer; önce ayarı açın.');
+
+            return self::FAILURE;
+        }
+
+        $file = $this->option('path') ?: base_path('tests/eval/questions.json');
+        $questions = json_decode((string) file_get_contents($file), true)['questions'] ?? [];
+        $only = array_filter(explode(',', (string) $this->option('only')));
+        $questions = array_values(array_filter($questions, fn (array $q) => $only === [] || in_array($q['id'], $only, true)));
+
+        $results = [];
+        foreach ($questions as $question) {
+            $this->line("→ {$question['id']}: {$question['question']}");
+            $results[] = $result = $this->askQuestion($question);
+            $this->line(sprintf('   %s  araçlar: %s  maliyet: $%.3f', $result['pass'] ? 'GEÇTİ' : 'KALDI', implode(', ', $result['tools']) ?: '-', $result['cost_usd']));
+            foreach ($result['failures'] as $failure) {
+                $this->line("   · {$failure}");
+            }
+        }
+
+        $passed = count(array_filter($results, fn (array $r) => $r['pass']));
+        // Doğru araç oranı: beklenen aracı olan (expect_tools veya expect_flow) her soru dahil; hiç araç çağırmayan soru başarısız sayılır.
+        $graded = array_filter($results, fn (array $r) => array_key_exists('tool', $r['checks']));
+        $toolHits = count(array_filter($graded, fn (array $r) => $r['checks']['tool']));
+        $summary = [
+            'run_at' => now()->toIso8601String(),
+            'questions' => count($results),
+            'passed' => $passed,
+            'correct_tool_ratio' => count($graded) ? round($toolHits / count($graded), 3) : null,
+            'total_cost_usd' => round(array_sum(array_column($results, 'cost_usd')), 4),
+        ];
+
+        $path = 'eval/'.now()->format('Y-m-d_His').'.json';
+        Storage::disk('local')->put($path, json_encode(['summary' => $summary, 'results' => $results], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
+        $this->newLine();
+        $this->info("{$passed}/{$summary['questions']} geçti · doğru araç oranı %".round(($summary['correct_tool_ratio'] ?? 0) * 100)." · maliyet \${$summary['total_cost_usd']}");
+        $this->line('Rapor: '.Storage::disk('local')->path($path));
+
+        return self::SUCCESS;
+    }
+
+    /**
+     * @param  array<string, mixed>  $question
+     * @return array<string, mixed>
+     */
+    private function askQuestion(array $question): array
+    {
+        $conversation = Conversation::create(['title' => "[eval] {$question['id']}"]);
+        $conversation->messages()->create(['role' => Message::ROLE_USER, 'content' => [['type' => 'text', 'text' => $question['question']]], 'text' => $question['question']]);
+
+        $error = null;
+        try {
+            app(ClaudeChat::class)->reply($conversation, fn () => null);
+        } catch (ClaudeException $e) {
+            $error = $e->getMessage();
+        }
+
+        $messages = $conversation->messages()->orderBy('id')->get();
+        $tools = $messages->flatMap(fn (Message $m) => collect($m->content)->where('type', 'tool_use')->pluck('name'))->values()->all();
+        $answer = (string) $messages->where('role', Message::ROLE_ASSISTANT)->last()?->text;
+
+        $checks = array_filter([
+            'tool' => match (true) {
+                isset($question['expect_tools']) => array_intersect($question['expect_tools'], $tools) !== [],
+                ! empty($question['expect_flow']) => array_intersect(['validate_flow', 'propose_flow'], $tools) !== [],
+                default => null,
+            },
+            'no_flow' => ! empty($question['expect_no_flow']) ? ! in_array('propose_flow', $tools, true) : null,
+            'flow' => ! empty($question['expect_flow']) ? in_array('propose_flow', $tools, true) || in_array('validate_flow', $tools, true) : null,
+            'table' => ! empty($question['expect_table']) ? self::hasTable($answer) : null,
+            'no_table' => ! empty($question['expect_no_table']) ? ! self::hasTable($answer) : null,
+            'citation' => ! empty($question['expect_citation']) ? (bool) preg_match('/\[\^q:[A-Za-z0-9_]+\]/', $answer) : null,
+            'source' => ! empty($question['expect_source']) ? (bool) preg_match('/Kaynak\s*:/iu', $answer) : null,
+            'no_error' => $error === null,
+        ], fn ($check) => $check !== null);
+
+        $labels = ['tool' => 'Beklenen araç kullanılmadı', 'no_flow' => 'Gereksiz akış önerildi', 'flow' => 'Akış önerilmedi', 'table' => 'Tablo yok', 'no_table' => 'Gereksiz tablo', 'citation' => 'Kaynak numarası yok', 'source' => 'Kaynak satırı yok', 'no_error' => "Hata: {$error}"];
+
+        return [
+            'id' => $question['id'],
+            'question' => $question['question'],
+            'pass' => ! in_array(false, $checks, true),
+            'checks' => $checks,
+            'failures' => array_values(array_map(fn (string $key) => $labels[$key], array_keys(array_filter($checks, fn (bool $ok) => ! $ok)))),
+            'tools' => array_values(array_unique($tools)),
+            'answer' => $answer,
+            'cost_usd' => (float) $conversation->aiCalls()->sum('cost_usd'),
+            'conversation_id' => $conversation->id,
+        ];
+    }
+
+    private static function hasTable(string $answer): bool
+    {
+        return (bool) preg_match('/^\s*\|.*\|\s*$\n^\s*\|[\s:|-]+\|\s*$/m', $answer);
+    }
+}

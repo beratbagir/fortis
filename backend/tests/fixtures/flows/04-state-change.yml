@@ -1,0 +1,37 @@
+# Çalışmalar arasında durum tutma (KV) + değişince Teams bildirimi
+id: price-change-watch
+namespace: fortis.chat
+description: Her saat başı fiyatı kontrol eder, bir önceki değerden farklıysa Teams'e haber verir.
+
+tasks:
+  - id: fetch_price
+    type: io.kestra.plugin.core.http.Request
+    uri: https://api.example.com/price
+    method: GET
+
+  - id: previous_price
+    type: io.kestra.plugin.core.kv.Get
+    key: last_price
+    errorOnMissing: false
+
+  - id: changed
+    type: io.kestra.plugin.core.flow.If
+    condition: "{{ outputs.previous_price.value != (outputs.fetch_price.body | jq('.price') | first) }}"
+    then:
+      - id: notify_teams
+        type: io.kestra.plugin.microsoft365.teams.TeamsIncomingWebhook
+        url: "{{ secret('TEAMS_WEBHOOK_URL') }}"
+        payload: |
+          {"text": "Fiyat değişti: {{ outputs.fetch_price.body | jq('.price') | first }}"}
+
+      - id: remember_price
+        type: io.kestra.plugin.core.kv.Set
+        key: last_price
+        value: "{{ outputs.fetch_price.body | jq('.price') | first }}"
+        overwrite: true
+
+triggers:
+  - id: hourly
+    type: io.kestra.plugin.core.trigger.Schedule
+    cron: "0 * * * *"
+    timezone: Europe/Istanbul

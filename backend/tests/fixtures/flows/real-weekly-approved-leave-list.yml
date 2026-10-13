@@ -1,0 +1,62 @@
+id: weekly-approved-leave-list
+namespace: fortis.chat
+description: 'Elle çalıştırılır; önümüzdeki 7 gün içinde onaylı izni olan GDA şirketi çalışanlarını ad-soyad ve tarihleriyle loga yazar.'
+tasks:
+  - id: week_range
+    type: io.kestra.plugin.core.output.OutputValues
+    values:
+      week_start: "{{ now() | date('yyyy-MM-dd') }}"
+      week_end: "{{ now() | dateAdd(6, 'DAYS') | date('yyyy-MM-dd') }}"
+  - id: companies
+    type: io.kestra.plugin.core.http.Request
+    uri: 'https://api55.sapsf.eu/odata/v2/FOCompany?$format=JSON&$select=externalCode,name'
+    method: GET
+    options:
+      auth:
+        type: BASIC
+        username: "{{ secret('SF_USERNAME') }}"
+        password: "{{ secret('SF_PASSWORD') }}"
+  - id: gda_company
+    type: io.kestra.plugin.core.output.OutputValues
+    values:
+      code: '{{ outputs.companies.body | jq(''[.d.results[] | select(((.externalCode // "") + " " + (.name // "")) | ascii_downcase | contains("gda")) | .externalCode] | .[0] // "YOK"'') | first }}'
+      name: '{{ outputs.companies.body | jq(''[.d.results[] | select(((.externalCode // "") + " " + (.name // "")) | ascii_downcase | contains("gda")) | .name] | .[0] // "bulunamadı"'') | first }}'
+  - id: log_company
+    type: io.kestra.plugin.core.log.Log
+    message: 'GDA şirketi: kod {{ outputs.gda_company.values.code }}, ad {{ outputs.gda_company.values.name }}'
+  - id: gda_jobs
+    type: io.kestra.plugin.core.http.Request
+    uri: "https://api55.sapsf.eu/odata/v2/EmpJob?$format=JSON&$select=userId,company&$filter=company%20eq%20'{{ outputs.gda_company.values.code }}'"
+    method: GET
+    options:
+      auth:
+        type: BASIC
+        username: "{{ secret('SF_USERNAME') }}"
+        password: "{{ secret('SF_PASSWORD') }}"
+  - id: gda_ids
+    type: io.kestra.plugin.core.output.OutputValues
+    values:
+      ids: '{{ outputs.gda_jobs.body | jq(''[.d.results[].userId] | join(",")'') | first }}'
+  - id: leaves
+    type: io.kestra.plugin.core.http.Request
+    uri: "https://api55.sapsf.eu/odata/v2/EmployeeTime?$format=JSON&$expand=userIdNav&$select=userId,startDate,endDate,quantityInDays,timeType,approvalStatus,userIdNav/firstName,userIdNav/lastName&$filter=approvalStatus%20eq%20'APPROVED'%20and%20startDate%20le%20datetime'{{ outputs.week_range.values.week_end }}T23:59:59'%20and%20endDate%20ge%20datetime'{{ outputs.week_range.values.week_start }}T00:00:00'"
+    method: GET
+    options:
+      auth:
+        type: BASIC
+        username: "{{ secret('SF_USERNAME') }}"
+        password: "{{ secret('SF_PASSWORD') }}"
+  - id: log_count
+    type: io.kestra.plugin.core.log.Log
+    message: "GDA çalışanı sayısı: {{ outputs.gda_jobs.body | jq('.d.results | length') | first }}; {{ outputs.week_range.values.week_start }} - {{ outputs.week_range.values.week_end }} aralığında tüm şirketlerde onaylı izin kaydı: {{ outputs.leaves.body | jq('.d.results | length') | first }}"
+  - id: each_leave
+    type: io.kestra.plugin.core.flow.ForEach
+    values: '{{ outputs.leaves.body | jq(''[.d.results[] | {userId: .userId, ad: (.userIdNav.firstName // "-"), soyad: (.userIdNav.lastName // "-"), baslangic: (.startDate | ltrimstr("/Date(") | rtrimstr(")/") | tonumber), bitis: (.endDate | ltrimstr("/Date(") | rtrimstr(")/") | tonumber), gun: .quantityInDays}]'') | first }}'
+    tasks:
+      - id: is_gda
+        type: io.kestra.plugin.core.flow.If
+        condition: "{{ (outputs.gda_ids.values.ids | split(',')) contains fromJson(taskrun.value).userId }}"
+        then:
+          - id: log_gda_leave
+            type: io.kestra.plugin.core.log.Log
+            message: "GDA: {{ fromJson(parent.taskrun.value).ad }} {{ fromJson(parent.taskrun.value).soyad }} ({{ fromJson(parent.taskrun.value).userId }}): {{ fromJson(parent.taskrun.value).baslangic | date('yyyy-MM-dd', timeZone='UTC') }} - {{ fromJson(parent.taskrun.value).bitis | date('yyyy-MM-dd', timeZone='UTC') }} ({{ fromJson(parent.taskrun.value).gun | default('-') }} gün)"

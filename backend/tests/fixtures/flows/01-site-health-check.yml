@@ -1,0 +1,47 @@
+# Zamanlanmış kontrol + koşullu e-posta + hata bloğu
+id: site-health-check
+namespace: fortis.chat
+description: Her sabah 08:00'de siteyi kontrol eder, cevap 200 değilse ops ekibine e-posta gönderir.
+
+tasks:
+  - id: check_site
+    type: io.kestra.plugin.core.http.Request
+    uri: https://example.com
+    method: GET
+    options:
+      allowFailed: true
+
+  - id: is_down
+    type: io.kestra.plugin.core.flow.If
+    condition: "{{ outputs.check_site.code != 200 }}"
+    then:
+      - id: notify_ops
+        type: io.kestra.plugin.email.MailSend
+        host: "{{ secret('SMTP_HOST') }}"
+        port: "{{ secret('SMTP_PORT') }}"
+        transportStrategy: SMTP_TLS
+        username: "{{ secret('SMTP_USERNAME') }}"
+        password: "{{ secret('SMTP_PASSWORD') }}"
+        from: "{{ secret('SMTP_FROM') }}"
+        to: ops@example.com
+        subject: "example.com cevap vermiyor"
+        htmlTextContent: "<p>Durum kodu: {{ outputs.check_site.code }}</p>"
+
+errors:
+  - id: notify_failure
+    type: io.kestra.plugin.email.MailSend
+    host: "{{ secret('SMTP_HOST') }}"
+    port: "{{ secret('SMTP_PORT') }}"
+    transportStrategy: SMTP_TLS
+    username: "{{ secret('SMTP_USERNAME') }}"
+    password: "{{ secret('SMTP_PASSWORD') }}"
+    from: "{{ secret('SMTP_FROM') }}"
+    to: ops@example.com
+    subject: "Site kontrolü çalışmadı"
+    htmlTextContent: "<p>Akış hata verdi: {{ execution.id }}</p>"
+
+triggers:
+  - id: every_morning
+    type: io.kestra.plugin.core.trigger.Schedule
+    cron: "0 8 * * *"
+    timezone: Europe/Istanbul

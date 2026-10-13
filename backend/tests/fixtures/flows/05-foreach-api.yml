@@ -1,0 +1,81 @@
+# Döngü (ForEach) + her öğe için dış API + öğe bazında koşul + durum (KV).
+# Kurallar (Kestra'da çalıştırılarak doğrulandı):
+# - Döngünün doğrudan altındaki görevlerde döngü değeri: taskrun.value
+# - Kardeş görevin çıktısı döngü değeriyle indekslenir: outputs.<id>[taskrun.value]
+# - If görevinin then/else altındaki görevlerde: parent.taskrun.value ve outputs.<id>[parent.taskrun.value]
+# - If içine If koyma; koşulları döngünün doğrudan altındaki ayrı If görevlerinde birleştir.
+# - Metin değerler (JSON'dan, KV'den) karşılaştırmadan önce `| number` ile sayıya çevrilir;
+#   INT/FLOAT girdilere `| number` uygulanmaz (hata verir).
+id: city-temperature-watch
+namespace: fortis.chat
+description: Şehirlerin sıcaklığını alır, eşiği geçenleri ve bir önceki çalışmaya göre büyük değişimleri loglar.
+
+inputs:
+  - id: threshold
+    type: FLOAT
+    defaults: 30
+
+tasks:
+  - id: each_city
+    type: io.kestra.plugin.core.flow.ForEach
+    values:
+      - '{"name": "Istanbul", "lat": 41.01, "lon": 28.98}'
+      - '{"name": "Ankara", "lat": 39.93, "lon": 32.86}'
+    tasks:
+      - id: fetch
+        type: io.kestra.plugin.core.http.Request
+        uri: "https://api.open-meteo.com/v1/forecast?latitude={{ fromJson(taskrun.value).lat }}&longitude={{ fromJson(taskrun.value).lon }}&current=temperature_2m"
+        method: GET
+        allowFailure: true
+        options:
+          allowFailed: true
+
+      - id: ok
+        type: io.kestra.plugin.core.flow.If
+        condition: "{{ outputs.fetch[taskrun.value].code is defined and outputs.fetch[taskrun.value].code == 200 }}"
+        then:
+          - id: parse
+            type: io.kestra.plugin.core.output.OutputValues
+            values:
+              temp: "{{ outputs.fetch[parent.taskrun.value].body | jq('.current.temperature_2m') | first }}"
+          - id: log_temp
+            type: io.kestra.plugin.core.log.Log
+            message: "{{ fromJson(parent.taskrun.value).name }}: {{ outputs.fetch[parent.taskrun.value].body | jq('.current.temperature_2m') | first }} °C"
+        else:
+          - id: log_error
+            type: io.kestra.plugin.core.log.Log
+            level: ERROR
+            message: "{{ fromJson(parent.taskrun.value).name }} için veri alınamadı; diğer şehirlerle devam ediliyor."
+
+      - id: previous
+        type: io.kestra.plugin.core.kv.Get
+        key: "last_temp_{{ fromJson(taskrun.value).name }}"
+        errorOnMissing: false
+
+      - id: too_hot
+        type: io.kestra.plugin.core.flow.If
+        condition: "{{ outputs.parse[taskrun.value] is defined and (outputs.parse[taskrun.value].values.temp | number) > inputs.threshold }}"
+        then:
+          - id: log_hot
+            type: io.kestra.plugin.core.log.Log
+            level: WARN
+            message: "UYARI: {{ fromJson(parent.taskrun.value).name }} sıcaklığı {{ outputs.parse[parent.taskrun.value].values.temp }} °C, eşik {{ inputs.threshold }}."
+
+      - id: big_change
+        type: io.kestra.plugin.core.flow.If
+        condition: "{{ outputs.parse[taskrun.value] is defined and outputs.previous[taskrun.value].value is defined and outputs.previous[taskrun.value].value is not null and (((outputs.parse[taskrun.value].values.temp | number) - (outputs.previous[taskrun.value].value | number)) | abs) > 5 }}"
+        then:
+          - id: log_change
+            type: io.kestra.plugin.core.log.Log
+            level: WARN
+            message: "DEĞİŞİM: {{ fromJson(parent.taskrun.value).name }} {{ outputs.previous[parent.taskrun.value].value }} °C → {{ outputs.parse[parent.taskrun.value].values.temp }} °C"
+
+      - id: remember
+        type: io.kestra.plugin.core.flow.If
+        condition: "{{ outputs.parse[taskrun.value] is defined }}"
+        then:
+          - id: save_temp
+            type: io.kestra.plugin.core.kv.Set
+            key: "last_temp_{{ fromJson(parent.taskrun.value).name }}"
+            value: "{{ outputs.parse[parent.taskrun.value].values.temp }}"
+            overwrite: true

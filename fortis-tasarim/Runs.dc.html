@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Fortis · Çalışmalar</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Manrope',system-ui,sans-serif;color:#111827;background:#F5F7FA}
+a{color:#0B2A4A}a:hover{color:#0B2A4A}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="min-height: 860px; display: flex; flex-wrap: wrap; background: #F5F7FA">
+
+<nav aria-label="Ana menü" style="flex: 0 0 232px; padding: 20px 14px; background: #FFFFFF; border-right: 1px solid #E4E8EE; display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600">
+<div style="display: flex; align-items: center; gap: 10px; padding: 4px 10px 18px">
+<div style="width: 32px; height: 32px; border-radius: 10px; background: #0B2A4A; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 16px">F</div>
+<span style="font-weight: 800; font-size: 18px">Fortis</span>
+</div>
+<a href="#" style="padding: 10px 12px; border-radius: 12px; color: #3F4A5A; text-decoration: none">Sohbet</a>
+<a href="Flows.dc.html" style="padding: 10px 12px; border-radius: 12px; color: #3F4A5A; text-decoration: none">Akışlar</a>
+<a href="Runs.dc.html" style="padding: 10px 12px; border-radius: 12px; color: #0B2A4A; background: #E6EDF5; text-decoration: none">Çalışmalar</a>
+<a href="#" style="padding: 10px 12px; border-radius: 12px; color: #3F4A5A; text-decoration: none">Veri kaynakları</a>
+<a href="Usage.dc.html" style="padding: 10px 12px; border-radius: 12px; color: #3F4A5A; text-decoration: none">Kullanım ve maliyet</a>
+</nav>
+
+<main style="flex: 999 1 640px; min-width: 0; padding: 32px; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px">
+<h1 style="margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.02em">Çalışmalar</h1>
+<div style="flex: 1 1 auto"></div>
+<div style="display: flex; gap: 4px; padding: 4px; background: #EDF1F5; border-radius: 12px">
+<button type="button" style="height: 34px; padding: 0 14px; border: 0; border-radius: 9px; background: #FFFFFF; font-size: 13px; font-weight: 700; color: #111827; box-shadow: 0 1px 3px #1118271A">Tümü</button>
+<button type="button" style="height: 34px; padding: 0 14px; border: 0; border-radius: 9px; background: transparent; font-size: 13px; font-weight: 700; color: #5B6676">Onay bekleyen · 1</button>
+<button type="button" style="height: 34px; padding: 0 14px; border: 0; border-radius: 9px; background: transparent; font-size: 13px; font-weight: 700; color: #5B6676">Hatalı · 1</button>
+</div>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+<section aria-label="Çalışma listesi" style="flex: 1 1 380px; min-width: 0; display: flex; flex-direction: column; gap: 8px">
+<sc-for list="{{runs}}" as="r" hint-placeholder-count="6">
+<div style="display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: #FFFFFF; border: {{r.border}}; border-radius: 16px">
+<div style="width: 36px; height: 36px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; background: {{r.bg}}; color: {{r.fg}}">{{r.glyph}}</div>
+<div style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px">
+<span style="font-size: 14px; font-weight: 800">{{r.flow}}</span>
+<span style="font-size: 12px; font-weight: 600; color: #6E7987">{{r.when}} · {{r.dur}}</span>
+</div>
+<span style="font-size: 12px; font-weight: 800; padding: 4px 10px; border-radius: 999px; background: {{r.bg}}; color: {{r.fg}}">{{r.status}}</span>
+</div>
+</sc-for>
+</section>
+
+<section aria-label="Çalışma ayrıntısı" style="flex: 1 1 480px; min-width: 0; background: #FFFFFF; border: 1px solid #E4E8EE; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 20px; box-shadow: 0 6px 24px #1118270D">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 12px; font-weight: 700; color: #6E7987">Bugün 10:42 · 3 dk 10 sn</span>
+<h2 style="margin: 0; font-size: 20px; font-weight: 800">Uçak değişikliği uyarısı</h2>
+</div>
+<div style="flex: 1 1 auto"></div>
+<span style="font-size: 12px; font-weight: 800; color: #0B2A4A; background: #E6EDF5; padding: 5px 12px; border-radius: 999px">Onay bekliyor</span>
+</div>
+
+<ol style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column">
+<sc-for list="{{steps}}" as="s" hint-placeholder-count="5">
+<li style="display: flex; gap: 14px">
+<div style="display: flex; flex-direction: column; align-items: center">
+<span style="width: 26px; height: 26px; border-radius: 999px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; background: {{s.bg}}; color: {{s.fg}}">{{s.mark}}</span>
+<span style="flex: 1 1 auto; width: 2px; min-height: 18px; background: #E4E8EE"></span>
+</div>
+<div style="flex: 1 1 auto; padding: 3px 0 18px; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 14px; font-weight: 800">{{s.name}}</span>
+<span style="font-size: 13px; font-weight: 500; color: #5B6676">{{s.detail}}</span>
+</div>
+<span style="padding-top: 4px; font-size: 12px; color: #6E7987; font-family: 'JetBrains Mono', monospace">{{s.time}}</span>
+</li>
+</sc-for>
+</ol>
+
+<div style="padding: 18px; border-radius: 16px; background: #EEF3F9; display: flex; flex-direction: column; gap: 12px">
+<span style="font-size: 15px; font-weight: 800; color: #0B2A4A">Devam etmek için onayın gerekiyor</span>
+<span style="font-size: 14px; font-weight: 500; color: #2B3A4E; line-height: 1.55">XX1234 AYT–DUS uçağı TC-XXA yerine TC-XXC ile planlandı. Yer hizmetlerine bildirim gönderilsin mi?</span>
+<div style="display: flex; gap: 8px">
+<button type="button" style="height: 42px; padding: 0 18px; border: 0; border-radius: 12px; background: #0B2A4A; color: #FFFFFF; font-size: 14px; font-weight: 700">Devam et</button>
+<button type="button" style="height: 42px; padding: 0 18px; border: 1px solid #C9D6E6; border-radius: 12px; background: #FFFFFF; color: #0B2A4A; font-size: 14px; font-weight: 700">Reddet</button>
+</div>
+<span style="font-size: 12px; font-weight: 600; color: #5B6676">Yanıt verilmezse 2 saat sonra otomatik reddedilir.</span>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<button type="button" style="height: 38px; padding: 0 14px; border: 1px solid #E4E8EE; border-radius: 12px; background: #FFFFFF; font-size: 13px; font-weight: 700; color: #111827">Loglar</button>
+<button type="button" style="height: 38px; padding: 0 14px; border: 1px solid #E4E8EE; border-radius: 12px; background: #FFFFFF; font-size: 13px; font-weight: 700; color: #111827">Çıktılar</button>
+<button type="button" style="height: 38px; padding: 0 14px; border: 1px solid #E4E8EE; border-radius: 12px; background: #FFFFFF; font-size: 13px; font-weight: 700; color: #111827">Akışı aç</button>
+</div>
+</section>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":860}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const C = {
+      ok: ['Başarılı', '#E3F6EA', '#15703A', '✓'],
+      wait: ['Onay bekliyor', '#E6EDF5', '#0B2A4A', '‖'],
+      err: ['Hata', '#FDE8E6', '#B42318', '!'],
+      run: ['Çalışıyor', '#E6EEFF', '#2D55C8', '…']
+    };
+    const runs = [
+      ['Uçak değişikliği uyarısı', 'wait', '10:42', '3 dk 10 sn', true],
+      ['Uzun rötar bildirimi', 'run', '10:45', '4 sn', false],
+      ['Uzun rötar bildirimi', 'ok', '10:30', '6 sn', false],
+      ['Departman değişikliği özeti', 'ok', '08:45', '12 sn', false],
+      ['İptal edilen uçuşlar raporu', 'err', '07:00', '31 sn', false]
+    ].map((r) => ({ flow: r[0], status: C[r[1]][0], bg: C[r[1]][1], fg: C[r[1]][2], glyph: C[r[1]][3], when: 'Bugün ' + r[2], dur: r[3], border: r[4] ? '2px solid #0B2A4A' : '1px solid #E4E8EE' }));
+    const S = { ok: ['#E3F6EA', '#15703A', '✓'], wait: ['#0B2A4A', '#FFFFFF', '‖'], todo: ['#EEF2F6', '#6E7987', '·'] };
+    const steps = [
+      ['Tetikleyici', 'Zamanlanmış · her 10 dakikada', '10:42:00', 'ok'],
+      ['APM · uçuş değişiklikleri', '3 kayıt bulundu', '10:42:02', 'ok'],
+      ['Koşul · önümüzdeki 6 saat', '1 uçuş kaldı', '10:42:02', 'ok'],
+      ['Onay bekle', 'OCC nöbetçi onayı bekleniyor', '10:42:03', 'wait'],
+      ['Bildirim · E-posta', 'Onaydan sonra çalışacak', '—', 'todo']
+    ].map((s) => ({ name: s[0], detail: s[1], time: s[2], bg: S[s[3]][0], fg: S[s[3]][1], mark: S[s[3]][2] }));
+    return { runs, steps };
+  }
+}
+</script>
+</body>
+</html>

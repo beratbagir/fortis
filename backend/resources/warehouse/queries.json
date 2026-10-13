@@ -1,0 +1,161 @@
+{
+  "connection": {
+    "description": "IBS iFly Res veri ambarı (MySQL 8, sadece okuma). Havayolu kodu FH.",
+    "required_secrets": [
+      "IBS_JDBC_URL",
+      "IBS_DB_USERNAME",
+      "IBS_DB_PASSWORD"
+    ]
+  },
+  "queries": [
+    {
+      "name": "gunluk_satis_ozeti",
+      "title": "Günlük PNR satış özeti",
+      "description": "Seçilen tarih aralığında her gün ve para birimi için PNR fiyat hareketi sayısı ve net tutar (iadeler ve değişiklikler eksi olarak düşülür). Tarih: varsayılan ofis saat dilimi. Sütunlar NULL dönmez (bilinmeyen metinler 'Bilinmiyor').",
+      "parameters": [
+        {
+          "name": "baslangic",
+          "type": "DATE",
+          "description": "Başlangıç tarihi (YYYY-MM-DD)"
+        },
+        {
+          "name": "bitis",
+          "type": "DATE",
+          "description": "Bitiş tarihi (YYYY-MM-DD), dahil"
+        }
+      ],
+      "columns": [
+        "tarih",
+        "para_birimi",
+        "islem_sayisi",
+        "net_tutar"
+      ],
+      "sql": "SELECT /*+ MAX_EXECUTION_TIME(60000) */ d.actual_date AS tarih, COALESCE(s.currency, 'Bilinmiyor') AS para_birimi, COUNT(*) AS islem_sayisi, ROUND(SUM(s.amount), 2) AS net_tutar FROM ires_fact_pnr_sales s JOIN ires_dim_date d ON d.date_id = s.modified_date_ltc_id WHERE s.modified_date_ltc_id BETWEEN (SELECT date_id FROM ires_dim_date WHERE actual_date = :baslangic) AND (SELECT date_id FROM ires_dim_date WHERE actual_date = :bitis) GROUP BY d.actual_date, para_birimi ORDER BY d.actual_date, para_birimi LIMIT 1000"
+    },
+    {
+      "name": "kanal_bazli_satis",
+      "title": "Kanal bazlı satış",
+      "description": "Seçilen tarih aralığında satış kanalına ve para birimine göre PNR fiyat hareketi sayısı ve net tutar. Sütunlar NULL dönmez (bilinmeyen metinler 'Bilinmiyor').",
+      "parameters": [
+        {
+          "name": "baslangic",
+          "type": "DATE",
+          "description": "Başlangıç tarihi (YYYY-MM-DD)"
+        },
+        {
+          "name": "bitis",
+          "type": "DATE",
+          "description": "Bitiş tarihi (YYYY-MM-DD), dahil"
+        }
+      ],
+      "columns": [
+        "kanal",
+        "kanal_tipi",
+        "para_birimi",
+        "islem_sayisi",
+        "net_tutar"
+      ],
+      "sql": "SELECT /*+ MAX_EXECUTION_TIME(60000) */ COALESCE(c.channel_name, c.channel_code, 'Bilinmiyor') AS kanal, COALESCE(c.channel_type, 'Bilinmiyor') AS kanal_tipi, COALESCE(s.currency, 'Bilinmiyor') AS para_birimi, COUNT(*) AS islem_sayisi, ROUND(SUM(s.amount), 2) AS net_tutar FROM ires_fact_pnr_sales s LEFT JOIN ires_dim_channel c ON c.channel_id = s.channel_id WHERE s.modified_date_ltc_id BETWEEN (SELECT date_id FROM ires_dim_date WHERE actual_date = :baslangic) AND (SELECT date_id FROM ires_dim_date WHERE actual_date = :bitis) GROUP BY kanal, kanal_tipi, para_birimi ORDER BY net_tutar DESC LIMIT 200"
+    },
+    {
+      "name": "acente_satis_top",
+      "title": "En çok satış yapan acenteler",
+      "description": "Seçilen tarih aralığında net PNR satış tutarına göre ilk 20 acente (para birimi bazında). Sütunlar NULL dönmez (bilinmeyen metinler 'Bilinmiyor').",
+      "parameters": [
+        {
+          "name": "baslangic",
+          "type": "DATE",
+          "description": "Başlangıç tarihi (YYYY-MM-DD)"
+        },
+        {
+          "name": "bitis",
+          "type": "DATE",
+          "description": "Bitiş tarihi (YYYY-MM-DD), dahil"
+        }
+      ],
+      "columns": [
+        "acente_kodu",
+        "acente",
+        "acente_tipi",
+        "para_birimi",
+        "islem_sayisi",
+        "net_tutar"
+      ],
+      "sql": "SELECT /*+ MAX_EXECUTION_TIME(60000) */ COALESCE(a.agency_iata_code, 'Bilinmiyor') AS acente_kodu, COALESCE(a.agency_name, 'Bilinmiyor') AS acente, COALESCE(a.agency_type, 'Bilinmiyor') AS acente_tipi, COALESCE(s.currency, 'Bilinmiyor') AS para_birimi, COUNT(*) AS islem_sayisi, ROUND(SUM(s.amount), 2) AS net_tutar FROM ires_fact_pnr_sales s JOIN ires_dim_agency_profile a ON a.agency_id = s.agency_id WHERE s.agency_id > 0 AND s.modified_date_ltc_id BETWEEN (SELECT date_id FROM ires_dim_date WHERE actual_date = :baslangic) AND (SELECT date_id FROM ires_dim_date WHERE actual_date = :bitis) GROUP BY acente_kodu, acente, acente_tipi, para_birimi ORDER BY net_tutar DESC LIMIT 20"
+    },
+    {
+      "name": "odeme_ozeti",
+      "title": "Ödeme özeti",
+      "description": "Seçilen tarih aralığında ödeme yöntemine ve ödeme durumuna (APPROVED, DECLINED, FAILED...) göre işlem sayısı ve tutar. Sütunlar NULL dönmez (bilinmeyen metinler 'Bilinmiyor').",
+      "parameters": [
+        {
+          "name": "baslangic",
+          "type": "DATE",
+          "description": "Başlangıç tarihi (YYYY-MM-DD)"
+        },
+        {
+          "name": "bitis",
+          "type": "DATE",
+          "description": "Bitiş tarihi (YYYY-MM-DD), dahil"
+        }
+      ],
+      "columns": [
+        "odeme_yontemi",
+        "durum",
+        "para_birimi",
+        "islem_sayisi",
+        "tutar"
+      ],
+      "sql": "SELECT /*+ MAX_EXECUTION_TIME(60000) */ COALESCE(pc.payment_code, 'Bilinmiyor') AS odeme_yontemi, COALESCE(st.status_code, 'Bilinmiyor') AS durum, COALESCE(p.currency, 'Bilinmiyor') AS para_birimi, COUNT(*) AS islem_sayisi, ROUND(SUM(p.amount), 2) AS tutar FROM ires_fact_pym_process_payment p LEFT JOIN ires_dim_payment_codes pc ON pc.payment_code_id = p.payment_code_id LEFT JOIN ires_dim_status st ON st.status_id = p.status_id WHERE p.modified_date_ltc_id BETWEEN (SELECT date_id FROM ires_dim_date WHERE actual_date = :baslangic) AND (SELECT date_id FROM ires_dim_date WHERE actual_date = :bitis) GROUP BY odeme_yontemi, durum, para_birimi ORDER BY islem_sayisi DESC LIMIT 200"
+    },
+    {
+      "name": "ucus_doluluk",
+      "title": "Uçuş doluluk",
+      "description": "Seçilen gündeki iptal edilmemiş uçuş bacakları için koltuk kapasitesi, check-in sistemindeki yolcu kaydı ve uçağa binen (BOARDED) yolcu sayısı, doluluk yüzdesi. Kapasitesi bilinmeyen uçuşlarda kapasite 0 ve doluluk_yuzde -1 döner; doluluk kontrolünde bunları atla (doluluk_yuzde >= 0).",
+      "parameters": [
+        {
+          "name": "ucus_tarihi",
+          "type": "DATE",
+          "description": "Uçuş tarihi (YYYY-MM-DD)"
+        }
+      ],
+      "columns": [
+        "ucus",
+        "kalkis",
+        "varis",
+        "kalkis_saati",
+        "durum",
+        "kapasite",
+        "yolcu_kaydi",
+        "binen",
+        "doluluk_yuzde"
+      ],
+      "sql": "SELECT /*+ MAX_EXECUTION_TIME(90000) */ x.ucus, x.kalkis, x.varis, x.kalkis_saati, COALESCE(x.durum, 'Bilinmiyor') AS durum, COALESCE(x.kapasite, 0) AS kapasite, x.yolcu_kaydi, x.binen, COALESCE(ROUND(100 * x.yolcu_kaydi / NULLIF(x.kapasite, 0), 1), -1) AS doluluk_yuzde FROM (SELECT CONCAT(l.flight_carrier, l.flight_number, COALESCE(NULLIF(l.flight_suffix, '*'), '')) AS ucus, l.bd_airport_code AS kalkis, l.off_airport_code AS varis, l.dep_time_ltc AS kalkis_saati, l.leg_status AS durum, (SELECT MAX(c.auth_nested_capacity) FROM ires_dim_flt_cap c WHERE c.flight_id = l.flight_id AND c.bd_airport_code = l.bd_airport_code) AS kapasite, (SELECT COUNT(*) FROM ires_dim_chk_passenger p WHERE p.airline_iata_code = l.airline_iata_code AND p.flight_carrier = l.flight_carrier AND p.flight_number = l.flight_number AND p.flight_suffix = l.flight_suffix AND p.flight_date = l.flight_date AND p.bd_airport_code = l.bd_airport_code) AS yolcu_kaydi, (SELECT COUNT(*) FROM ires_dim_chk_passenger p WHERE p.airline_iata_code = l.airline_iata_code AND p.flight_carrier = l.flight_carrier AND p.flight_number = l.flight_number AND p.flight_suffix = l.flight_suffix AND p.flight_date = l.flight_date AND p.bd_airport_code = l.bd_airport_code AND p.checkin_status = 'BOARDED') AS binen FROM ires_dim_flt_leg l WHERE l.flight_date = :ucus_tarihi AND l.deletion_ind = 0 AND l.leg_status <> 'CANCELLED') x ORDER BY x.kalkis_saati LIMIT 500"
+    },
+    {
+      "name": "bilet_islemleri",
+      "title": "Bilet işlemleri",
+      "description": "Seçilen tarih aralığında bilet işlem tipine göre (N: kesildi, REF: iade, V: iptal, RI: değişim) kupon sayısı, bilet sayısı ve tutar. Sütunlar NULL dönmez (bilinmeyen metinler 'Bilinmiyor').",
+      "parameters": [
+        {
+          "name": "baslangic",
+          "type": "DATE",
+          "description": "Başlangıç tarihi (YYYY-MM-DD)"
+        },
+        {
+          "name": "bitis",
+          "type": "DATE",
+          "description": "Bitiş tarihi (YYYY-MM-DD), dahil"
+        }
+      ],
+      "columns": [
+        "islem",
+        "para_birimi",
+        "kupon_sayisi",
+        "bilet_sayisi",
+        "tutar"
+      ],
+      "sql": "SELECT /*+ MAX_EXECUTION_TIME(60000) */ CASE t.ticket_status WHEN 'N' THEN 'Kesildi' WHEN 'REF' THEN 'İade' WHEN 'V' THEN 'İptal' WHEN 'RI' THEN 'Değişim' ELSE COALESCE(t.ticket_status, 'Bilinmiyor') END AS islem, COALESCE(t.currency, 'Bilinmiyor') AS para_birimi, COUNT(*) AS kupon_sayisi, COUNT(DISTINCT t.ticket_number) AS bilet_sayisi, ROUND(SUM(t.prorated_amount), 2) AS tutar FROM ires_fact_ticket_sales t WHERE t.modified_date_ltc_id BETWEEN (SELECT date_id FROM ires_dim_date WHERE actual_date = :baslangic) AND (SELECT date_id FROM ires_dim_date WHERE actual_date = :bitis) GROUP BY islem, para_birimi ORDER BY kupon_sayisi DESC LIMIT 100"
+    }
+  ]
+}

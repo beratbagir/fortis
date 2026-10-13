@@ -1,0 +1,974 @@
+{
+  "kestra_version": "1.3.41",
+  "categories": {
+    "free": "Doğrudan kullanılabilir.",
+    "warned": "Kullanılabilir. Akış kartında kullanıcıya açıkça gösterilir."
+  },
+  "entries": [
+    {
+      "type": "io.kestra.plugin.core.log.Log",
+      "kind": "task",
+      "category": "free",
+      "title": "Log yaz",
+      "description": "Çalışma loguna mesaj yazar. level: TRACE, DEBUG, INFO, WARN, ERROR.",
+      "example": "- id: log_result\n  type: io.kestra.plugin.core.log.Log\n  level: INFO\n  message: \"Durum kodu: {{ outputs.check_site.code }}\""
+    },
+    {
+      "type": "io.kestra.plugin.core.output.OutputValues",
+      "kind": "task",
+      "category": "free",
+      "title": "Değer üret",
+      "description": "Sonraki adımların kullanacağı değerler üretir. Erişim: {{ outputs.<id>.values.<anahtar> }}.",
+      "example": "- id: summary\n  type: io.kestra.plugin.core.output.OutputValues\n  values:\n    status: \"{{ outputs.check_site.code }}\""
+    },
+    {
+      "type": "io.kestra.plugin.core.flow.If",
+      "kind": "task",
+      "category": "free",
+      "title": "Koşul",
+      "description": "condition doğruysa then, değilse else altındaki görevleri çalıştırır. Karşılaştırmada metin değerleri (JSON'dan, KV'den gelen) | number ile sayıya çevir; INT/FLOAT girdilere | number uygulama (hata verir).",
+      "example": "- id: is_down\n  type: io.kestra.plugin.core.flow.If\n  condition: \"{{ outputs.check_site.code != 200 }}\"\n  then:\n    - id: log_down\n      type: io.kestra.plugin.core.log.Log\n      message: Site cevap vermiyor.\n  else:\n    - id: log_up\n      type: io.kestra.plugin.core.log.Log\n      message: Site ayakta."
+    },
+    {
+      "type": "io.kestra.plugin.core.flow.Switch",
+      "kind": "task",
+      "category": "free",
+      "title": "Değere göre dallanma",
+      "description": "value değerine göre cases altındaki görev grubunu çalıştırır; eşleşme yoksa defaults çalışır.",
+      "example": "- id: route\n  type: io.kestra.plugin.core.flow.Switch\n  value: \"{{ inputs.priority }}\"\n  cases:\n    HIGH:\n      - id: log_high\n        type: io.kestra.plugin.core.log.Log\n        message: Acil kayıt.\n  defaults:\n    - id: log_default\n      type: io.kestra.plugin.core.log.Log\n      message: Normal kayıt."
+    },
+    {
+      "type": "io.kestra.plugin.core.flow.Parallel",
+      "kind": "task",
+      "category": "free",
+      "title": "Paralel çalıştırma",
+      "description": "tasks altındaki görevleri aynı anda çalıştırır.",
+      "example": "- id: notify_all\n  type: io.kestra.plugin.core.flow.Parallel\n  tasks:\n    - id: log_a\n      type: io.kestra.plugin.core.log.Log\n      message: A\n    - id: log_b\n      type: io.kestra.plugin.core.log.Log\n      message: B"
+    },
+    {
+      "type": "io.kestra.plugin.core.flow.Sequential",
+      "kind": "task",
+      "category": "free",
+      "title": "Sıralı grup",
+      "description": "Görevleri gruplayıp sırayla çalıştırır. Gruba özel errors bloğu tanımlanabilir.",
+      "example": "- id: steps\n  type: io.kestra.plugin.core.flow.Sequential\n  tasks:\n    - id: first\n      type: io.kestra.plugin.core.log.Log\n      message: Birinci adım"
+    },
+    {
+      "type": "io.kestra.plugin.core.flow.ForEach",
+      "kind": "task",
+      "category": "free",
+      "title": "Döngü",
+      "description": "values listesindeki her değer için tasks'ı çalıştırır. Döngünün doğrudan altındaki görevlerde döngü değeri {{ taskrun.value }}; kardeş görevin çıktısı döngü değeriyle indekslenir: {{ outputs.<id>[taskrun.value] }} (indekssiz outputs.<id> çalışmaz). Döngü içindeki bir If'in then/else altında: {{ parent.taskrun.value }} ve {{ outputs.<id>[parent.taskrun.value] }}. If içine If koyma; koşulları döngünün doğrudan altında ayrı If görevlerinde birleştir. Nesne listesi için JSON metinleri kullan: fromJson(taskrun.value).alan.",
+      "example": "- id: each_city\n  type: io.kestra.plugin.core.flow.ForEach\n  values: ['{\"name\": \"Istanbul\"}', '{\"name\": \"Ankara\"}']\n  tasks:\n    - id: fetch\n      type: io.kestra.plugin.core.http.Request\n      uri: \"https://example.com/api?city={{ fromJson(taskrun.value).name }}\"\n      allowFailure: true\n      options:\n        allowFailed: true\n    - id: ok\n      type: io.kestra.plugin.core.flow.If\n      condition: \"{{ outputs.fetch[taskrun.value].code is defined and outputs.fetch[taskrun.value].code == 200 }}\"\n      then:\n        - id: log_ok\n          type: io.kestra.plugin.core.log.Log\n          message: \"{{ fromJson(parent.taskrun.value).name }}: {{ outputs.fetch[parent.taskrun.value].body }}\""
+    },
+    {
+      "type": "io.kestra.plugin.core.flow.Pause",
+      "kind": "task",
+      "category": "free",
+      "title": "Onay bekle",
+      "description": "Akışı kullanıcı devam ettirene kadar bekletir. onResume ile kullanıcıdan girdi alınabilir: {{ outputs.<id>.onResume.<girdi> }}. pauseDuration dolarsa behavior uygulanır (RESUME, WARN, CANCEL, FAIL).",
+      "example": "- id: wait_for_approval\n  type: io.kestra.plugin.core.flow.Pause\n  pauseDuration: PT24H\n  behavior: CANCEL\n  onResume:\n    - id: approved\n      type: BOOL\n      description: Onaylıyor musunuz?\n      defaults: false"
+    },
+    {
+      "type": "io.kestra.plugin.core.flow.Sleep",
+      "kind": "task",
+      "category": "free",
+      "title": "Bekle",
+      "description": "Belirtilen süre kadar bekler. duration ISO 8601 (PT30S, PT5M).",
+      "example": "- id: wait\n  type: io.kestra.plugin.core.flow.Sleep\n  duration: PT1M"
+    },
+    {
+      "type": "io.kestra.plugin.core.flow.Subflow",
+      "kind": "task",
+      "category": "free",
+      "title": "Alt akış",
+      "description": "fortis.chat namespace'indeki başka bir akışı çalıştırır.",
+      "example": "- id: run_report\n  type: io.kestra.plugin.core.flow.Subflow\n  namespace: fortis.chat\n  flowId: weekly-report\n  wait: true\n  transmitFailed: true"
+    },
+    {
+      "type": "io.kestra.plugin.core.execution.Fail",
+      "kind": "task",
+      "category": "free",
+      "title": "Hata ver",
+      "description": "Çalışmayı bilerek başarısız bitirir. condition verilirse sadece doğruysa hata verir.",
+      "example": "- id: fail_if_down\n  type: io.kestra.plugin.core.execution.Fail\n  condition: \"{{ outputs.check_site.code != 200 }}\"\n  errorMessage: Site cevap vermiyor."
+    },
+    {
+      "type": "io.kestra.plugin.core.execution.Labels",
+      "kind": "task",
+      "category": "free",
+      "title": "Etiket ekle",
+      "description": "Çalışmaya etiket ekler.",
+      "example": "- id: tag\n  type: io.kestra.plugin.core.execution.Labels\n  labels:\n    status: down"
+    },
+    {
+      "type": "io.kestra.plugin.core.trigger.Schedule",
+      "kind": "trigger",
+      "category": "free",
+      "title": "Zamanlayıcı",
+      "description": "Akışı cron ifadesine göre çalıştırır. timezone her zaman Europe/Istanbul olmalı. Hafta içi: 1-5.",
+      "example": "- id: every_morning\n  type: io.kestra.plugin.core.trigger.Schedule\n  cron: \"0 8 * * *\"\n  timezone: Europe/Istanbul"
+    },
+    {
+      "type": "io.kestra.plugin.core.trigger.Webhook",
+      "kind": "trigger",
+      "category": "free",
+      "title": "Webhook",
+      "description": "Akışı bir webhook adresine gelen istekle başlatır. key en az 24 karakterlik rastgele bir değer olmalı. Gelen gövde: {{ trigger.body }}.",
+      "example": "- id: on_webhook\n  type: io.kestra.plugin.core.trigger.Webhook\n  key: 7fQ2xLm9RtV4bNc8KpW3sYzA"
+    },
+    {
+      "type": "io.kestra.plugin.core.http.Request",
+      "kind": "task",
+      "category": "warned",
+      "title": "HTTP isteği",
+      "description": "Bir adrese HTTP isteği atar. Çıktılar: {{ outputs.<id>.code }}, {{ outputs.<id>.body }}. Hata kodlarında akışın durmaması için options.allowFailed: true kullan. Bağlantı hatasında (zaman aşımı vb.) akışın durmaması için göreve allowFailure: true ekle.",
+      "warning": "Dış adrese istek atıyor",
+      "warning_fields": [
+        "method",
+        "uri"
+      ],
+      "example": "- id: check_site\n  type: io.kestra.plugin.core.http.Request\n  uri: https://example.com\n  method: GET\n  options:\n    allowFailed: true"
+    },
+    {
+      "type": "io.kestra.plugin.email.MailSend",
+      "kind": "task",
+      "category": "warned",
+      "title": "E-posta gönder",
+      "description": "E-posta gönderir. SMTP bağlantı bilgileri her zaman secret'lardan gelir (SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, SMTP_FROM). to: noktalı virgülle ayrılmış adresler.",
+      "warning": "E-posta gönderiyor",
+      "warning_fields": [
+        "to",
+        "cc",
+        "bcc"
+      ],
+      "required_secrets": [
+        "SMTP_HOST",
+        "SMTP_PORT",
+        "SMTP_USERNAME",
+        "SMTP_PASSWORD",
+        "SMTP_FROM"
+      ],
+      "example": "- id: notify_ops\n  type: io.kestra.plugin.email.MailSend\n  host: \"{{ secret('SMTP_HOST') }}\"\n  port: \"{{ secret('SMTP_PORT') }}\"\n  transportStrategy: SMTP_TLS\n  username: \"{{ secret('SMTP_USERNAME') }}\"\n  password: \"{{ secret('SMTP_PASSWORD') }}\"\n  from: \"{{ secret('SMTP_FROM') }}\"\n  to: ops@example.com\n  subject: Site cevap vermiyor\n  htmlTextContent: \"<p>Durum kodu: {{ outputs.check_site.code }}</p>\""
+    },
+    {
+      "type": "io.kestra.plugin.slack.notifications.SlackIncomingWebhook",
+      "kind": "task",
+      "category": "warned",
+      "title": "Slack mesajı",
+      "description": "Slack kanalına mesaj gönderir. Webhook adresi her zaman SLACK_WEBHOOK_URL secret'ından gelir.",
+      "warning": "Slack'e mesaj gönderiyor",
+      "warning_fields": [],
+      "required_secrets": [
+        "SLACK_WEBHOOK_URL"
+      ],
+      "example": "- id: notify_slack\n  type: io.kestra.plugin.slack.notifications.SlackIncomingWebhook\n  url: \"{{ secret('SLACK_WEBHOOK_URL') }}\"\n  messageText: \"Site cevap vermiyor: {{ outputs.check_site.code }}\""
+    },
+    {
+      "type": "io.kestra.plugin.microsoft365.teams.TeamsIncomingWebhook",
+      "kind": "task",
+      "category": "warned",
+      "title": "Teams mesajı",
+      "description": "Microsoft Teams kanalına mesaj gönderir. Webhook adresi her zaman TEAMS_WEBHOOK_URL secret'ından gelir. payload JSON metnidir.",
+      "warning": "Teams'e mesaj gönderiyor",
+      "warning_fields": [],
+      "required_secrets": [
+        "TEAMS_WEBHOOK_URL"
+      ],
+      "example": "- id: notify_teams\n  type: io.kestra.plugin.microsoft365.teams.TeamsIncomingWebhook\n  url: \"{{ secret('TEAMS_WEBHOOK_URL') }}\"\n  payload: |\n    {\"text\": \"Site cevap vermiyor: {{ outputs.check_site.code }}\"}"
+    },
+    {
+      "type": "io.kestra.plugin.core.kv.Set",
+      "kind": "task",
+      "category": "warned",
+      "title": "Değer sakla",
+      "description": "Akışın namespace'indeki anahtar-değer deposuna değer yazar. Çalışmalar arasında durum tutmak için. namespace verme.",
+      "warning": "Kalıcı değer saklıyor",
+      "warning_fields": [
+        "key"
+      ],
+      "example": "- id: remember_status\n  type: io.kestra.plugin.core.kv.Set\n  key: last_status\n  value: \"{{ outputs.check_site.code }}\"\n  overwrite: true"
+    },
+    {
+      "type": "io.kestra.plugin.core.kv.Get",
+      "kind": "task",
+      "category": "warned",
+      "title": "Saklanan değeri oku",
+      "description": "Anahtar-değer deposundan değer okur: {{ outputs.<id>.value }}. errorOnMissing: false ile anahtar yoksa hata vermez. namespace verme.",
+      "warning": "Kalıcı değer okuyor",
+      "warning_fields": [
+        "key"
+      ],
+      "example": "- id: previous_status\n  type: io.kestra.plugin.core.kv.Get\n  key: last_status\n  errorOnMissing: false"
+    },
+    {
+      "type": "io.kestra.plugin.core.kv.Delete",
+      "kind": "task",
+      "category": "warned",
+      "title": "Saklanan değeri sil",
+      "description": "Anahtar-değer deposundan değer siler. namespace verme.",
+      "warning": "Kalıcı değer siliyor",
+      "warning_fields": [
+        "key"
+      ],
+      "example": "- id: forget_status\n  type: io.kestra.plugin.core.kv.Delete\n  key: last_status\n  errorOnMissing: false"
+    },
+    {
+      "type": "io.kestra.plugin.jdbc.mysql.Query",
+      "kind": "task",
+      "category": "warned",
+      "title": "Veri ambarı sorgusu (IBS)",
+      "description": "IBS iFly Res veri ambarında (MySQL, sadece okuma) tek bir SELECT çalıştırır. Önce get_queries ile hazır sorgulara bak; uygun olan varsa SQL'ini birebir kopyala. Yoksa describe_warehouse ile tablo ve sütunları öğrenip kendin yaz. Kurallar: bağlantı (url, username, password) sadece secret; fetchType FETCH (tüm satırlar, sonunda LIMIT zorunlu) veya FETCH_ONE (tek satır); SQL'in başında SELECT /*+ MAX_EXECUTION_TIME(60000) */ zorunlu; SQL içinde {{ }} kullanılmaz, değerler :ad yer tutucusu ve parameters ile bağlanır; büyük tablolarda indeksli sütunla (modified_date_ltc_id gibi) filtrele. Çıktılar: {{ outputs.<id>.rows }} (satır listesi, her satır sütun adlarıyla), {{ outputs.<id>.size }} (satır sayısı), FETCH_ONE ile {{ outputs.<id>.row }}. Sayısal sütunlar sayı olarak gelir; | number uygulama. NULL değerli sütunlar satırda yer almaz: 'is not null' yerine 'is defined' kullan.",
+      "warning": "Veri ambarında sorgu çalıştırıyor",
+      "warning_fields": [],
+      "required_secrets": [
+        "IBS_JDBC_URL",
+        "IBS_DB_USERNAME",
+        "IBS_DB_PASSWORD"
+      ],
+      "example": "- id: daily_sales\n  type: io.kestra.plugin.jdbc.mysql.Query\n  url: \"{{ secret('IBS_JDBC_URL') }}\"\n  username: \"{{ secret('IBS_DB_USERNAME') }}\"\n  password: \"{{ secret('IBS_DB_PASSWORD') }}\"\n  fetchType: FETCH\n  sql: \"SELECT /*+ MAX_EXECUTION_TIME(60000) */ d.actual_date AS tarih, COALESCE(s.currency, 'Bilinmiyor') AS para_birimi, COUNT(*) AS islem_sayisi, ROUND(SUM(s.amount), 2) AS net_tutar FROM ires_fact_pnr_sales s JOIN ires_dim_date d ON d.date_id = s.modified_date_ltc_id WHERE s.modified_date_ltc_id BETWEEN (SELECT date_id FROM ires_dim_date WHERE actual_date = :baslangic) AND (SELECT date_id FROM ires_dim_date WHERE actual_date = :bitis) GROUP BY d.actual_date, para_birimi ORDER BY d.actual_date, para_birimi LIMIT 1000\"\n  parameters:\n    baslangic: \"{{ now() | dateAdd(-1, 'DAYS') | date('yyyy-MM-dd') }}\"\n    bitis: \"{{ now() | dateAdd(-1, 'DAYS') | date('yyyy-MM-dd') }}\""
+    }
+  ],
+  "forbidden": [
+    "Python, Shell, Node, R, Ruby gibi script görevleri (io.kestra.plugin.scripts.*)",
+    "Docker, SSH, dosya sistemi ve komut çalıştırma görevleri",
+    "Katalogda olmayan her görev ve tetikleyici"
+  ],
+  "blocks": [
+    {
+      "kind": "trigger_schedule",
+      "label": "Tetikleyici · Zaman",
+      "group": "Tetikleyici",
+      "trigger": true,
+      "palette": true,
+      "glyph": "ZM",
+      "tone": "navy",
+      "id_prefix": "schedule",
+      "match": {
+        "type": "io.kestra.plugin.core.trigger.Schedule"
+      },
+      "settings_schema": {
+        "type": "object",
+        "required": [
+          "cron"
+        ],
+        "properties": {
+          "cron": {
+            "type": "string",
+            "title": "Zamanlama (cron)",
+            "description": "Örn. */15 * * * * her 15 dakikada, 0 8 * * 1-5 hafta içi 08:00"
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Saat dilimi",
+            "default": "Europe/Istanbul"
+          }
+        }
+      },
+      "summary_template": "{cron}"
+    },
+    {
+      "kind": "trigger_webhook",
+      "label": "Tetikleyici · Webhook",
+      "group": "Tetikleyici",
+      "trigger": true,
+      "palette": true,
+      "glyph": "WH",
+      "tone": "navy",
+      "id_prefix": "webhook",
+      "match": {
+        "type": "io.kestra.plugin.core.trigger.Webhook"
+      },
+      "settings_schema": {
+        "type": "object",
+        "required": [],
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Anahtar",
+            "readOnly": true,
+            "description": "Otomatik üretilir. Adresi bilen akışı tetikleyebilir."
+          }
+        }
+      },
+      "summary_template": "Webhook çağrılınca"
+    },
+    {
+      "kind": "data_apm",
+      "label": "Veri · APM",
+      "group": "Havayolu verisi",
+      "app": "apm",
+      "palette": true,
+      "glyph": "API",
+      "tone": "teal",
+      "id_prefix": "apm_data",
+      "match": {
+        "type": "io.kestra.plugin.core.http.Request",
+        "uri_prefix": "apm",
+        "method": "GET"
+      },
+      "settings_schema": {
+        "type": "object",
+        "required": [
+          "path"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Uç",
+            "description": "APM uç noktası, örn. /api/legs"
+          },
+          "params": {
+            "type": "object",
+            "title": "Parametreler",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Tarihler ISO UTC biçiminde olmalı (2026-10-04T00:00:00Z)."
+          }
+        }
+      },
+      "summary_template": "GET {path}"
+    },
+    {
+      "kind": "apm_token",
+      "label": "APM · Giriş",
+      "group": "Havayolu verisi",
+      "app": "apm",
+      "palette": false,
+      "glyph": "KEY",
+      "tone": "teal",
+      "id_prefix": "apm_token",
+      "match": {
+        "type": "io.kestra.plugin.core.http.Request",
+        "uri_prefix": "apm",
+        "path": "/oauth/token"
+      },
+      "settings_schema": {
+        "type": "object",
+        "required": [],
+        "properties": {}
+      },
+      "summary_template": "APM'den token alır"
+    },
+    {
+      "kind": "data_sf",
+      "label": "Veri · SuccessFactors",
+      "group": "İK",
+      "app": "successfactors",
+      "palette": true,
+      "glyph": "SF",
+      "tone": "amber",
+      "id_prefix": "sf_data",
+      "match": {
+        "type": "io.kestra.plugin.core.http.Request",
+        "uri_prefix": "successfactors",
+        "method": "GET"
+      },
+      "settings_schema": {
+        "type": "object",
+        "required": [
+          "request"
+        ],
+        "properties": {
+          "request": {
+            "type": "string",
+            "title": "İstek",
+            "format": "textarea",
+            "description": "Varlık ve sorgu, örn. FOCompany?$format=JSON&$select=externalCode,name"
+          }
+        }
+      },
+      "summary_template": "{request}"
+    },
+    {
+      "kind": "data_ibs",
+      "label": "Veri · IBS",
+      "group": "Havayolu verisi",
+      "app": "ibs",
+      "palette": true,
+      "glyph": "IBS",
+      "tone": "cyan",
+      "id_prefix": "ibs_query",
+      "match": {
+        "type": "io.kestra.plugin.jdbc.mysql.Query"
+      },
+      "settings_schema": {
+        "type": "object",
+        "required": [
+          "sql"
+        ],
+        "properties": {
+          "sql": {
+            "type": "string",
+            "title": "SQL",
+            "format": "textarea",
+            "description": "Tek SELECT, MAX_EXECUTION_TIME ipucu ve LIMIT zorunlu. Değerler :ad yer tutucusuyla."
+          },
+          "parameters": {
+            "type": "object",
+            "title": "Parametreler",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "fetch_type": {
+            "type": "string",
+            "title": "Sonuç",
+            "enum": [
+              "FETCH",
+              "FETCH_ONE"
+            ],
+            "enumNames": [
+              "Tüm satırlar",
+              "Tek satır"
+            ],
+            "default": "FETCH"
+          }
+        }
+      },
+      "summary_template": "Veri ambarı sorgusu"
+    },
+    {
+      "kind": "http_request",
+      "label": "HTTP isteği",
+      "group": "Gelişmiş",
+      "palette": false,
+      "glyph": "WEB",
+      "tone": "slate",
+      "id_prefix": "http_request",
+      "match": {
+        "type": "io.kestra.plugin.core.http.Request"
+      },
+      "settings_schema": {
+        "type": "object",
+        "required": [
+          "uri"
+        ],
+        "properties": {
+          "method": {
+            "type": "string",
+            "title": "Yöntem",
+            "enum": [
+              "GET",
+              "POST",
+              "PUT",
+              "PATCH",
+              "DELETE",
+              "HEAD"
+            ]
+          },
+          "uri": {
+            "type": "string",
+            "title": "Adres"
+          }
+        }
+      },
+      "summary_template": "{method} {uri}"
+    },
+    {
+      "kind": "notify_email",
+      "label": "Bildirim · E-posta",
+      "group": "Bildirim",
+      "app": "email",
+      "palette": true,
+      "writes": true,
+      "glyph": "@",
+      "tone": "orange",
+      "id_prefix": "notify_email",
+      "match": {
+        "type": "io.kestra.plugin.email.MailSend"
+      },
+      "settings_schema": {
+        "type": "object",
+        "required": [
+          "to",
+          "subject",
+          "message"
+        ],
+        "properties": {
+          "to": {
+            "type": "string",
+            "title": "Alıcılar",
+            "description": "Birden fazla adres için virgülle ayırın."
+          },
+          "cc": {
+            "type": "string",
+            "title": "Bilgi (CC)"
+          },
+          "subject": {
+            "type": "string",
+            "title": "Konu"
+          },
+          "message": {
+            "type": "string",
+            "title": "Mesaj",
+            "format": "textarea",
+            "description": "HTML kullanılabilir. {{ }} ile önceki adımların değerleri eklenebilir."
+          }
+        }
+      },
+      "summary_template": "{to} adresine gönder"
+    },
+    {
+      "kind": "notify_teams",
+      "label": "Bildirim · Teams",
+      "group": "Bildirim",
+      "app": "teams",
+      "palette": true,
+      "writes": true,
+      "glyph": "TM",
+      "tone": "pink",
+      "id_prefix": "notify_teams",
+      "match": {
+        "type": "io.kestra.plugin.microsoft365.teams.TeamsIncomingWebhook"
+      },
+      "settings_schema": {
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Mesaj",
+            "format": "textarea"
+          }
+        }
+      },
+      "summary_template": "Teams kanalına yaz"
+    },
+    {
+      "kind": "notify_slack",
+      "label": "Bildirim · Slack",
+      "group": "Bildirim",
+      "app": "slack",
+      "palette": true,
+      "writes": true,
+      "glyph": "SL",
+      "tone": "pink",
+      "id_prefix": "notify_slack",
+      "match": {
+        "type": "io.kestra.plugin.slack.notifications.SlackIncomingWebhook"
+      },
+      "settings_schema": {
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Mesaj",
+            "format": "textarea"
+          }
+        }
+      },
+      "summary_template": "Slack kanalına yaz"
+    },
+    {
+      "kind": "log",
+      "label": "Log",
+      "group": "Mantık",
+      "palette": true,
+      "glyph": "LOG",
+      "tone": "slate",
+      "id_prefix": "log",
+      "match": {
+        "type": "io.kestra.plugin.core.log.Log"
+      },
+      "settings_schema": {
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Mesaj",
+            "format": "textarea"
+          },
+          "level": {
+            "type": "string",
+            "title": "Seviye",
+            "enum": [
+              "INFO",
+              "WARN",
+              "ERROR",
+              "DEBUG"
+            ],
+            "enumNames": [
+              "Bilgi",
+              "Uyarı",
+              "Hata",
+              "Ayrıntı"
+            ]
+          }
+        }
+      },
+      "summary_template": "{message}"
+    },
+    {
+      "kind": "foreach",
+      "label": "Döngü",
+      "group": "Mantık",
+      "palette": true,
+      "container": true,
+      "branches": [
+        "tasks"
+      ],
+      "glyph": "DÖN",
+      "tone": "blue",
+      "id_prefix": "for_each",
+      "match": {
+        "type": "io.kestra.plugin.core.flow.ForEach"
+      },
+      "settings_schema": {
+        "type": "object",
+        "required": [
+          "values"
+        ],
+        "properties": {
+          "values": {
+            "type": "string",
+            "title": "Liste",
+            "description": "Önceki adımın listesi, örn. {{ outputs.get_rows.rows }}"
+          }
+        }
+      },
+      "summary_template": "Her eleman için"
+    },
+    {
+      "kind": "if",
+      "label": "Koşul",
+      "group": "Mantık",
+      "palette": true,
+      "container": true,
+      "branches": [
+        "then",
+        "else"
+      ],
+      "branch_labels": {
+        "then": "Doğruysa",
+        "else": "Değilse"
+      },
+      "glyph": "IF",
+      "tone": "blue",
+      "id_prefix": "condition",
+      "match": {
+        "type": "io.kestra.plugin.core.flow.If"
+      },
+      "settings_schema": {
+        "type": "object",
+        "required": [
+          "condition"
+        ],
+        "properties": {
+          "condition": {
+            "type": "string",
+            "title": "Koşul",
+            "description": "Örn. {{ outputs.check.code != 200 }}"
+          }
+        }
+      },
+      "summary_template": "{condition}"
+    },
+    {
+      "kind": "pause",
+      "label": "Onay bekle",
+      "group": "Mantık",
+      "palette": true,
+      "glyph": "OK",
+      "tone": "navy",
+      "id_prefix": "wait_for_approval",
+      "match": {
+        "type": "io.kestra.plugin.core.flow.Pause"
+      },
+      "settings_schema": {
+        "type": "object",
+        "required": [],
+        "properties": {
+          "question": {
+            "type": "string",
+            "title": "Onay sorusu",
+            "description": "Çalışmalar ekranında onaylayana gösterilir."
+          },
+          "timeout": {
+            "type": "string",
+            "title": "Zaman aşımı",
+            "description": "ISO süre, örn. PT2H (2 saat), PT24H",
+            "default": "PT24H"
+          },
+          "on_timeout": {
+            "type": "string",
+            "title": "Zaman aşımında",
+            "enum": [
+              "CANCEL",
+              "FAIL",
+              "RESUME",
+              "WARN"
+            ],
+            "enumNames": [
+              "İptal et",
+              "Hata ver",
+              "Devam et",
+              "Uyarıyla devam et"
+            ],
+            "default": "CANCEL"
+          }
+        }
+      },
+      "summary_template": "{question}"
+    },
+    {
+      "kind": "sleep",
+      "label": "Bekle",
+      "group": "Mantık",
+      "palette": true,
+      "glyph": "SA",
+      "tone": "slate",
+      "id_prefix": "wait",
+      "match": {
+        "type": "io.kestra.plugin.core.flow.Sleep"
+      },
+      "settings_schema": {
+        "type": "object",
+        "required": [
+          "duration"
+        ],
+        "properties": {
+          "duration": {
+            "type": "string",
+            "title": "Süre",
+            "description": "ISO süre, örn. PT5M (5 dakika)",
+            "default": "PT1M"
+          }
+        }
+      },
+      "summary_template": "{duration} bekle"
+    },
+    {
+      "kind": "ai_summarize",
+      "label": "AI · Özetle",
+      "group": "AI",
+      "palette": true,
+      "available": false,
+      "unavailable_reason": "AI adımları için Laravel'de iç uç (/api/internal/ai) gerekiyor ve Kestra şu an Laravel'e erişemiyor.",
+      "glyph": "AI",
+      "tone": "rose",
+      "id_prefix": "ai_summary",
+      "match": null,
+      "settings_schema": {
+        "type": "object",
+        "required": [],
+        "properties": {}
+      },
+      "summary_template": ""
+    },
+    {
+      "kind": "ai_classify",
+      "label": "AI · Sınıflandır",
+      "group": "AI",
+      "palette": true,
+      "available": false,
+      "unavailable_reason": "AI adımları için Laravel'de iç uç (/api/internal/ai) gerekiyor ve Kestra şu an Laravel'e erişemiyor.",
+      "glyph": "AI",
+      "tone": "rose",
+      "id_prefix": "ai_classify",
+      "match": null,
+      "settings_schema": {
+        "type": "object",
+        "required": [],
+        "properties": {}
+      },
+      "summary_template": ""
+    },
+    {
+      "kind": "advanced",
+      "label": "Gelişmiş",
+      "group": "Gelişmiş",
+      "palette": false,
+      "readonly": true,
+      "glyph": "</>",
+      "tone": "slate",
+      "id_prefix": "step",
+      "match": null,
+      "settings_schema": {
+        "type": "object",
+        "required": [],
+        "properties": {}
+      },
+      "summary_template": "Tuvalden düzenlenemez"
+    }
+  ],
+  "apps": [
+    {
+      "app": "teams",
+      "name": "Microsoft Teams",
+      "group": "Microsoft 365",
+      "glyph": "T",
+      "tone": "navy",
+      "description": "Kanala mesaj gönder",
+      "required_secrets": [
+        "TEAMS_WEBHOOK_URL"
+      ],
+      "auth": "webhook",
+      "actions": [
+        {
+          "kind": "notify_teams",
+          "name": "Kanala mesaj gönder",
+          "description": "Workflows webhook'u ile bir kanala metin"
+        },
+        {
+          "kind": null,
+          "name": "Kişiye mesaj gönder",
+          "description": "Birebir sohbet olarak",
+          "unavailable_reason": "Microsoft Graph bağlantısı (Entra ID uygulaması) gerekiyor."
+        },
+        {
+          "kind": null,
+          "name": "Onay kartı gönder",
+          "description": "Onayla / Reddet butonlu kart",
+          "unavailable_reason": "Microsoft Graph bağlantısı (Entra ID uygulaması) gerekiyor."
+        }
+      ]
+    },
+    {
+      "app": "email",
+      "name": "E-posta (SMTP)",
+      "group": "Microsoft 365",
+      "glyph": "@",
+      "tone": "orange",
+      "description": "E-posta gönder",
+      "required_secrets": [
+        "SMTP_HOST",
+        "SMTP_PORT",
+        "SMTP_USERNAME",
+        "SMTP_PASSWORD",
+        "SMTP_FROM"
+      ],
+      "auth": "smtp",
+      "actions": [
+        {
+          "kind": "notify_email",
+          "name": "E-posta gönder",
+          "description": "Bir veya birden fazla alıcıya"
+        }
+      ]
+    },
+    {
+      "app": "slack",
+      "name": "Slack",
+      "group": "Bildirim",
+      "glyph": "SL",
+      "tone": "pink",
+      "description": "Kanala mesaj gönder",
+      "required_secrets": [
+        "SLACK_WEBHOOK_URL"
+      ],
+      "auth": "webhook",
+      "actions": [
+        {
+          "kind": "notify_slack",
+          "name": "Kanala mesaj gönder",
+          "description": "Incoming webhook ile"
+        }
+      ]
+    },
+    {
+      "app": "apm",
+      "name": "APM",
+      "group": "Havayolu verisi",
+      "glyph": "APM",
+      "tone": "teal",
+      "description": "Uçuşlar, rötarlar, uçak değişiklikleri · salt okunur",
+      "required_secrets": "apm",
+      "auth": "oauth",
+      "actions": [
+        {
+          "kind": "data_apm",
+          "name": "Veri oku",
+          "description": "Uçuş bacakları, gecikmeler, ekip..."
+        }
+      ]
+    },
+    {
+      "app": "ibs",
+      "name": "IBS",
+      "group": "Havayolu verisi",
+      "glyph": "IBS",
+      "tone": "cyan",
+      "description": "Rezervasyon, satış ve uçuş verisi · salt okunur",
+      "required_secrets": [
+        "IBS_JDBC_URL",
+        "IBS_DB_USERNAME",
+        "IBS_DB_PASSWORD"
+      ],
+      "auth": "database",
+      "actions": [
+        {
+          "kind": "data_ibs",
+          "name": "Sorgu çalıştır",
+          "description": "Veri ambarında SELECT"
+        }
+      ]
+    },
+    {
+      "app": "successfactors",
+      "name": "SuccessFactors",
+      "group": "İK",
+      "glyph": "SF",
+      "tone": "amber",
+      "description": "Departman, pozisyon, personel değişiklikleri · salt okunur",
+      "required_secrets": "successfactors",
+      "auth": "basic",
+      "actions": [
+        {
+          "kind": "data_sf",
+          "name": "Veri oku",
+          "description": "OData okuma isteği"
+        }
+      ]
+    },
+    {
+      "app": "sharepoint",
+      "name": "SharePoint",
+      "group": "Microsoft 365",
+      "glyph": "SP",
+      "tone": "teal",
+      "description": "Dosya kaydet, listeye satır ekle",
+      "available": false,
+      "actions": []
+    },
+    {
+      "app": "excel",
+      "name": "Excel Online",
+      "group": "Microsoft 365",
+      "glyph": "XL",
+      "tone": "green",
+      "description": "Tabloya satır ekle, rapor oluştur",
+      "available": false,
+      "actions": []
+    },
+    {
+      "app": "sms",
+      "name": "SMS",
+      "group": "Bildirim",
+      "glyph": "SMS",
+      "tone": "red",
+      "description": "Kısa mesaj gönder (sağlayıcı seçilecek)",
+      "available": false,
+      "actions": []
+    },
+    {
+      "app": "jira",
+      "name": "Jira",
+      "group": "Diğer",
+      "glyph": "JR",
+      "tone": "blue",
+      "description": "Kayıt (ticket) oluştur",
+      "available": false,
+      "actions": []
+    }
+  ]
+}

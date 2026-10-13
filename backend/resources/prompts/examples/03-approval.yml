@@ -1,0 +1,35 @@
+# Onay bekleyen akış: Pause + onResume girdisi + Switch
+id: discount-approval
+namespace: fortis.chat
+description: İndirim talebini onaya sunar, onaylanırsa kaydeder, reddedilirse loglar.
+
+inputs:
+  - id: customer
+    type: STRING
+  - id: rate
+    type: INT
+
+tasks:
+  - id: wait_for_approval
+    type: io.kestra.plugin.core.flow.Pause
+    pauseDuration: PT24H
+    behavior: CANCEL
+    onResume:
+      - id: approved
+        type: BOOL
+        description: "{{ inputs.customer }} için %{{ inputs.rate }} indirim onaylansın mı?"
+        defaults: false
+
+  - id: decide
+    type: io.kestra.plugin.core.flow.If
+    condition: "{{ outputs.wait_for_approval.onResume.approved }}"
+    then:
+      - id: save_discount
+        type: io.kestra.plugin.core.kv.Set
+        key: "discount_{{ inputs.customer }}"
+        value: "{{ inputs.rate }}"
+        overwrite: true
+    else:
+      - id: log_rejected
+        type: io.kestra.plugin.core.log.Log
+        message: "{{ inputs.customer }} için indirim reddedildi."
