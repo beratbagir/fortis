@@ -7,3 +7,6 @@ frontend/playwright-report/
 
 # Gerçek kimlik bilgisi içeren yerel referans dosyaları (git'e girmez)
 success-factor.postman_collection*.json
+
+# docs/ altındaki görev dosyalarının yerel kopyaları
+Claude outputs/
