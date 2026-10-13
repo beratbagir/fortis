@@ -152,12 +152,36 @@ class AgentRunner
     /** Kuyruk işi tüm denemelerde başarısız oldu. */
     public function fail(AgentRun $run, string $error): void
     {
+        // Yönetici durdurduysa çalışma "iptal" kalır; başarısız sayılmaz ve sahibine ayrıca uyarı gitmez.
+        if ($run->fresh()?->status === AgentRun::CANCELLED) {
+            return;
+        }
+
         $run->update(['status' => AgentRun::FAILED, 'error' => mb_substr($error, 0, 2000), 'finished_at' => now()] + $this->totals($run));
         $this->audit($run, 'agent.run.fail', AuditLog::RESULT_FAILED, ['error' => mb_substr($error, 0, 300)]);
 
         if (($owner = $run->agent->owner ?? $run->ownerUser()) !== null) {
             $this->inbox->alert($owner, $run, "{$run->agent->name} çalışması durdu", $error);
         }
+    }
+
+    /**
+     * Yönetici durdurması (Yönetişim): çalışma iptal olur, bekleyen aksiyonları reddedilir ve Inbox öğeleri kapanır.
+     * Kuyrukta veya çalışırken: bir sonraki turda ClaudeChat durumu görüp durur.
+     */
+    public function stop(AgentRun $run, User $admin, string $reason): void
+    {
+        abort_unless(in_array($run->status, [AgentRun::QUEUED, AgentRun::RUNNING, AgentRun::WAITING_INPUT, AgentRun::WAITING_APPROVAL], true), 409, 'Bu çalışma zaten bitmiş.');
+
+        $run->update(['status' => AgentRun::CANCELLED, 'error' => mb_substr("Yönetici durdurdu: {$reason}", 0, 2000), 'finished_at' => now()] + $this->totals($run));
+
+        foreach ($run->actions()->where('status', AgentAction::PENDING)->get() as $action) {
+            $action->update(['status' => AgentAction::REJECTED, 'decided_by' => $admin->id, 'decided_at' => now(), 'result' => ['reason' => 'Çalışma yönetici tarafından durduruldu.']]);
+            $this->inbox->close(Inbox::SUBJECT_ACTION, $action->id);
+        }
+        $this->inbox->close(Inbox::SUBJECT_RUN, $run->id);
+
+        Audit::record('governance.run.stop', $run, AuditLog::RESULT_ALLOWED, ['kind' => 'agent', 'agent_id' => $run->agent_id, 'reason' => $reason, 'test' => $run->is_test], user: $admin);
     }
 
     /** Soru kartının cevabı (Inbox'tan): cevap konuşmaya eklenir, çalışma kuyruğa geri döner. */

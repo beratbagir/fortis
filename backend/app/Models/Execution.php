@@ -73,6 +73,12 @@ class Execution extends Model
         return $this->belongsTo(Conversation::class);
     }
 
+    /** @return BelongsTo<User, $this> */
+    public function triggeredBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'triggered_by_user_id');
+    }
+
     public function isFinished(): bool
     {
         return KestraClient::isTerminal($this->state);

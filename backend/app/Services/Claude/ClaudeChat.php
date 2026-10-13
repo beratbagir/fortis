@@ -22,14 +22,18 @@ use App\Ai\DataQueryTools;
 use App\Ai\ModelRouter;
 use App\Ai\PromptClock;
 use App\Models\Agent;
+use App\Models\AgentRun;
 use App\Models\AiCall;
 use App\Models\Artifact;
+use App\Models\AuditLog;
 use App\Models\Conversation;
 use App\Models\FlowVersion;
 use App\Models\Message;
 use App\Models\Report;
+use App\Services\Auth\Audit;
 use App\Services\Connectors\ConnectorRegistry;
 use App\Services\Connectors\Connectors;
+use App\Services\Governance\GovernanceAlerts;
 use App\Services\Settings\AppSettings;
 use Closure;
 
@@ -248,11 +252,30 @@ class ClaudeChat
     /** Agent çalışması 10 dakikayı geçtiyse durur. */
     private function guardAgentTime(): void
     {
-        $started = $this->agent?->run->started_at;
-
-        if ($started !== null && $started->diffInSeconds(now()) > (int) config('agents.max_seconds')) {
-            throw new ClaudeException('Çalışma süre sınırını ('.intdiv((int) config('agents.max_seconds'), 60).' dakika) aştı.');
+        if ($this->agent === null) {
+            return;
         }
+
+        // Yönetici durdurduysa (Yönetişim) bir sonraki turda çalışma biter.
+        if ($this->agent->run->newQuery()->whereKey($this->agent->run->id)->value('status') === AgentRun::CANCELLED) {
+            throw new ClaudeException('Çalışma yönetici tarafından durduruldu.');
+        }
+
+        $started = $this->agent->run->started_at;
+        if ($started !== null && $started->diffInSeconds(now()) > (int) config('agents.max_seconds')) {
+            throw new ClaudeException($this->limitHit('time', 'Çalışma süre sınırını ('.intdiv((int) config('agents.max_seconds'), 60).' dakika) aştı.'));
+        }
+    }
+
+    /** Sınır aşımı: denetim kaydı ve Yönetişim'de anında uyarı (taramayı beklemeden). */
+    private function limitHit(string $limit, string $message): string
+    {
+        $run = $this->agent->run;
+        Audit::record('agent.run.limit', $run, AuditLog::RESULT_BLOCKED, ['limit' => $limit, 'message' => $message, 'agent_id' => $run->agent_id, 'test' => $run->is_test],
+            actorType: AuditLog::ACTOR_AGENT, actorLabel: $this->agent->agent->name, user: $run->ownerUser());
+        app(GovernanceAlerts::class)->agentLimit($run, $limit, $message);
+
+        return $message;
     }
 
     /** Agent çalışmasında araç çağrısı veya maliyet sınırı aşıldıysa hata mesajı; yoksa null. Sayaç çalışmaya yazılır. */
@@ -267,12 +290,12 @@ class ClaudeChat
         $run->increment('tool_calls_count', $calls);
 
         if ($run->tool_calls_count > $max) {
-            return "Araç çağrısı sınırı ({$max}) aşıldı; çalışma durduruldu.";
+            return $this->limitHit('tool_calls', "Araç çağrısı sınırı ({$max}) aşıldı; çalışma durduruldu.");
         }
 
         $cost = (float) AiCall::query()->where('agent_run_id', $run->id)->sum('cost_usd');
         if ($cost > (float) config('agents.max_cost_usd')) {
-            return 'Maliyet sınırı ($'.number_format((float) config('agents.max_cost_usd'), 2).') aşıldı; çalışma durduruldu.';
+            return $this->limitHit('cost', 'Maliyet sınırı ($'.number_format((float) config('agents.max_cost_usd'), 2).') aşıldı; çalışma durduruldu.');
         }
 
         return null;

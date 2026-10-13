@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\FeatureRequestController;
 use App\Http\Controllers\Api\FlowController;
 use App\Http\Controllers\Api\FlowEditorController;
 use App\Http\Controllers\Api\FlowVersionController;
+use App\Http\Controllers\Api\GovernanceController;
 use App\Http\Controllers\Api\HomeController;
 use App\Http\Controllers\Api\InboxController;
 use App\Http\Controllers\Api\Internal\AgentRunController as InternalAgentRunController;
@@ -133,6 +134,13 @@ Route::middleware(['auth:sanctum', 'active', 'password.changed'])->group(functio
     // Home ve konuşma ekranları
     Route::get('home', HomeController::class)->name('home');
     Route::get('connectors/status', [ConnectorController::class, 'status'])->name('connectors.status');
+    // Yönetişim (A4.2, sadece admin)
+    Route::middleware('can:admin')->prefix('governance')->name('governance.')->group(function () {
+        Route::get('overview', [GovernanceController::class, 'overview'])->name('overview');
+        Route::post('runs/{id}/stop', [GovernanceController::class, 'stop'])->name('runs.stop');
+        Route::get('alerts', [GovernanceController::class, 'alerts'])->name('alerts.index');
+        Route::post('alerts/{alert}/resolve', [GovernanceController::class, 'resolve'])->name('alerts.resolve');
+    });
     Route::get('connectors', [ConnectorController::class, 'index'])->name('connectors.index');
     Route::get('connectors/{key}', [ConnectorController::class, 'show'])->where('key', '[a-z_]+')->name('connectors.show');
     Route::middleware('can:admin')->group(function () {

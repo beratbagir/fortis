@@ -1241,6 +1241,63 @@ Vitest 65 (yeni `connectors.test.tsx` 3: liste rozetleri/kapsam/sekmeler/MCP; de
 
 `RunEvalTest` +2: sabit 00:30 saatle doğru tarih/aralık geçer, UTC'ye göre "dün" kalır; saat sabitlemesi soru sonrası kalkar.
 
+## Fortis Aero — Faz A4.2: Yönetişim Genel bakış (2026-10-13)
+
+Plan: [docs/fortis-aero-faz-a4.md](docs/fortis-aero-faz-a4.md) §5.1, §6, §7 (A4.2). Bitti ölçütü: sınırı aşan test çalışması "Dikkat gerekenler"de görünüyor; admin durdurabiliyor. `GovernanceTest` (gerçek `AgentRunner` + sahte Claude ile araç sınırı aşımı) ve Playwright'ta doğrulandı.
+
+**Backend**
+- **`governance_alerts`** (tür, önem, hedef, mesaj, meta, çözüldü/çözen) ve **`App\Services\Governance\GovernanceAlerts`**. Aynı konu (tür + hedef) için açık uyarı varken yenisi açılmaz, mesajı güncellenir.
+  - **Bağlantı:** canlı kontrol edilebilen bağlantı 30 dakikadan uzun süredir başarılı kontrol almadı. Düzelince kendiliğinden kapanır.
+  - **Bütçe:** şirket bütçesinin `ai.budget_alert_ratio`'su (%80) aşıldı → uyarı; doldu → kritik (uyarı kapanır). Mevcut şirket bütçesiyle; departman bütçeleri A4.3'te.
+  - **Agent sınır aşımı** (araç sayısı, maliyet, süre; test çalışmaları dahil): kritik. Sınır aşıldığı anda açılır (`agent.run.limit` denetim kaydıyla), tarama da yakalar. Olay uyarısı: admin "Çözüldü" deyince kapanır ve tarama yeniden açmaz.
+  - **Üst üste 3 başarısız** çalışma (test hariç). Başarılı çalışmayla kapanır.
+  - **Düşük puan:** son 10 puanlanmış çalışmanın ortalaması 60'ın altında. Yükselince kapanır.
+  - **İzinsiz araç denemesi** (`agent.tool_blocked`, son 24 saat, agent başına sayıyla). Olay uyarısı.
+  - **24 saatten uzun bekleyen onay** (Inbox onay öğeleri: agent aksiyonları ve akış Pause'ları). Onaylanınca kapanır.
+- **`php artisan governance:scan`**, zamanlayıcıda 5 dakikada bir.
+- **Çalışma durdurma** (`POST /api/governance/runs/{id}/stop`, `kind` agent/flow, gerekçe zorunlu):
+  - Agent çalışması iptal olur, bekleyen aksiyonları reddedilir, Inbox öğeleri kapanır.
+  - Çalışıyorsa ClaudeChat bir sonraki turda durumu görüp durur. Kuyruk işi sonradan hata verse de çalışma "başarısız"a dönmez, sahibine ayrıca uyarı gitmez.
+  - Akış çalışması Kestra'da durdurulur (`ExecutionService::kill`).
+  - `governance.run.stop` denetim kaydı.
+- **`GET /api/governance/overview`** (admin):
+  - **Canlı:** kuyrukta/çalışan/soru veya onay bekleyen agent çalışmaları ve bitmemiş akış çalışmaları (son 24 saat). Başlatan, süre, araç çağrısı, anlık maliyet (`ai_calls`).
+  - **Bu ay** (Türkiye ayı): harcama ve bütçe oranı; geçen ayın aynı dönemiyle fark; sohbet soruları; agent çalışmaları (test hariç); onaylanan/reddedilen aksiyonlar.
+  - **Dikkat gerekenler:** önem sırasıyla, "Git" bağlantısıyla.
+  - **Kalite:** setin en az %70'ini kapsayan son tam eval çalıştırması, sonrasında yapılan kısmi çalıştırma ayrıca; agentların 30 günlük ortalama puanı, en düşük 5 agent.
+- `GET /api/governance/alerts` (`?resolved=1` son çözülenler), `POST …/alerts/{id}/resolve` (`governance.alert.resolve` kaydı). Hepsi sadece admin.
+- `Execution::triggeredBy` ilişkisi eklendi.
+
+**Arayüz**
+- **Yönetişim** sekmeli: **Genel bakış** (admin) ve **Kullanım** (mevcut kullanım ve maliyet ekranı, `#/governance/usage`). Admin olmayan kullanıcı doğrudan Kullanım'ı görür. Eski `#/usage` yeni adrese yönleniyor. Politikalar ve Denetim kaydı A4.4'te.
+- **Genel bakış:**
+  - "Canlı · HH:MM" etiketi; 10 saniyede bir yenilenir.
+  - 6 kutu: harcama + bütçe çubuğu, geçen aya göre, şu an çalışan (kaçı kişi bekliyor), soru, agent çalışması, onaylanan/reddedilen.
+  - Canlı çalışmalar tablosu: ad (çalışmaya bağlantı), tür · başlatan · test, durum, süre, araç, maliyet, **Durdur** (gerekçeli diyalog).
+  - Dikkat gerekenler: önem noktası, mesaj, ne zaman, **Git**, **Çözüldü**.
+  - Kalite şeridi.
+
+**Yerel veriyle kontrol:**
+- `governance:scan` 3 bağlantı uyarısı üretti (yerelde zamanlayıcı çalışmadığı için son kontroller 11 saat önce; doğru).
+- Canlı'da DemoSeeder'ın iki duraklatılmış demo akışı görünüyor.
+- Kalite son tam çalıştırma olarak A1'deki 18 soruluk eval'i gösteriyor.
+- Bu kontrolde iki düzeltme yapıldı: bağlantı mesajındaki çift nokta; kalite kutusunun son *kısmi* eval'i (1/1) tam sonuç gibi göstermesi.
+
+**Testler:** backend 449 (hepsi geçti). Yeni `GovernanceTest` 6:
+- Sadece admin.
+- Canlı agent/akış satırları; bu ayın harcaması `ai_calls` ile aynı (geçen ay hariç).
+- Agent ve akış durdurma: iptal, aksiyon reddi, Inbox kapanışı, denetim kaydı, ikinci durdurma 409, sonradan gelen hata iptali bozmaz.
+- Araç sınırını aşan test çalışması anında kritik uyarı; admin çözer, tarama yeniden açmaz.
+- 7 uyarı türünün her biri bir kez üretiliyor; bütçe dolunca kritik; koşullar düzelince olay dışı uyarılar kapanıyor.
+- Kalite: son tam eval + kısmi not.
+
+Vitest 67 (yeni `governance.test.tsx` 2). Playwright 13 (yeni: Yönetişim → sınır uyarısı ve Git bağlantısı → Durdur (gerekçe) → Çözüldü → Kullanım sekmesi; Yönetişim ve Kullanım görsel temelleri açık/koyu, görüntüye bakıldı).
+
+**Dokümandan sapmalar ve nedenleri**
+- Bütçe uyarısı şimdilik mevcut şirket bütçesi ve `ai.budget_alert_ratio` ile; `budgets` tablosu, departman bütçeleri ve admin'e Inbox uyarısı A4.3'te (§11 varsayımı: uyarı admine).
+- 24 saatlik onay uyarısının "Git" bağlantısı yok: onay, sahibinin Inbox'ında; mesaj kimin onayı olduğunu söylüyor.
+- Canlı listede akışların araç sayısı yok (Kestra adımlarında araç çağrısı kavramı yok).
+
 ## Çalıştırma
 
 ```sh
@@ -1281,6 +1338,7 @@ cd backend && php artisan fortis:agent:run sabah-operasyon-ozeti --test
 # Zamanlayıcı (bağlantı kontrolü, uçuş olayları, Kestra'ya aktarılamayan zamanlamaların yeniden denenmesi)
 cd backend && php artisan schedule:work
 cd backend && php artisan fortis:agent:sync-triggers --all   # bütün zamanlamaları Kestra'ya yeniden yükle
+cd backend && php artisan governance:scan                    # Yönetişim "Dikkat gerekenler" (zamanlayıcıda 5 dk)
 
 # Sesli komut: Whisper servisi (http://127.0.0.1:9000). İlk açılışta model (~500 MB) iner.
 cd infra/whisper && python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt   # bir kez

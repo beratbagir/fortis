@@ -37,6 +37,8 @@ export function installFakeBackend(page: Page, { signedIn = true, theme = 'light
     agent: null as null | { status: string; tested: boolean },
     manualRun: false,
     apmDisabled: false,
+    stopped: false,
+    resolved: false,
     useful: false,
     graph: {
       flow_id: 'long-delay-notice',
@@ -140,6 +142,20 @@ export function installFakeBackend(page: Page, { signedIn = true, theme = 'light
     summary: 'Dün 142 uçuş, %84 zamanında kalkış.', output: 'Dün **142 uçuş** yapıldı, kalkışta zamanındalık **%84**.\n\n| Sefer | Rötar |\n|---|---:|\n| FH1256 | 142 dk |',
     error: null, cost_usd: 0.214, conversation_id: 80, started_at: now.toISOString(), finished_at: now.toISOString(),
     actions: [{ id: 1, type: 'send_email', status: 'preview', requires_approval: true, payload: { to: ['kerem@freebird.com.tr'], subject: 'Operasyon özeti · 11 Eki' }, reason: null }],
+  })
+  const governance = () => ({
+    live: [
+      ...(state.stopped ? [] : [{ kind: 'agent', id: '31', name: 'Sabah Operasyon Özeti', link: '#/agents/7/runs/31', started_by: 'Kerem B.', status: 'running', is_test: true, started_at: now.toISOString(), seconds: 95, tool_calls: 21, cost_usd: 0.42 }]),
+      { kind: 'agent', id: '33', name: 'Uzun Rötar Bildirimi', link: '#/agents/8/runs/33', started_by: 'Olay', status: 'waiting_approval', is_test: false, started_at: now.toISOString(), seconds: 2400, tool_calls: 6, cost_usd: 0.18 },
+      { kind: 'flow', id: 'run-paused', name: 'Sigorta bildirimi', link: '#/runs/run-paused', started_by: 'Zamanlama', status: 'paused', is_test: false, started_at: now.toISOString(), seconds: 720, tool_calls: null, cost_usd: 0 },
+    ],
+    month: { label: 'Ekim 2026', spent_usd: 18.42, budget_usd: 50, ratio: 0.3684, previous_same_period_usd: 14.1, change_pct: 31, questions: 412, agent_runs: 64, actions_approved: 41, actions_rejected: 3 },
+    alerts: [
+      ...(state.resolved ? [] : [{ id: 9, type: 'agent_limit', severity: 'critical', message: 'Sabah Operasyon Özeti çalışması #31 (test): Araç çağrısı sınırı (20) aşıldı; çalışma durduruldu.', link: '#/agents/7/runs/31', created_at: now.toISOString(), updated_at: new Date(now.getTime() - 4 * 60_000).toISOString(), resolved_at: null, resolved_by: null }]),
+      { id: 10, type: 'connector_attention', severity: 'warning', message: 'SuccessFactors bağlantısı 30 dakikadan uzun süredir dikkat istiyor: Son kontrol başarısız.', link: '#/connectors/successfactors', created_at: now.toISOString(), updated_at: new Date(now.getTime() - 12 * 60_000).toISOString(), resolved_at: null, resolved_by: null },
+      { id: 11, type: 'approval_overdue', severity: 'warning', message: '"Sigorta bildirimi onay bekliyor" onayı 26 saattir bekliyor (Akışlar).', link: null, created_at: now.toISOString(), updated_at: new Date(now.getTime() - 30 * 60_000).toISOString(), resolved_at: null, resolved_by: null },
+    ],
+    quality: { eval: { run_at: new Date(now.getTime() - 2 * 3600_000).toISOString(), questions: 26, passed: 25, correct_tool_ratio: 0.96, cost_usd: 3.18 }, agent_score_avg: 87, scored_runs: 42, agents: [{ id: 8, name: 'Uzun Rötar Bildirimi', score_avg: 72, runs: 9 }, { id: 7, name: 'Sabah Operasyon Özeti', score_avg: 91, runs: 30 }] },
   })
   const connector = (key: string, label: string, abbr: string, category: string, status: string, scopes: string[], description: string, extra: Record<string, unknown> = {}) => ({
     key, label, abbr, category, description, status, detail: null, enabled: true, scopes, last_checked_at: category === 'setup' || status === 'not_configured' ? null : new Date(now.getTime() - 3 * 60_000).toISOString(), uses_this_week: 0, ...extra,
@@ -299,6 +315,15 @@ export function installFakeBackend(page: Page, { signedIn = true, theme = 'light
       return json(route, { data: apmDetail() })
     }
     if (path === '/connectors/apm') return json(route, { data: apmDetail() })
+    if (path === '/governance/overview') return json(route, { data: governance() })
+    if (path === '/governance/runs/31/stop') {
+      state.stopped = true
+      return json(route, { data: { live: governance().live } })
+    }
+    if (path === '/governance/alerts/9/resolve') {
+      state.resolved = true
+      return json(route, { data: governance().alerts[0] ?? {} })
+    }
     if (/^\/messages\/\d+\/feedback$/.test(path)) {
       state.feedback.push(route.request().postDataJSON())
       return json(route, { data: route.request().postDataJSON() })

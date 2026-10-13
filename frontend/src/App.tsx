@@ -23,7 +23,7 @@ import { Logo } from './ui/Logo'
 const FlowEditorPage = lazy(() => import('./pages/FlowEditorPage'))
 const ArchitectPage = lazy(() => import('./pages/ArchitectPage').then((m) => ({ default: m.ArchitectPage })))
 const RunsPage = lazy(() => import('./pages/RunsPage').then((m) => ({ default: m.RunsPage })))
-const UsagePage = lazy(() => import('./pages/UsagePage').then((m) => ({ default: m.UsagePage })))
+const GovernancePage = lazy(() => import('./pages/GovernancePage').then((m) => ({ default: m.GovernancePage })))
 
 export default function App() {
   return (
@@ -107,7 +107,7 @@ function Page({ route }: { route: Route }) {
     case 'runs':
       return <RunsPage executionId={route.executionId} />
     case 'governance':
-      return <UsagePage />
+      return <GovernancePage tab={isAdmin ? route.tab : 'usage'} />
     case 'inbox':
       return <InboxPage itemId={route.itemId} />
     case 'connectors':

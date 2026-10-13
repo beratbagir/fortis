@@ -19,3 +19,6 @@ Schedule::command('fortis:agent:watch-flights')->everyFiveMinutes()->withoutOver
 
 // Kestra'ya aktarılamamış agent zamanlamaları yeniden denenir.
 Schedule::command('fortis:agent:sync-triggers')->everyFifteenMinutes()->withoutOverlapping();
+
+// Yönetişim "Dikkat gerekenler" uyarıları.
+Schedule::command('governance:scan')->everyFiveMinutes()->withoutOverlapping();

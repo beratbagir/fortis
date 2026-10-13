@@ -1006,3 +1006,63 @@ export const connectorsApi = {
   disable: (key: string, reason: string) => sendAgent<ConnectorDetail>(`/connectors/${key}/disable`, 'POST', { reason }),
   enable: (key: string) => sendAgent<ConnectorDetail>(`/connectors/${key}/enable`, 'POST'),
 }
+
+/* ---------- Yönetişim: Genel bakış (Faz A4.2) ---------- */
+
+export interface LiveRun {
+  kind: 'agent' | 'flow'
+  id: string
+  name: string | null
+  link: string | null
+  started_by: string
+  status: string
+  is_test: boolean
+  started_at: string | null
+  seconds: number
+  tool_calls: number | null
+  cost_usd: number
+}
+
+export interface GovernanceAlertInfo {
+  id: number
+  type: string
+  severity: 'info' | 'warning' | 'critical'
+  message: string
+  link: string | null
+  created_at: string | null
+  updated_at: string | null
+  resolved_at: string | null
+  resolved_by: string | null
+}
+
+export interface GovernanceOverview {
+  live: LiveRun[]
+  month: {
+    label: string
+    spent_usd: number
+    budget_usd: number | null
+    ratio: number | null
+    previous_same_period_usd: number
+    change_pct: number | null
+    questions: number
+    agent_runs: number
+    actions_approved: number
+    actions_rejected: number
+  }
+  alerts: GovernanceAlertInfo[]
+  quality: {
+    eval: { run_at: string | null; questions: number; passed: number; correct_tool_ratio: number | null; cost_usd: number | null } | null
+    /** Son tam çalıştırmadan sonraki kısmi (--only) çalıştırma. */
+    eval_partial?: { run_at: string | null; questions: number; passed: number } | null
+    eval_total_questions?: number
+    agent_score_avg: number | null
+    scored_runs: number
+    agents: { id: number; name: string | null; score_avg: number; runs: number }[]
+  }
+}
+
+export const governanceApi = {
+  overview: () => sendAgent<GovernanceOverview>('/governance/overview'),
+  stop: (run: LiveRun, reason: string) => sendAgent<{ live: LiveRun[] }>(`/governance/runs/${run.id}/stop`, 'POST', { kind: run.kind, reason }),
+  resolve: (id: number) => sendAgent<GovernanceAlertInfo>(`/governance/alerts/${id}/resolve`, 'POST'),
+}

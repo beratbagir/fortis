@@ -22,7 +22,7 @@ export type Route =
   | { name: 'flows' }
   | { name: 'editor'; flowId: number }
   | { name: 'runs'; executionId: string | null }
-  | { name: 'governance' }
+  | { name: 'governance'; tab: 'overview' | 'usage' }
   | { name: 'inbox'; itemId: number | null }
   | { name: 'connectors'; key: string | null }
   | { name: 'soon'; screen: SoonScreen }
@@ -63,8 +63,9 @@ export function parseRoute(hash: string): Route {
     case 'connectors':
       return { name: 'connectors', key: parts[1] && /^[a-z_]+$/.test(parts[1]) ? parts[1] : null }
     case 'governance':
+      return { name: 'governance', tab: parts[1] === 'usage' ? 'usage' : 'overview' }
     case 'usage':
-      return { name: 'governance' }
+      return { name: 'governance', tab: 'usage' }
     case 'profile':
       return { name: 'profile' }
     case 'admin':
@@ -99,7 +100,7 @@ export function href(route: Route): string {
     case 'runs':
       return route.executionId ? `#/runs/${route.executionId}` : '#/runs'
     case 'governance':
-      return '#/governance'
+      return route.tab === 'usage' ? '#/governance/usage' : '#/governance'
     case 'inbox':
       return route.itemId ? `#/inbox/${route.itemId}` : '#/inbox'
     case 'connectors':
@@ -123,7 +124,7 @@ export function navigate(route: Route) {
 
 /** Eski adresler yeni adlarına taşınır (yer imleri bozulmasın). */
 function canonical(hash: string): string | null {
-  if (/^#\/usage\b/.test(hash)) return '#/governance'
+  if (/^#\/usage\b/.test(hash)) return '#/governance/usage'
   if (/^#\/flows\b/.test(hash)) return hash.replace(/^#\/flows/, '#/build/flows')
   return null
 }

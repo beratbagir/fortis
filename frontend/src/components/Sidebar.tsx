@@ -60,7 +60,7 @@ function mainItems(canBuild: boolean, inboxCount: number): Item[] {
 function workspaceItems(): Item[] {
   return [
     { key: 'shared', label: t('nav.shared'), icon: UsersIcon, route: { name: 'soon', screen: 'shared' }, soon: true },
-    { key: 'governance', label: t('nav.governance'), icon: UsageIcon, route: { name: 'governance' } },
+    { key: 'governance', label: t('nav.governance'), icon: UsageIcon, route: { name: 'governance', tab: 'overview' } },
     { key: 'runs', label: t('nav.runs'), icon: RunsIcon, route: { name: 'runs', executionId: null } },
     { key: 'memory', label: t('nav.memory'), icon: ClockIcon, route: { name: 'soon', screen: 'memory' }, soon: true },
     { key: 'knowledge', label: t('nav.knowledge'), icon: KnowledgeIcon, route: { name: 'soon', screen: 'knowledge' }, soon: true },
@@ -245,7 +245,7 @@ function CreditsBox() {
   const ratio = budget?.ratio ?? 0
 
   return (
-    <a href={href({ name: 'governance' })} className="mb-2 flex flex-col gap-1.5 rounded-lg border border-line bg-surface p-2.5 text-ink no-underline max-md:hidden">
+    <a href={href({ name: 'governance', tab: 'usage' })} className="mb-2 flex flex-col gap-1.5 rounded-lg border border-line bg-surface p-2.5 text-ink no-underline max-md:hidden">
       <span className="flex items-baseline justify-between text-[11px] text-muted">
         {t('credits.title')}
         <span className="font-mono text-[13px] font-semibold text-ink">{summary.data ? money(summary.data.cost_usd) : '—'}</span>
@@ -365,7 +365,7 @@ function UserMenu({ onClose }: { onClose: () => void }) {
           <div className="my-1 border-t border-line" />
           {link({ name: 'admin-users' }, t('user_menu.users'), UsersIcon)}
           {link({ name: 'admin-departments' }, t('user_menu.departments'), GridIcon)}
-          {link({ name: 'governance' }, t('user_menu.settings'), SettingsIcon)}
+          {link({ name: 'governance', tab: 'usage' }, t('user_menu.settings'), SettingsIcon)}
         </>
       )}
       <div className="my-1 border-t border-line" />

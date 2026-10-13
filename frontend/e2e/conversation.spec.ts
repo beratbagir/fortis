@@ -181,3 +181,28 @@ test('Admin: Bağlantılar → APM detay → Kapat (gerekçe) → Home ve sohbet
   await page.getByRole('button', { name: 'Aç', exact: true }).click()
   await expect(page.getByText('APM açıldı.')).toBeVisible()
 })
+
+test('Admin: Yönetişim → sınırı aşan test çalışması dikkat gerekenlerde → durdur → çözüldü', async ({ page }) => {
+  await page.clock.setFixedTime(now)
+  installFakeBackend(page, { now })
+  await page.goto('/#/governance')
+
+  await expect(page.getByRole('heading', { name: 'Yönetişim' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Harcama · Ekim 2026' })).toContainText('$18,42')
+  const attention = page.getByRole('region', { name: /Dikkat gerekenler/ })
+  await expect(attention.getByText(/#31 \(test\): Araç çağrısı sınırı/)).toBeVisible()
+  await expect(attention.getByRole('link', { name: 'Git' }).first()).toHaveAttribute('href', '#/agents/7/runs/31')
+
+  await page.getByRole('button', { name: 'Sabah Operasyon Özeti çalışmasını durdur' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Sabah Operasyon Özeti durdurulsun mu?' })
+  await dialog.getByLabel(/Gerekçe/).fill('Araç sınırını aşıyor')
+  await dialog.getByRole('button', { name: 'Çalışmayı durdur' }).click()
+  await expect(page.getByText('Sabah Operasyon Özeti durduruldu.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Sabah Operasyon Özeti çalışmasını durdur' })).toHaveCount(0)
+
+  await attention.getByRole('button', { name: 'Çözüldü' }).first().click()
+  await expect(attention.getByText(/#31 \(test\)/)).toHaveCount(0)
+
+  await page.getByRole('link', { name: 'Kullanım' }).click()
+  await expect(page.getByRole('heading', { name: 'Kullanım ve maliyet' })).toBeVisible()
+})
