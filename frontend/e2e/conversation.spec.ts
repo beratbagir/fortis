@@ -62,6 +62,46 @@ for (const theme of ['light', 'dark'] as const) {
   })
 }
 
+for (const theme of ['light', 'dark'] as const) {
+  test(`sohbet grafikleri, ${theme === 'light' ? 'açık' : 'koyu'} tema ve telefon`, async ({ page }) => {
+    await page.clock.setFixedTime(now)
+    installFakeBackend(page, { theme, now })
+    await page.goto('/#/chat/20')
+    await page.evaluate((value) => localStorage.setItem('fortis.theme', value), theme)
+    await page.reload()
+
+    const flights = page.getByRole('figure', { name: 'Günlük sefer sayısı, son 14 gün' })
+    const reasons = page.getByRole('figure', { name: 'Dün rötar nedenleri (dakika)' })
+    await expect(flights.locator('.recharts-line-curve')).toHaveCount(2)
+    await expect(flights.locator('.recharts-legend-wrapper')).toContainText('Charter')
+    await expect(reasons.locator('.recharts-bar-rectangle').first()).toBeVisible()
+    await expect(page.getByText('"type"')).toHaveCount(0)
+    await expect(flights.getByText('Kaynak [1]: IBS · Son 14 gün, günlük sefer sayısı')).toBeVisible()
+    await page.evaluate(() => document.fonts.ready)
+    await page.mouse.move(0, 0)
+    await flights.scrollIntoViewIfNeeded()
+    await expect(flights).toHaveScreenshot(`chart-line-${theme}.png`, { maxDiffPixelRatio: 0.02 })
+    await reasons.scrollIntoViewIfNeeded()
+    await expect(reasons).toHaveScreenshot(`chart-hbar-${theme}.png`, { maxDiffPixelRatio: 0.02 })
+
+    // Grafik/Tablo geçişi ve CSV
+    await reasons.getByRole('button', { name: 'Tablo' }).click()
+    await expect(reasons.getByRole('cell', { name: '412 dk' })).toBeVisible()
+    const download = page.waitForEvent('download')
+    await reasons.getByRole('button', { name: 'CSV indir' }).click()
+    expect((await download).suggestedFilename()).toBe('dün-rötar-nedenleri-dakika.csv')
+    const png = page.waitForEvent('download')
+    await flights.getByRole('button', { name: 'PNG indir' }).click()
+    expect((await png).suggestedFilename()).toBe('günlük-sefer-sayısı-son-14-gün.png')
+
+    await page.setViewportSize({ width: 390, height: 844 })
+    await reasons.getByRole('button', { name: 'Grafik' }).click()
+    await expect(flights.getByRole('img', { name: /Çizgi grafik/ })).toHaveCSS('height', '220px')
+    await flights.scrollIntoViewIfNeeded()
+    await expect(flights).toHaveScreenshot(`chart-line-phone-${theme}.png`, { maxDiffPixelRatio: 0.02 })
+  })
+}
+
 test('Home → Seni bekleyenler → Inbox onay detayı → Onayla ve gönder → kutu boşalır', async ({ page }) => {
   await page.clock.setFixedTime(now)
   installFakeBackend(page, { now })

@@ -1408,6 +1408,76 @@ Vitest 74 (yeni `policies.test.tsx` 3: değişiklik onayı ve sadece değişen a
 - Departman yöneticisi rolü yok; bütçe uyarıları sadece admine (A4.3).
 - Denetim kaydı ekranı sadece admine açık. Sorgu metni kuralı (admin/builder) yine de kodda uygulanıyor; ekran ileride builder'a açılırsa doğru çalışır.
 
+## Sohbette grafik desteği (2026-10-13)
+
+Plan: [docs/fortis-sohbet-grafik.md](docs/fortis-sohbet-grafik.md). Model HTML ya da kod yazmıyor; cevaba `:::chart` JSON bloğu koyuyor, sunucu doğruluyor, arayüz hazır bileşenle (Recharts) çiziyor.
+
+**Backend**
+- **`App\Ai\ChartBlocks`:**
+  - **Şema:** `type` line/bar/hbar/stacked_bar; `title`; `source` `q:ID`; `x` {field, type date/category, label}; `y` {unit `%`/`dk`/`adet`/`$`/`₺`/boş, label, min}; `series`; `data`; isteğe bağlı `reference`, `derived` ve `note`. Bilinmeyen alan, metin olarak yazılmış sayı, ISO olmayan tarih reddediliyor.
+  - **Sınırlar:** en fazla 6 seri, 400 nokta, cevap başına 3 grafik (4.'sü çizilmez).
+  - **HTML/kod:** herhangi bir değerde `<`/`>`, `javascript:` veya `onX=` varsa blok reddediliyor.
+  - **Kaynak:** `source` bu cevapta çalışmış bir sorgu olmalı. Sorgunun Claude'a giden maskeli satırları sohbette saklanan araç sonuçlarından bulunuyor; soru kartından sonra devam eden cevaplarda da çalışıyor.
+  - **Değerler:** `derived: false` ise her etiket ve her sayı o satırlarda olmalı. Tarih etiketi kaynaktaki tarih/saat değerinin öneki olabilir; modelin yuvarlamasına izin var (±0,05). `derived: true` ise sadece etiketler ("Diğer" hariç) ve satır sayısı kontrol ediliyor.
+  - **Sonuç:** doğrulanmış grafik `meta.answer.charts[]`'a normalleştirilmiş olarak yazılıyor. Hatalı blok yerine `{error: "Grafik gösterilemedi" | "Grafik kaynağı doğrulanamadı"}` yazılıyor; kaynak/değer uyuşmazlığında `ai_calls.warning`'e `chart_source_mismatch: …` düşüyor (`citation_mismatch` ile aynı satırda).
+  - Hata açıklaması değeri değil satır numarasını yazıyor. Testte, kaynakta olmayan bir etiketin (maskelenmemiş PNR/telefon) açıklama yoluyla meta'ya sızdığı görüldü ve düzeltildi.
+- **Sistem promptu:** ne zaman hangi grafik (§4 tablosu), blok biçimi, "değer uydurma, hesapladıysan `derived: true`", iki farklı ölçüye iki ayrı grafik (çift eksen yok), tek sayıda grafik yok, grafikten sonra 1–3 cümle yorum ve kaynak, grafiği ayrıca tablo olarak yazma, agent çalışmalarında grafik yok. "Zaman serisi → kısa tablo" kuralı 7 ve daha fazla noktada grafikle değişti.
+- **Agent çıktısı:** `:::chart` blokları çıkarılıyor; e-postada tablo kalıyor.
+- **DemoSeeder:** "[Demo] Sefer sayısı ve rötar nedenleri" sohbeti (iki serili `line` + `hbar`).
+- **`fortis:eval`:** yeni kontroller `expect_chart` (tür listesi, sadece doğrulanmış grafik sayılır), `expect_no_chart`, `expect_single_measure` (bir grafikte yüzde ve sayı serisi birlikte olmasın). `expect_table`, doğrulanmış bir grafik varsa da geçiyor; zaman serisi soruları artık grafikle cevaplanıyor. Araç beklenmeyen çalıştırmada doğru araç oranı "—" yazıyor.
+
+**Arayüz**
+- **Grafik kartı** (`chat/ChartCard.tsx`, tablo kartıyla aynı çerçeve):
+  - Başlık; sağ üstte Grafik/Tablo geçişi, CSV indir, PNG indir, büyüt.
+  - Altta kaynak numarası ve sorgunun amacı, `derived` ise "Değerler kaynaktan hesaplandı", `note`.
+  - Arayüz metindeki bloğu değil meta'daki doğrulanmış veriyi çiziyor. Ham JSON hiçbir zaman görünmüyor: akan cevapta "_Grafik hazırlanıyor…_", kopyalamada blok çıkarılıyor. Akan cevapta `:::actions` da artık ham görünmüyor.
+  - Hatalı grafikte veri yok, sadece kesik çerçeveli not.
+- **İşaretler:**
+  - Çizgi 2px; nokta sadece üzerine gelince. Çubuk üst köşeleri 4px yuvarlak; çubuklar arası 2px.
+  - Izgara soluk ve sadece yatay. Değer ekseni 0'dan (veya `y.min`'den), 1/2/2,5/5×10ⁿ adımlı yaklaşık 5 aralık. Referans çizgisi nötr gri kesikli.
+  - Metin hiçbir zaman seri renginde değil.
+- **Etiket ve etkileşim:**
+  - 2+ seride legend her zaman var ve seri sırasında; tıklayınca seri gizleniyor, diğer serilerin rengi değişmiyor. 4 ve daha az seride çizgi sonunda doğrudan etiket.
+  - Çizgide dikey imleç + tek tooltip; çubukta tooltip.
+  - Klavye: Recharts `accessibilityLayer` (tab, ok tuşları). Ekran okuyucu için `aria-label` = başlık + tür, nokta sayısı, ilk serinin en yüksek ve en düşüğü.
+- **Telefon:** yükseklik 220px, x etiketleri seyreltiliyor, legend altta.
+- **Biçim:** Türkçe sayı ve tarih: `%82,4`, `1.250 adet`, `35 dk`, `1.204,5 ₺`, `14 Eyl`, `14 Eyl 06:30`. Dokümandaki `82,4 %` yerine uygulamanın geri kalanındaki Türkçe yazım (`%82,4`) kullanıldı.
+- **PNG:** SVG kopyalanıyor, tema değişkenleri hesaplanmış renklere çevriliyor, kart zemini üstünde 2x çiziliyor.
+
+**Renkler ve renk körlüğü kontrolü**
+- Tek seri marka rengi (açık `#B42A3F`, koyu `#D2404F`). 2+ seri için `index.css`'te açık ve koyu temaya ayrı, sabit sıralı 6 renk (`--series-1…6`). Renk serinin adına bağlı. Durum renkleri (yeşil/sarı/kırmızı) ve gri palette yok.
+  - Açık: `#2B4C7E` lacivert, `#C4651F` turuncu, `#0F766E` camgöbeği, `#D16BA5` pembe, `#8A5A9E` mor, `#7C5A3A` kahve.
+  - Koyu: `#8DB2F0`, `#F0915A`, `#86DCD5`, `#9B7FE0`, `#B9CFF5`, `#E3B98A`.
+- **Kontrol yöntemi:** Machado 2009 simülasyonu (protan, deutan, tritan, şiddet 1,0) ve CIEDE2000 farkı, bütün çiftler için. Palet, durum renkleri hariç bir aday havuzundan en kötü çifti büyütecek şekilde seçildi.
+
+| Tema | Normal | Protan | Deutan | Tritan | Zemine kontrast |
+|---|---:|---:|---:|---:|---:|
+| Açık (en düşük ΔE00) | 17,1 | 9,4 | 12,9 | 9,7 | 3,3–8,6 : 1 |
+| Koyu (en düşük ΔE00) | 9,2 | 8,9 | 7,8 | 9,6 | 5,4–11,1 : 1 |
+
+  Komşu renkler her durumda ΔE00 ≥ 10. Bütün renkler grafik nesneleri için WCAG 3:1'i karşılıyor.
+
+**Testler:** backend 469 (hepsi geçti).
+- Yeni `ChartBlockTest` 6: geçerli blok meta'ya ve API'ye; bu cevapta olmayan kaynak, kaynakta olmayan değer ve etiket reddi + uyarı; `derived` kontrolü; maskeli etiket maskeli kalıyor, ham kişisel değer reddediliyor ve meta'ya sızmıyor; şema, HTML/SVG/olay işleyici, 7 seri, 401 nokta, metin sayı, 4. grafik reddi; tarih öneki ve yuvarlama.
+
+Vitest 81: yeni `chart.test.tsx` 7.
+- `line`, `bar`, `hbar`, `stacked_bar` çiziliyor; tek seride legend yok, 2+ seride var.
+- Grafik/Tablo geçişi; hatalı grafikte not; seri gizleyince renk sabit; CSV, Türkçe sayı/tarih, eksen adımları; akan metin ve kopyalama.
+
+Playwright 15: yeni grafik testi açık/koyu tema. Grafikler çiziliyor, ham JSON yok, kaynak satırı, Tablo görünümü, CSV ve PNG indirme dosya adları, telefonda 220px. Görsel temeller: çizgi kartı (açık/koyu/telefon) ve yatay çubuk kartı (açık/koyu), görüntülere bakıldı.
+
+**Eval** (gerçek model, sadece 4 grafik sorusu, `--max-cost=3`): **3/4 geçti, 0,61 $.** Rapor: `backend/storage/app/private/eval/2026-10-13_124118.json`.
+- "Son 14 günün günlük sefer sayısı" → `line` (planlanan + iptal), kaynaklı. Sunucu değerleri gerçek sorgu sonucuyla doğruladı, uyarı yok. **Geçti.**
+- "Dün kaç sefer vardı" → grafik ve tablo yok. **Geçti.**
+- "Son 7 günde sefer sayısı ve OTP" → sefer/iptal grafiği; OTP için grafik yok, çünkü APM test ortamında gerçekleşen kalkış saatleri boş. Model bunu açıkça söyledi; çift eksen yok. **Geçti** (OTP verisi olmadığı için iki ölçülü durum gerçekten sınanamadı).
+- "Dün rötar nedenlerinin dağılımı" → **kaldı.** Grafik yok, çünkü APM test ortamında dünkü seferlerde rötar kodu ve süresi boş. Model veri olmadığını söyledi ve grafik uydurmadı; doğru davranış, ama soru bu veriyle geçemez. Gerçek veride yeniden denenmeli.
+
+**Dokümandan sapmalar ve nedenleri**
+- Cevaptan Excel/PDF indirme şu an yok (sadece `create_report` rapor kartları var). Grafik için CSV ve PNG kartta; ayrıca bir Excel/PDF yolu eklenmedi. Rapor dosyaları değişmedi.
+- Yüzde biçimi `%82,4` (uygulamanın geri kalanıyla aynı Türkçe yazım), dokümandaki `82,4 %` değil.
+- En yüksek/en düşük noktalar grafikte işaretlenmiyor (doküman "işaretlenebilir" diyor); ekran okuyucu özetinde var.
+- Playwright temelleri tam sayfa yerine grafik kartı görüntüsü: sohbet alanı iç kaydırmalı olduğu için tam sayfa görüntüsü üstteki grafiği kesiyordu.
+
 ## Çalıştırma
 
 ```sh

@@ -236,6 +236,40 @@
       "expect_citation": true,
       "expect_date": "dün",
       "expect_utc_from": true
+    },
+    {
+      "id": "chart-flights-14d",
+      "question": "Son 14 günün günlük sefer sayısı",
+      "expect_chart": [
+        "line"
+      ],
+      "expect_citation": true,
+      "expect_no_flow": true
+    },
+    {
+      "id": "chart-delay-reasons",
+      "question": "Dün rötar nedenlerinin dağılımı",
+      "expect_chart": [
+        "bar",
+        "hbar"
+      ],
+      "expect_citation": true,
+      "expect_no_flow": true
+    },
+    {
+      "id": "chart-none-single",
+      "question": "Dün kaç sefer vardı",
+      "expect_no_chart": true,
+      "expect_no_table": true,
+      "expect_citation": true,
+      "expect_no_flow": true
+    },
+    {
+      "id": "chart-two-measures",
+      "question": "Son 7 günde sefer sayısı ve OTP",
+      "expect_single_measure": true,
+      "expect_citation": true,
+      "expect_no_flow": true
     }
   ]
 }

@@ -4,6 +4,7 @@ namespace App\Agents;
 
 use Anthropic\Core\Exceptions\APIStatusException;
 use Anthropic\Core\Exceptions\RateLimitException;
+use App\Ai\ChartBlocks;
 use App\Jobs\RunAgentJob;
 use App\Jobs\ScoreAgentRunJob;
 use App\Models\Agent;
@@ -243,6 +244,8 @@ class AgentRunner
         }
 
         $output = trim((string) preg_replace('/:::actions\s*\n[\s\S]*?\n\s*:::/', '', $final->text));
+        // Agent çıktısında grafik yok (e-posta/Teams tablo ile); model yine de yazdıysa blok çıkarılır.
+        $output = trim((string) preg_replace(ChartBlocks::PATTERN, '', $output));
         $output = trim((string) preg_replace('/\s?\[\^q:[A-Za-z0-9_]+\]/', '', $output));
         $pending = $run->actions()->where('status', AgentAction::PENDING)->exists();
 

@@ -8,11 +8,41 @@ export interface SuggestedAction {
   system: string | null
 }
 
-export type AnswerBlock =
-  | { type: 'markdown'; text: string }
-  | { type: 'table'; title: string | null; header: string[]; align: ('left' | 'right' | 'center')[]; rows: string[][] }
+export type AnswerBlock = { type: 'markdown'; text: string } | { type: 'table'; title: string | null; header: string[]; align: ('left' | 'right' | 'center')[]; rows: string[][] } | { type: 'chart'; index: number }
 
 const ACTIONS = /:::actions\s*\n([\s\S]*?)\n\s*:::/
+const CHART = /:::chart[ \t]*\r?\n[\s\S]*?\r?\n[ \t]*:::/g
+const CHART_MARK = /^@@chart:(\d+)@@$/
+
+/**
+ * :::chart bloklarını (sırayla) yer tutucu satırlara çevirir; grafik verisi metinden değil sunucunun doğruladığı
+ * answer.charts'tan çizilir. Ham JSON hiçbir zaman gösterilmez.
+ */
+export function markCharts(text: string): string {
+  let index = 0
+  return text.replace(CHART, () => `\n\n@@chart:${index++}@@\n\n`)
+}
+
+/**
+ * Akan (henüz bitmemiş) cevap metni: aksiyon ve grafik blokları gizlenir; yazılmakta olan grafik için yer tutucu.
+ * Doğrulanmış meta'sı olmayan eski cevaplarda da kullanılır.
+ */
+export function liveText(text: string): string {
+  const done = text.replace(ACTIONS, '').replace(CHART, '\n\n_Grafik hazırlanıyor…_\n\n')
+  const open = done.search(/:::(chart|actions)\b/)
+  if (open === -1) return done
+  return done.slice(0, open) + (done.slice(open).startsWith(':::chart') ? '\n\n_Grafik hazırlanıyor…_' : '')
+}
+
+/** Kopyalama için düz metin: bloklar ve kaynak numaraları çıkarılır. */
+export function copyText(text: string): string {
+  return text
+    .replace(ACTIONS, '')
+    .replace(CHART, '')
+    .replace(/\s?\[\^q:[A-Za-z0-9_]+\]/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
 
 /** :::actions bloğunu çıkarır. Bozuk satırlar yok sayılır; blok tamamen bozuksa aksiyon yok. */
 export function extractActions(text: string): { text: string; actions: SuggestedAction[] } {
@@ -55,7 +85,13 @@ export function numberCitations(text: string, queries: AnswerQuery[]): { text: s
 }
 
 const isSeparator = (line: string) => /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(line)
-const cells = (line: string) => line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim())
+const cells = (line: string) =>
+  line
+    .trim()
+    .replace(/^\|/, '')
+    .replace(/\|$/, '')
+    .split('|')
+    .map((c) => c.trim())
 const isTitle = (line: string) => /^\s*(\*[^*].*[^*]\*|_[^_].*[^_]_)\s*$/.test(line)
 
 /** Markdown'ı metin ve tablo bloklarına ayırır. Tablonun hemen üstündeki italik satır tablo başlığı olur. */
@@ -71,12 +107,21 @@ export function splitBlocks(text: string): AnswerBlock[] {
   }
 
   for (let i = 0; i < lines.length; i++) {
+    const chart = lines[i].trim().match(CHART_MARK)
+    if (chart) {
+      flush()
+      blocks.push({ type: 'chart', index: Number(chart[1]) })
+      continue
+    }
     if (lines[i].trim().startsWith('|') && i + 1 < lines.length && isSeparator(lines[i + 1])) {
       // Başlık: tablodan önceki son dolu satır italikse.
       let title: string | null = null
       while (buffer.length > 0 && buffer[buffer.length - 1].trim() === '') buffer.pop()
       if (buffer.length > 0 && isTitle(buffer[buffer.length - 1])) {
-        title = buffer.pop()!.trim().replace(/^[*_]|[*_]$/g, '')
+        title = buffer
+          .pop()!
+          .trim()
+          .replace(/^[*_]|[*_]$/g, '')
       }
       flush()
 

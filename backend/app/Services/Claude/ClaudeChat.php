@@ -18,6 +18,7 @@ use Anthropic\Lib\Streaming\MessageAccumulator;
 use App\Agents\AgentSession;
 use App\Agents\Architect;
 use App\Ai\AnswerTrace;
+use App\Ai\ChartBlocks;
 use App\Ai\DataQueryTools;
 use App\Ai\ModelRouter;
 use App\Ai\PromptClock;
@@ -324,8 +325,9 @@ class ClaudeChat
     }
 
     /**
-     * Son cevap: kaynak numaralarını bu cevapta çalışan sorgularla karşılaştırır, iz özetini mesaja yazar.
-     * Çalışmamış bir sorguya kaynak verilmişse ai_calls'a citation_mismatch uyarısı düşer.
+     * Son cevap: kaynak numaralarını ve grafikleri bu cevapta çalışan sorgularla karşılaştırır, iz özetini mesaja yazar.
+     * Çalışmamış bir sorguya kaynak verilmişse ai_calls'a citation_mismatch, doğrulanamayan grafik için
+     * chart_source_mismatch uyarısı düşer.
      */
     private function finishAnswer(Message $assistant, string $requestId): void
     {
@@ -333,11 +335,22 @@ class ClaudeChat
         $known = array_column($this->trace->queries(), 'query_id');
         $unknown = array_values(array_unique(array_diff($m[1], $known)));
 
-        if ($unknown !== []) {
-            AiCall::query()->where('request_id', $requestId)->update(['warning' => mb_substr('citation_mismatch: '.implode(', ', $unknown), 0, 255)]);
+        // :::chart blokları: kaynak bu cevapta çalışmış olmalı, değerler o sorgunun satırlarından gelmeli.
+        $charts = ['charts' => [], 'source_mismatch' => []];
+        if (str_contains($assistant->text, ':::chart')) {
+            $rows = ChartBlocks::sourceRows($assistant->conversation, $known);
+            $charts = ChartBlocks::validate($assistant->text, $known, fn (string $id) => $rows[$id] ?? null);
         }
 
-        $assistant->update(['meta' => array_merge($assistant->meta ?? [], ['answer' => $this->trace->summary($unknown)])]);
+        $warnings = array_filter([
+            $unknown === [] ? null : 'citation_mismatch: '.implode(', ', $unknown),
+            $charts['source_mismatch'] === [] ? null : 'chart_source_mismatch: '.implode(', ', $charts['source_mismatch']),
+        ]);
+        if ($warnings !== []) {
+            AiCall::query()->where('request_id', $requestId)->update(['warning' => mb_substr(implode('; ', $warnings), 0, 255)]);
+        }
+
+        $assistant->update(['meta' => array_merge($assistant->meta ?? [], ['answer' => $this->trace->summary($unknown) + ['charts' => $charts['charts']]])]);
     }
 
     /**

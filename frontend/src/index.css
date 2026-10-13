@@ -50,6 +50,17 @@
   --chart-1: #2b4c7e;
   --chart-2: #c4651f;
   --chart-grid: #f2f0f0;
+  /*
+   * Sohbet grafikleri, 2+ seri (sabit sıra; renk seriye bağlı). Tek seri marka rengi. Durum renkleri (yeşil/sarı/
+   * kırmızı) ve gri (referans çizgisi) kullanılmaz. CVD kontrolü (Machado 2009, protan/deutan/tritan): bütün
+   * çiftlerde en düşük ΔE00 9,4; zemine kontrast ≥ 3:1. Ayrıntı ILERLEME'de.
+   */
+  --series-1: #2b4c7e;
+  --series-2: #c4651f;
+  --series-3: #0f766e;
+  --series-4: #d16ba5;
+  --series-5: #8a5a9e;
+  --series-6: #7c5a3a;
 
   /* Avatar renkleri */
   --avatar-crimson: #8e1f31;
@@ -127,6 +138,13 @@
   --chart-1: #8db2f0;
   --chart-2: #f0915a;
   --chart-grid: #2f2529;
+  /* Koyu tema için ayrı palet (ters çevirme değil): en düşük ΔE00 7,8; zemine kontrast ≥ 5:1. */
+  --series-1: #8db2f0;
+  --series-2: #f0915a;
+  --series-3: #86dcd5;
+  --series-4: #9b7fe0;
+  --series-5: #b9cff5;
+  --series-6: #e3b98a;
 
   --avatar-crimson: #a8304a;
   --avatar-blue: #3a5f96;

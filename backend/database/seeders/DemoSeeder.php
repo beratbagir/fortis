@@ -56,6 +56,7 @@ class DemoSeeder extends Seeder
         }
 
         $this->agent($owner);
+        $this->chartConversation($owner);
 
         $conversation = Conversation::query()->firstOrCreate(
             ['title' => '[Demo] Dün hangi rotalar kötüydü?', 'user_id' => $owner->id],
@@ -96,6 +97,63 @@ class DemoSeeder extends Seeder
                 'steps' => 5,
                 'writes' => [],
                 'citation_mismatch' => [],
+            ]],
+        ]);
+    }
+
+    /** Grafikli demo cevabı (sohbet grafikleri): iki serili line + tek serili hbar. Grafikler meta'dan çizilir. */
+    private function chartConversation(User $owner): void
+    {
+        $conversation = Conversation::query()->firstOrCreate(
+            ['title' => '[Demo] Sefer sayısı ve rötar nedenleri', 'user_id' => $owner->id],
+            ['kind' => Conversation::KIND_CHAT, 'title_generated_at' => now()],
+        );
+        if ($conversation->messages()->exists()) {
+            return;
+        }
+
+        $question = 'Son 14 günün günlük sefer sayısı ve dünkü rötar nedenleri';
+        $conversation->messages()->create(['role' => Message::ROLE_USER, 'content' => [['type' => 'text', 'text' => $question]], 'text' => $question]);
+
+        $scheduled = [152, 149, 158, 161, 155, 141, 132, 150, 156, 160, 163, 158, 145, 136];
+        $charter = [52, 49, 53, 54, 52, 48, 44, 51, 53, 54, 55, 54, 49, 45];
+        $flights = [
+            'type' => 'line', 'title' => 'Günlük sefer sayısı, son 14 gün', 'source' => 'q:q_demo00003',
+            'x' => ['field' => 'flight_date', 'type' => 'date', 'label' => 'Tarih'], 'y' => ['unit' => 'adet', 'label' => 'Sefer', 'min' => 0],
+            'series' => [['name' => 'Tarifeli', 'field' => 'scheduled'], ['name' => 'Charter', 'field' => 'charter']],
+            'data' => array_map(fn (int $i) => ['flight_date' => now('Europe/Istanbul')->subDays(14 - $i)->toDateString(), 'scheduled' => $scheduled[$i], 'charter' => $charter[$i]], range(0, 13)),
+            'reference' => null, 'derived' => false, 'note' => 'Türkiye saatine göre.',
+        ];
+        $reasons = [
+            'type' => 'hbar', 'title' => 'Dün rötar nedenleri (dakika)', 'source' => 'q:q_demo00004',
+            'x' => ['field' => 'reason', 'type' => 'category', 'label' => 'Neden'], 'y' => ['unit' => 'dk', 'label' => 'Toplam rötar', 'min' => null],
+            'series' => [['name' => 'Rötar', 'field' => 'minutes']],
+            'data' => [['reason' => 'Uçağın geç gelmesi (93)', 'minutes' => 412], ['reason' => 'Yer hizmetleri (13)', 'minutes' => 186], ['reason' => 'Hava trafik kontrolü (81)', 'minutes' => 143], ['reason' => 'Teknik (41)', 'minutes' => 95], ['reason' => 'Hava durumu (71)', 'minutes' => 38]],
+            'reference' => null, 'derived' => false, 'note' => null,
+        ];
+        $block = fn (array $chart) => ":::chart\n".json_encode($chart, JSON_UNESCAPED_UNICODE)."\n:::";
+        $text = "Son 14 günde günlük tarifeli sefer **132–163** arasında; hafta sonları belirgin düşüyor [^q:q_demo00003].\n\n".$block($flights)
+            ."\n\nDünkü rötarın yarıya yakını **uçağın geç gelmesinden** (412 dk); yer hizmetleri ikinci sırada [^q:q_demo00004].\n\n".$block($reasons);
+
+        $conversation->messages()->create([
+            'role' => Message::ROLE_ASSISTANT,
+            'content' => [['type' => 'text', 'text' => $text]],
+            'text' => $text,
+            'model' => 'claude-sonnet-5-5',
+            'stop_reason' => 'end_turn',
+            'meta' => ['answer' => [
+                'trace' => [['id' => 's1', 'kind' => 'model', 'status' => 'done', 'label' => 'Model seçildi · Auto → Claude Sonnet 5.5', 'detail' => 'Genel varsayılan model', 'model' => 'claude-sonnet-5-5', 'auto' => true, 'at_ms' => 5]],
+                'queries' => [
+                    ['tool' => 'query_warehouse', 'source' => 'IBS', 'purpose' => 'Son 14 gün, günlük sefer sayısı', 'query_id' => 'q_demo00003', 'rows' => 14, 'total_rows' => 14, 'masked' => false, 'query' => ['sql' => 'SELECT … GROUP BY flight_date'], 'at' => now()->toIso8601String()],
+                    ['tool' => 'query_apm', 'source' => 'APM', 'purpose' => 'Dünkü rötar nedenleri', 'query_id' => 'q_demo00004', 'rows' => 5, 'total_rows' => 5, 'masked' => false, 'query' => ['path' => '/delays'], 'at' => now()->toIso8601String()],
+                ],
+                'models' => ['claude-sonnet-5-5'],
+                'auto' => true,
+                'duration_ms' => 18200,
+                'steps' => 1,
+                'writes' => [],
+                'citation_mismatch' => [],
+                'charts' => [$flights, $reasons],
             ]],
         ]);
     }

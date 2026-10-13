@@ -76,7 +76,7 @@ class RunEval extends Command
         Storage::disk('local')->put($path, json_encode(['summary' => $summary, 'results' => $results], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
         $this->newLine();
-        $this->info("{$passed}/{$summary['questions']} geçti · doğru araç oranı %".round(($summary['correct_tool_ratio'] ?? 0) * 100)." · maliyet \${$summary['total_cost_usd']}");
+        $this->info("{$passed}/{$summary['questions']} geçti · doğru araç oranı ".($summary['correct_tool_ratio'] === null ? '— (araç beklenen soru yok)' : '%'.round($summary['correct_tool_ratio'] * 100))." · maliyet \${$summary['total_cost_usd']}");
         if ($skipped !== []) {
             $this->warn('Bütçe sınırı nedeniyle atlanan sorular ('.count($skipped).'): '.implode(', ', $skipped));
         }
@@ -103,7 +103,10 @@ class RunEval extends Command
 
         $messages = $conversation->messages()->orderBy('id')->get();
         $tools = $messages->flatMap(fn (Message $m) => collect($m->content)->where('type', 'tool_use')->pluck('name'))->values()->all();
-        $answer = (string) $messages->where('role', Message::ROLE_ASSISTANT)->last()?->text;
+        $last = $messages->where('role', Message::ROLE_ASSISTANT)->last();
+        $answer = (string) $last?->text;
+        // Doğrulanmış grafikler (kaynağı ve değerleri sorgudan); hatalı bloklar sayılmaz.
+        $charts = array_values(array_filter($last?->meta['answer']['charts'] ?? [], fn (array $c) => ! isset($c['error'])));
 
         $checks = array_filter([
             'tool' => match (true) {
@@ -113,7 +116,10 @@ class RunEval extends Command
             },
             'no_flow' => ! empty($question['expect_no_flow']) ? ! in_array('propose_flow', $tools, true) : null,
             'flow' => ! empty($question['expect_flow']) ? in_array('propose_flow', $tools, true) || in_array('validate_flow', $tools, true) : null,
-            'table' => ! empty($question['expect_table']) ? self::hasTable($answer) : null,
+            'table' => ! empty($question['expect_table']) ? self::hasTable($answer) || $charts !== [] : null,
+            'chart' => isset($question['expect_chart']) ? collect($charts)->contains(fn (array $c) => in_array($c['type'], $question['expect_chart'], true)) : null,
+            'no_chart' => ! empty($question['expect_no_chart']) ? ! str_contains($answer, ':::chart') : null,
+            'single_measure' => ! empty($question['expect_single_measure']) ? $charts !== [] && ! collect($charts)->contains(fn (array $c) => self::mixesMeasures($c)) : null,
             'no_table' => ! empty($question['expect_no_table']) ? ! self::hasTable($answer) : null,
             'citation' => ! empty($question['expect_citation']) ? (bool) preg_match('/\[\^q:[A-Za-z0-9_]+\]/', $answer) : null,
             'source' => ! empty($question['expect_source']) ? (bool) preg_match('/Kaynak\s*:/iu', $answer) : null,
@@ -122,7 +128,7 @@ class RunEval extends Command
             'no_error' => $error === null,
         ], fn ($check) => $check !== null);
 
-        $labels = ['tool' => 'Beklenen araç kullanılmadı', 'no_flow' => 'Gereksiz akış önerildi', 'flow' => 'Akış önerilmedi', 'table' => 'Tablo yok', 'no_table' => 'Gereksiz tablo', 'citation' => 'Kaynak numarası yok', 'date' => 'Cevapta doğru tarih (Türkiye) yok', 'utc_range' => 'Sorguda doğru tarih aralığı yok (APM: UTC başlangıcı, IBS: Türkiye tarihi)', 'source' => 'Kaynak satırı yok', 'no_error' => "Hata: {$error}"];
+        $labels = ['tool' => 'Beklenen araç kullanılmadı', 'no_flow' => 'Gereksiz akış önerildi', 'flow' => 'Akış önerilmedi', 'table' => 'Tablo yok', 'no_table' => 'Gereksiz tablo', 'chart' => 'Beklenen grafik yok (veya doğrulanamadı)', 'no_chart' => 'Gereksiz grafik', 'single_measure' => 'Grafik yok veya bir grafikte iki farklı ölçü', 'citation' => 'Kaynak numarası yok', 'date' => 'Cevapta doğru tarih (Türkiye) yok', 'utc_range' => 'Sorguda doğru tarih aralığı yok (APM: UTC başlangıcı, IBS: Türkiye tarihi)', 'source' => 'Kaynak satırı yok', 'no_error' => "Hata: {$error}"];
 
         return [
             'id' => $question['id'],
@@ -135,6 +141,14 @@ class RunEval extends Command
             'cost_usd' => (float) $conversation->aiCalls()->sum('cost_usd'),
             'conversation_id' => $conversation->id,
         ];
+    }
+
+    /** Bir grafikte yüzde (OTP) ile sayı serisi birlikte mi (çift eksen yerine iki grafik olmalı). */
+    private static function mixesMeasures(array $chart): bool
+    {
+        $percent = array_map(fn (array $s) => (bool) preg_match('/otp|%|oran|zamanında/iu', $s['name'].' '.$s['field']), $chart['series']);
+
+        return in_array(true, $percent, true) && in_array(false, $percent, true);
     }
 
     private static function hasTable(string $answer): bool

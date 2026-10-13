@@ -5,7 +5,9 @@ import { Dialog } from '../ui/Dialog'
 import { CopyIcon, RetryIcon, ThumbDownIcon, ThumbUpIcon } from '../ui/icons'
 import { ActionCards, AnswerMarkdown, InfoLine, SourcesDialog, TableCard } from './AnswerParts'
 import { CitationContext, queryText } from './chatUtils'
-import { extractActions, numberCitations, splitBlocks } from './answerText'
+import { copyText, extractActions, markCharts, numberCitations, splitBlocks } from './answerText'
+import { ChartCard, ChartErrorCard } from './ChartCard'
+import { isChartError } from './chartFormat'
 import { LiveTrace } from './LiveTrace'
 
 interface Props {
@@ -28,25 +30,31 @@ export function AnswerView({ message, onSend, onAutomate, onRegenerate, busy }: 
   const view = useMemo(() => {
     const { text, actions } = extractActions(message.text)
     const { text: cited, numbers } = numberCitations(text, answer?.queries ?? [])
-    return { blocks: splitBlocks(cited), actions, numbers }
+    return { blocks: splitBlocks(markCharts(cited)), actions, numbers }
   }, [message.text, answer])
 
   const queries = useMemo(() => new Map((answer?.queries ?? []).map((q) => [q.query_id, q])), [answer])
 
   return (
     <article className="flex flex-col gap-3" aria-label="Fortis'in cevabı">
-      {answer && answer.trace.length > 0 && <LiveTrace steps={answer.trace} running={false} durationMs={answer.duration_ms} defaultOpen={waiting} onAudit={answer.queries.length > 0 && !waiting ? () => setAudit(true) : undefined} />}
+      {answer && answer.trace.length > 0 && (
+        <LiveTrace steps={answer.trace} running={false} durationMs={answer.duration_ms} defaultOpen={waiting} onAudit={answer.queries.length > 0 && !waiting ? () => setAudit(true) : undefined} />
+      )}
 
       <CitationContext.Provider value={{ queries, numbers: view.numbers }}>
-        {view.blocks.map((block, i) =>
-          block.type === 'table' ? (
+        {view.blocks.map((block, i) => {
+          if (block.type === 'chart') {
+            const chart = answer?.charts?.[block.index]
+            return isChartError(chart) ? <ChartErrorCard key={i} chart={chart} /> : <ChartCard key={i} chart={chart} />
+          }
+          return block.type === 'table' ? (
             <TableCard key={i} block={block} />
           ) : (
             <div key={i} className={`prose-chat ${i === 0 ? 'answer-lead' : ''}`}>
               <AnswerMarkdown text={block.text} />
             </div>
-          ),
-        )}
+          )
+        })}
       </CitationContext.Provider>
 
       <ActionCards actions={view.actions} onSend={onSend} onAutomate={onAutomate} disabled={busy} />
@@ -73,7 +81,7 @@ function Feedback({ message, onRegenerate, busy }: { message: Message; onRegener
   }
 
   const copy = async () => {
-    await navigator.clipboard?.writeText(extractActions(message.text).text.replace(/\s?\[\^q:[A-Za-z0-9_]+\]/g, ''))
+    await navigator.clipboard?.writeText(copyText(message.text))
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
   }

@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, architectPrompt, buildApi, isArtifactCard, isFlowCard, isReportCard, sendMessage, type Conversation, type FlowCard, type Message, type MessageExtras, type TraceStep } from '../api'
+import { liveText } from '../chat/answerText'
 import { AnswerView } from '../chat/AnswerView'
 import { HomeView } from '../chat/HomeView'
 import { LiveTrace } from '../chat/LiveTrace'
@@ -239,7 +240,7 @@ export function ChatPage({ conversationId }: { conversationId: number | null }) 
                 {message.role === 'assistant' && message.answer && !message.ask_answered && (
                   <AnswerView message={message} onSend={send} onAutomate={canBuild ? (title) => toAgent(title) : undefined} onRegenerate={lastQuestion && message.id === lastAnswerId ? () => send(lastQuestion) : undefined} busy={busy} />
                 )}
-                {message.role === 'assistant' && (!message.answer || message.ask_answered) && message.text !== '' && <MessageBubble role="assistant" text={message.text} />}
+                {message.role === 'assistant' && (!message.answer || message.ask_answered) && message.text !== '' && <MessageBubble role="assistant" text={liveText(message.text)} />}
                 {message.flow_cards.filter(isArtifactCard).map((card) => (
                   <ArtifactCardView key={`${card.artifact_id}:${card.version}`} card={card} open={artifact?.id === card.artifact_id} onOpen={() => setArtifact({ id: card.artifact_id, version: card.version })} />
                 ))}
@@ -253,7 +254,7 @@ export function ChatPage({ conversationId }: { conversationId: number | null }) 
             ))}
 
             {streaming && <LiveTrace steps={streaming.steps} running />}
-            {streaming && streaming.text !== '' && <MessageBubble role="assistant" text={streaming.text} streaming />}
+            {streaming && streaming.text !== '' && <MessageBubble role="assistant" text={liveText(streaming.text)} streaming />}
 
             {error && <div className="rounded-xl border border-bad/30 bg-bad-soft px-4 py-3 text-sm text-bad">{error}</div>}
 

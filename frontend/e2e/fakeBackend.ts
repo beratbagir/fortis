@@ -120,6 +120,40 @@ export function installFakeBackend(page: Page, { signedIn = true, theme = 'light
     return sse([['user_message', user], ...trace.map((step) => ['step', step] as [string, unknown]), ['delta', { text: 'Dün **beş rota**' }], ['assistant_message', final], ['done', { conversation: { id: 10, title: 'Dünkü düşük yük faktörlü rotalar' } }]])
   }
 
+  // Grafikli cevap (sohbet grafikleri): bir line, bir hbar. Veri sunucunun doğruladığı answer.charts'tan çizilir.
+  const days = Array.from({ length: 14 }, (_, i) => new Date(Date.UTC(2026, 8, 28 + i)).toISOString().slice(0, 10))
+  const flightsChart = {
+    type: 'line', title: 'Günlük sefer sayısı, son 14 gün', source: 'q:q_sefer00001',
+    x: { field: 'flight_date', type: 'date', label: 'Tarih' }, y: { unit: 'adet', label: 'Sefer', min: 0 },
+    series: [{ name: 'Tarifeli', field: 'scheduled' }, { name: 'Charter', field: 'charter' }],
+    data: days.map((d, i) => ({ flight_date: d, scheduled: [152, 149, 158, 161, 155, 141, 132, 150, 156, 160, 163, 158, 145, 136][i], charter: [52, 49, 53, 54, 52, 48, 44, 51, 53, 54, 55, 54, 49, 45][i] })),
+    reference: null, derived: false, note: 'Türkiye saatine göre.',
+  }
+  const reasonsChart = {
+    type: 'hbar', title: 'Dün rötar nedenleri (dakika)', source: 'q:q_neden0001',
+    x: { field: 'reason', type: 'category', label: 'Neden' }, y: { unit: 'dk', label: 'Toplam rötar', min: null },
+    series: [{ name: 'Rötar', field: 'minutes' }],
+    data: [{ reason: 'Uçağın geç gelmesi (93)', minutes: 412 }, { reason: 'Yer hizmetleri (13)', minutes: 186 }, { reason: 'Hava trafik kontrolü (81)', minutes: 143 }, { reason: 'Teknik (41)', minutes: 95 }, { reason: 'Hava durumu (71)', minutes: 38 }],
+    reference: null, derived: false, note: null,
+  }
+  const chartConversation = () => {
+    const text = `Son 14 günde günlük sefer sayısı **176–218** arasında; hafta sonları belirgin düşüyor [^q:q_sefer00001].\n\n:::chart\n${JSON.stringify(flightsChart)}\n:::\n\nDünkü rötarın yarıya yakını **uçağın geç gelmesinden** (412 dk); yer hizmetleri ikinci sırada [^q:q_neden0001].\n\n:::chart\n${JSON.stringify(reasonsChart)}\n:::`
+    const queries = [
+      { tool: 'query_warehouse', source: 'IBS', purpose: 'Son 14 gün, günlük sefer sayısı', query_id: 'q_sefer00001', rows: 14, total_rows: 14, masked: false, at: now.toISOString() },
+      { tool: 'query_apm', source: 'APM', purpose: 'Dünkü rötar nedenleri', query_id: 'q_neden0001', rows: 5, total_rows: 5, masked: false, at: now.toISOString() },
+    ]
+    return {
+      id: 20, title: 'Sefer sayısı ve rötar nedenleri', kind: 'chat', model: null, effective_model: 'claude-sonnet-5-5', usage: { calls: 3, tokens: 9000, cost_usd: 0.12 }, created_at: '', updated_at: '',
+      messages: [
+        { id: 201, conversation_id: 20, role: 'user', text: 'Son 14 günün günlük sefer sayısı ve dünkü rötar nedenleri', stop_reason: null, flow_cards: [], created_at: now.toISOString() },
+        {
+          id: 202, conversation_id: 20, role: 'assistant', text, stop_reason: 'end_turn', status: null, flow_cards: [], feedback: null, created_at: now.toISOString(),
+          answer: { trace: [scope], queries, models: ['claude-sonnet-5-5'], model_labels: ['Claude Sonnet 5.5'], auto: true, duration_ms: 18200, steps: 1, writes: [], citation_mismatch: [], charts: [flightsChart, reasonsChart] },
+        },
+      ],
+    }
+  }
+
   const inboxItem = () => ({
     id: 1, type: 'approval', title: 'Sigorta bildirimi', body: 'occ@freebird.com.tr adresine gönderilecek e-posta onay bekliyor.', source_label: 'Sabah Operasyon Özeti',
     icon: 'SO', status: state.approved ? 'done' : 'open', actionable: !state.approved, subject_type: 'agent_action', snoozed_until: null, read: false,
@@ -440,6 +474,7 @@ export function installFakeBackend(page: Page, { signedIn = true, theme = 'light
       return json(route, { data: conversation }, 201)
     }
     if (path === '/conversations') return json(route, { data: state.conversations })
+    if (path === '/conversations/20') return json(route, { data: chartConversation() })
     if (path === '/conversations/70') return json(route, { data: { id: 70, title: 'Architect', kind: 'architect', model: null, effective_model: 'claude-sonnet-5-5', usage: { calls: 0, tokens: 0, cost_usd: 0 }, messages: [], created_at: '', updated_at: '' } })
     if (/^\/conversations\/\d+$/.test(path) && path !== '/conversations/5') return json(route, { data: state.conversations.find((c) => `/conversations/${c.id}` === path) })
     if (path === '/flows') return json(route, { data: [], unmanaged: [], kestra_error: null })

@@ -228,6 +228,30 @@ export interface AnswerMeta {
   steps: number
   writes: string[]
   citation_mismatch: string[]
+  /** :::chart blokları, sunucuda doğrulanmış (metindeki sırayla). Hatalı olanlar çizilmez. */
+  charts?: (ChartSpec | ChartError)[]
+}
+
+export type ChartType = 'line' | 'bar' | 'hbar' | 'stacked_bar'
+
+export interface ChartSpec {
+  type: ChartType
+  title: string
+  source: string
+  x: { field: string; type: 'date' | 'category'; label: string | null }
+  y: { unit: '%' | 'dk' | 'adet' | '$' | '₺' | ''; label: string | null; min: number | null }
+  series: { name: string; field: string }[]
+  data: Record<string, string | number | null>[]
+  reference: { y: number; label: string | null } | null
+  derived: boolean
+  note: string | null
+}
+
+export interface ChartError {
+  error: string
+  title?: string
+  source?: string
+  reason?: string
 }
 
 export interface AskOption {
