@@ -97,7 +97,7 @@ function BudgetsForm({ data, message, setMessage }: { data: BudgetsData; message
           Bütçeler <span className="font-normal text-muted">· {data.month}</span>
         </h2>
         <button type="button" disabled={changes.length === 0 && !creditChanged} onClick={() => setConfirming(true)} className="rounded-lg bg-ink px-3 py-1.5 text-[13px] font-medium text-bg disabled:opacity-50">
-          Kaydet
+          Bütçeleri kaydet
         </button>
       </div>
       <p className="m-0 text-xs text-muted">

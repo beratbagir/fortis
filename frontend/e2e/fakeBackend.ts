@@ -39,6 +39,8 @@ export function installFakeBackend(page: Page, { signedIn = true, theme = 'light
     apmDisabled: false,
     stopped: false,
     resolved: false,
+    policies: { ai_data_access: 'masked', ai_allow_employee_names: true, allowed_models: ['claude-sonnet-5-5', 'claude-opus-5-5'], default_model: 'claude-sonnet-5-5', data_question_model: 'claude-opus-5-5', fast_model: 'claude-sonnet-5-5', budget_blocks_flow_ai_steps: false, allow_external_recipients: false, allowed_recipient_domains: ['freebird.com.tr', 'gozendigital.com'], max_tool_calls: 20, max_cost_usd: 2, max_seconds: 600 } as Record<string, unknown>,
+    audit: [] as { id: number; at: string; actor_type: string; actor: string | null; action: string; subject: string | null; system: string | null; result: string; cost_usd: number | null; meta: Record<string, unknown> | null }[],
     opsBudget: null as { monthly_limit_usd: number; warn_at_percent: number; hard_stop: boolean } | null,
     useful: false,
     graph: {
@@ -197,6 +199,26 @@ export function installFakeBackend(page: Page, { signedIn = true, theme = 'light
     credit_usd_value: null,
     blocks_flow_ai_steps: false,
   })
+  const policiesData = () => ({
+    ...state.policies,
+    model_catalog: [
+      { id: 'claude-sonnet-5-5', label: 'Claude Sonnet 5.5', strength: 'Dengeli, çoğu iş için varsayılan', input_per_mtok: 2, output_per_mtok: 10 },
+      { id: 'claude-opus-5-5', label: 'Claude Opus 5.5', strength: 'Çok adımlı derin analiz', input_per_mtok: 4, output_per_mtok: 20 },
+    ],
+    max_rows: 200,
+    max_chars: 40000,
+    approval_policy: [
+      { tool: 'send_email', label: 'E-posta gönder', mode: 'always' },
+      { tool: 'post_teams', label: "Teams'e mesaj", mode: 'always' },
+      { tool: 'deliver_report', label: 'Rapor teslim et', mode: 'always' },
+    ],
+    company_budget: { monthly_limit_usd: 50, warn_at_percent: 80, hard_stop: true },
+  })
+  const baseAudit = () => [
+    { id: 3, at: '2026-10-11T07:40:00+00:00', actor_type: 'agent', actor: 'Sabah Operasyon Özeti', action: 'agent.tool_blocked', subject: 'AgentRun #31', system: 'apm', result: 'blocked', cost_usd: null, meta: { tool: 'query_successfactors', reason: 'Agent bu araca yetkili değil.' } },
+    { id: 2, at: '2026-10-11T06:00:00+00:00', actor_type: 'user', actor: 'Selin A.', action: 'ai.query', subject: 'Conversation #12', system: 'apm', result: 'allowed', cost_usd: 0.0235, meta: { tool: 'query_apm', purpose: 'Dünün en uzun rötarları', rows_returned: 10 } },
+    { id: 1, at: '2026-10-10T21:15:00+00:00', actor_type: 'system', actor: 'Sistem', action: 'auth.login_failed', subject: null, system: null, result: 'failed', cost_usd: null, meta: { email: 'k***@freebird.com.tr' } },
+  ]
   const governance = () => ({
     live: [
       ...(state.stopped ? [] : [{ kind: 'agent', id: '31', name: 'Sabah Operasyon Özeti', link: '#/agents/7/runs/31', started_by: 'Kerem B.', status: 'running', is_test: true, started_at: now.toISOString(), seconds: 95, tool_calls: 21, cost_usd: 0.42 }]),
@@ -371,6 +393,21 @@ export function installFakeBackend(page: Page, { signedIn = true, theme = 'light
     if (path === '/connectors/apm') return json(route, { data: apmDetail() })
     if (path === '/governance/overview') return json(route, { data: governance() })
     if (path === '/governance/usage') return json(route, { data: usageReport() })
+    if (path === '/governance/policies') {
+      if (method === 'PUT') {
+        const patch = route.request().postDataJSON() as Record<string, unknown>
+        for (const [key, value] of Object.entries(patch)) {
+          state.audit.unshift({ id: 100 + state.audit.length, at: now.toISOString(), actor_type: 'user', actor: 'Kerem B.', action: 'settings.update', subject: null, system: null, result: 'allowed', cost_usd: null, meta: { setting: key, before: state.policies[key], after: value } })
+          state.policies[key] = value
+        }
+      }
+      return json(route, { data: policiesData() })
+    }
+    if (path === '/audit-logs') {
+      const action = url.searchParams.get('action')
+      const rows = [...state.audit, ...baseAudit()].filter((r) => !action || (action.endsWith('*') ? r.action.startsWith(action.slice(0, -1)) : r.action === action))
+      return json(route, { data: rows, next_cursor: null, options: { actions: ['agent.tool_blocked', 'ai.query', 'auth.login_failed', 'settings.update'], users: [{ id: 1, name: 'Kerem B.' }, { id: 3, name: 'Selin A.' }] } })
+    }
     if (path === '/governance/budgets') {
       if (method === 'PUT') {
         const ops = (route.request().postDataJSON().budgets as { scope: string; scope_id?: number; monthly_limit_usd: number; warn_at_percent: number; hard_stop: boolean }[]).find((b) => b.scope_id === 1)

@@ -25,11 +25,11 @@ return new class extends Migration
         });
 
         // Önceki şirket bütçesi ayarı (budget.monthly_usd) buraya taşınır. Eskiden bütçe dolunca her zaman
-        // duruluyordu; davranış değişmesin diye taşınan bütçede hard_stop açık başlar.
+        // duruluyordu; şirket bütçesinde hard_stop açık başlar (limit girilene kadar etkisi yok).
         $legacy = DB::table('settings')->where('key', 'budget.monthly_usd')->value('value');
         $legacy = is_string($legacy) ? (json_decode($legacy, true) ?? $legacy) : $legacy;
         $limit = is_numeric($legacy) && (float) $legacy > 0 ? (float) $legacy : null;
-        DB::table('budgets')->insert(['scope' => 'org', 'scope_id' => null, 'monthly_limit_usd' => $limit, 'warn_at_percent' => 80, 'hard_stop' => $limit !== null, 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('budgets')->insert(['scope' => 'org', 'scope_id' => null, 'monthly_limit_usd' => $limit, 'warn_at_percent' => 80, 'hard_stop' => true, 'created_at' => now(), 'updated_at' => now()]);
     }
 
     public function down(): void

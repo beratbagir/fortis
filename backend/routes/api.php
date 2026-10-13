@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AgentBuildController;
 use App\Http\Controllers\Api\AgentController;
 use App\Http\Controllers\Api\AgentTriggerController;
 use App\Http\Controllers\Api\ArtifactController;
+use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ConnectorController;
 use App\Http\Controllers\Api\ConversationController;
@@ -16,6 +17,7 @@ use App\Http\Controllers\Api\FlowController;
 use App\Http\Controllers\Api\FlowEditorController;
 use App\Http\Controllers\Api\FlowVersionController;
 use App\Http\Controllers\Api\GovernanceController;
+use App\Http\Controllers\Api\GovernancePolicyController;
 use App\Http\Controllers\Api\GovernanceUsageController;
 use App\Http\Controllers\Api\HomeController;
 use App\Http\Controllers\Api\InboxController;
@@ -144,7 +146,12 @@ Route::middleware(['auth:sanctum', 'active', 'password.changed'])->group(functio
         Route::get('usage', [GovernanceUsageController::class, 'usage'])->name('usage');
         Route::get('budgets', [GovernanceUsageController::class, 'budgets'])->name('budgets');
         Route::put('budgets', [GovernanceUsageController::class, 'updateBudgets'])->name('budgets.update');
+        // A4.4: Politikalar
+        Route::get('policies', [GovernancePolicyController::class, 'show'])->name('policies.show');
+        Route::put('policies', [GovernancePolicyController::class, 'update'])->name('policies.update');
     });
+    // Denetim kaydı (A4.4, sadece admin; sadece okuma — güncelleme/silme ucu yok)
+    Route::get('audit-logs', [AuditLogController::class, 'index'])->middleware('can:admin')->name('audit-logs.index');
     Route::get('connectors', [ConnectorController::class, 'index'])->name('connectors.index');
     Route::get('connectors/{key}', [ConnectorController::class, 'show'])->where('key', '[a-z_]+')->name('connectors.show');
     Route::middleware('can:admin')->group(function () {

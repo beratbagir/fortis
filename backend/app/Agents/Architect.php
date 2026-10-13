@@ -5,6 +5,7 @@ namespace App\Agents;
 use App\Ai\ApmResultShaper;
 use App\Models\Agent;
 use App\Models\User;
+use App\Services\Settings\AppSettings;
 
 /**
  * Architect kipi: agent'ı sohbetle kuran Claude. Sistem promptuna Architect bölümü (katalog, kurallar, şu anki taslak)
@@ -32,7 +33,7 @@ class Architect
             '{{TOOL_CATALOG}}' => $catalog,
             '{{EVENTS}}' => $events,
             '{{APM_FIELDS}}' => collect(app(ApmResultShaper::class)->fields())->map(fn (array $columns, string $operation) => "- `{$operation}` → ".implode(', ', array_map(fn (string $c) => "`{$c}`", $columns)))->implode("\n"),
-            '{{DOMAINS}}' => implode(', ', config('agents.allowed_recipient_domains')),
+            '{{DOMAINS}}' => implode(', ', app(AppSettings::class)->recipientDomains()),
             '{{TEAMS_CHANNELS}}' => implode(', ', array_keys(config('agents.teams_channels'))) ?: 'henüz yok',
             '{{DRAFT}}' => json_encode($draft, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
         ]);

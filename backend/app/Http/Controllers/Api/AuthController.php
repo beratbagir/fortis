@@ -24,6 +24,7 @@ class AuthController extends Controller
         return response()->json(['data' => [
             'driver' => config('fortis.auth_driver'),
             'locale' => in_array(config('app.locale'), config('fortis.locales'), true) ? config('app.locale') : 'tr',
+            'show_coming_soon' => (bool) config('fortis.show_coming_soon'),
         ]]);
     }
 

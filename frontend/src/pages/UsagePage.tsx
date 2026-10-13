@@ -1,8 +1,7 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { usageApi, type UsageSummary } from '../editor/api'
-import { useAuth } from '../auth/useAuth'
 import { href } from '../router'
 import { money, tokens } from '../ui/format'
 
@@ -30,7 +29,6 @@ export function UsagePage() {
   const byModel = useQuery({ queryKey: ['usage', 'by-model', month], queryFn: () => usageApi.byModel(month) })
   const byFlow = useQuery({ queryKey: ['usage', 'by-flow', month], queryFn: () => usageApi.byFlow(month) })
   const s = summary.data
-  const isAdmin = useAuth().user?.abilities.admin ?? false
 
   return (
     <main className="min-w-0 flex-1 overflow-y-auto">
@@ -66,8 +64,6 @@ export function UsagePage() {
 
         {s?.budget && <BudgetCard budget={s.budget} />}
 
-        {isAdmin && <DataAccessCard />}
-
         <div className="flex flex-wrap gap-5">
           <section className="flex min-w-0 flex-[2_1_520px] flex-col gap-3 rounded-[18px] border border-line bg-surface p-4">
             <div className="flex flex-wrap items-center gap-3.5">
@@ -89,7 +85,15 @@ export function UsagePage() {
                       axisLine={{ stroke: 'var(--border)' }}
                       tickLine={false}
                     />
-                    <YAxis tickCount={5} allowDecimals tickFormatter={(v: number) => (v === 0 ? '$0' : v < 1 ? `$${v.toFixed(2)}` : `$${Math.round(v)}`)} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} width={44} />
+                    <YAxis
+                      tickCount={5}
+                      allowDecimals
+                      tickFormatter={(v: number) => (v === 0 ? '$0' : v < 1 ? `$${v.toFixed(2)}` : `$${Math.round(v)}`)}
+                      tick={{ fontSize: 12, fill: 'var(--text-muted)' }}
+                      axisLine={false}
+                      tickLine={false}
+                      width={44}
+                    />
                     <Tooltip
                       cursor={{ fill: 'var(--bg-subtle)' }}
                       formatter={(value, name) => [money(Number(value)), name === 'chat_cost' ? 'Sohbet' : 'Akış içi AI']}
@@ -114,13 +118,15 @@ export function UsagePage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {daily.data.filter((d) => d.chat_cost + d.flow_step_cost > 0).map((d) => (
-                      <tr key={d.date} className="border-t border-line">
-                        <td className="py-1">{d.date}</td>
-                        <td className="py-1 text-right font-mono">{money(d.chat_cost)}</td>
-                        <td className="py-1 text-right font-mono">{money(d.flow_step_cost)}</td>
-                      </tr>
-                    ))}
+                    {daily.data
+                      .filter((d) => d.chat_cost + d.flow_step_cost > 0)
+                      .map((d) => (
+                        <tr key={d.date} className="border-t border-line">
+                          <td className="py-1">{d.date}</td>
+                          <td className="py-1 text-right font-mono">{money(d.chat_cost)}</td>
+                          <td className="py-1 text-right font-mono">{money(d.flow_step_cost)}</td>
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
               </details>
@@ -149,7 +155,6 @@ export function UsagePage() {
               )
             })}
             <p className="m-0 text-xs leading-relaxed text-muted">Kestra ile çalışan akışlar AI kullanmadığı sürece token harcamaz. Maliyetin çoğu akış oluşturma ve düzenleme sohbetlerinden gelir.</p>
-            <DefaultModel />
           </section>
         </div>
 
@@ -158,8 +163,12 @@ export function UsagePage() {
             <caption className="sr-only">Akış ve sohbet bazında AI kullanımı</caption>
             <thead>
               <tr className="text-left text-xs tracking-wider text-muted uppercase">
-                <th scope="col" className="border-b border-line px-4 py-3 font-bold">Akış / sohbet</th>
-                <th scope="col" className="border-b border-line px-4 py-3 font-bold">Model</th>
+                <th scope="col" className="border-b border-line px-4 py-3 font-bold">
+                  Akış / sohbet
+                </th>
+                <th scope="col" className="border-b border-line px-4 py-3 font-bold">
+                  Model
+                </th>
                 {['Çağrı', 'Girdi token', 'Çıktı token', 'Maliyet'].map((h) => (
                   <th key={h} scope="col" className="border-b border-line px-4 py-3 text-right font-bold">
                     {h}
@@ -202,7 +211,8 @@ export function UsagePage() {
           </table>
         </div>
         <p className="m-0 text-[13px] text-muted">
-          Tutarlar her AI çağrısı anında, o anki fiyatla hesaplanıp kaydedilir (milyon token başına Sonnet 5.5 $2 girdi / $10 çıktı, Opus 5.5 $4 / $20; önbellek okuma $0.20). Bu, Anthropic faturası değil Fortis'in kendi hesabıdır.
+          Tutarlar her AI çağrısı anında, o anki fiyatla hesaplanıp kaydedilir (milyon token başına Sonnet 5.5 $2 girdi / $10 çıktı, Opus 5.5 $4 / $20; önbellek okuma $0.20). Bu, Anthropic faturası değil Fortis'in kendi
+          hesabıdır.
         </p>
       </div>
     </main>
@@ -234,161 +244,18 @@ function Legend({ color, label }: { color: string; label: string }) {
 }
 
 function BudgetCard({ budget }: { budget: NonNullable<UsageSummary['budget']> }) {
-  const queryClient = useQueryClient()
-  const settings = useQuery({ queryKey: ['ai-settings'], queryFn: usageApi.settings })
-  const [editing, setEditing] = useState(false)
-  const [value, setValue] = useState('')
-  const [error, setError] = useState<string | null>(null)
   const pct = budget.ratio === null ? 0 : Math.round(budget.ratio * 100)
-
-  const save = async (patch: Parameters<typeof usageApi.updateSettings>[0]) => {
-    setError(null)
-    try {
-      await usageApi.updateSettings(patch)
-      await Promise.all([queryClient.invalidateQueries({ queryKey: ['usage'] }), queryClient.invalidateQueries({ queryKey: ['ai-settings'] })])
-      setEditing(false)
-    } catch (e) {
-      setError((e as Error).message)
-    }
-  }
 
   return (
     <div className="flex flex-col gap-2.5 rounded-[18px] border border-line bg-surface p-4">
       <div className="flex flex-wrap items-baseline gap-2">
-        <span className="text-[15px] font-bold">Aylık bütçe</span>
-        <span className="text-[13px] text-muted">
-          {budget.limit === null ? `${money(budget.spent)} · limit yok` : `${money(budget.spent)} / ${money(budget.limit, 0)} · %${pct}`}
-          {pct >= 100 && <strong className="ml-2 text-bad">Bütçe doldu: yeni sohbet AI istekleri durduruldu</strong>}
-        </span>
-        <div className="flex-1" />
-        {editing ? (
-          <form
-            className="flex items-center gap-2"
-            onSubmit={(e) => {
-              e.preventDefault()
-              save({ monthly_budget_usd: value === '' ? null : Number(value) })
-            }}
-          >
-            <label className="flex items-center gap-1.5 text-[13px] text-muted">
-              Limit ($)
-              <input type="number" min={0} step="1" value={value} onChange={(e) => setValue(e.target.value)} placeholder="Limitsiz" className="h-8 w-28 rounded-lg border border-line-strong px-2 text-sm text-ink" autoFocus />
-            </label>
-            <button type="submit" className="h-8 rounded-lg bg-brand px-3 text-[13px] font-bold text-on-brand">
-              Kaydet
-            </button>
-            <button type="button" onClick={() => setEditing(false)} className="h-8 rounded-lg border border-line px-3 text-[13px]">
-              Vazgeç
-            </button>
-          </form>
-        ) : (
-          <button
-            type="button"
-            onClick={() => {
-              setValue(budget.limit === null ? '' : String(budget.limit))
-              setEditing(true)
-            }}
-            className="h-8 rounded-xl border border-line bg-surface px-3 text-[13px]"
-          >
-            Limiti düzenle
-          </button>
-        )}
+        <span className="text-[15px] font-bold">Şirket aylık bütçesi</span>
+        <span className="text-[13px] text-muted">{budget.limit === null ? `${money(budget.spent)} · limit yok` : `${money(budget.spent)} / ${money(budget.limit, 0)} · %${pct}`}</span>
       </div>
       <div role="meter" aria-label="Bütçe kullanımı" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} className="h-2.5 overflow-hidden rounded-full bg-raised">
         <div className={`h-full rounded-full ${pct >= 100 ? 'bg-bad' : pct >= 80 ? 'bg-warn' : 'bg-brand'}`} style={{ width: `${Math.min(100, pct)}%` }} />
       </div>
-      <span className="text-xs text-muted">%80'de yöneticilere e-posta uyarısı gider (ayda bir), %100'de yeni sohbet AI istekleri durur.</span>
-      {settings.data && (
-        <label className="flex items-center gap-2 text-xs text-ink-2">
-          <input type="checkbox" checked={settings.data.budget_blocks_flow_ai_steps} onChange={(e) => save({ budget_blocks_flow_ai_steps: e.target.checked })} />
-          Bütçe dolunca akış içi AI adımları da dursun (durursa ilgili adım bütçe hatasıyla biter)
-        </label>
-      )}
-      {error && <p role="alert" className="m-0 text-xs text-bad">{error}</p>}
+      <span className="text-xs text-muted">Bütçeleri ve AI politikalarını yöneticiler Yönetişim ekranından belirler.</span>
     </div>
-  )
-}
-
-/** AI veri erişimi (admin): kapalıyken Claude şirket verisine bakmaz; maskeliyken kişisel bilgiler gizlenerek bakar. */
-function DataAccessCard() {
-  const queryClient = useQueryClient()
-  const settings = useQuery({ queryKey: ['ai-settings'], queryFn: usageApi.settings })
-  const [error, setError] = useState<string | null>(null)
-  if (!settings.data) return null
-
-  const save = async (patch: Parameters<typeof usageApi.updateSettings>[0]) => {
-    setError(null)
-    try {
-      await usageApi.updateSettings(patch)
-      await queryClient.invalidateQueries({ queryKey: ['ai-settings'] })
-    } catch (e) {
-      setError((e as Error).message)
-    }
-  }
-
-  const on = settings.data.ai_data_access === 'masked'
-
-  return (
-    <section aria-labelledby="data-access-title" className="flex flex-col gap-2.5 rounded-[18px] border border-line bg-surface p-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <h2 id="data-access-title" className="m-0 text-[15px] font-bold">
-          AI veri erişimi
-        </h2>
-        <div role="radiogroup" aria-labelledby="data-access-title" className="flex gap-0.5 rounded-lg bg-raised p-0.5">
-          {(['off', 'masked'] as const).map((value) => (
-            <button
-              key={value}
-              type="button"
-              role="radio"
-              aria-checked={settings.data.ai_data_access === value}
-              onClick={() => save({ ai_data_access: value })}
-              className={`h-7 rounded-md px-3 text-xs ${settings.data.ai_data_access === value ? 'bg-surface font-medium text-ink shadow-[0_1px_2px_var(--shadow)]' : 'text-muted hover:text-ink'}`}
-            >
-              {value === 'off' ? 'Kapalı' : 'Maskeli'}
-            </button>
-          ))}
-        </div>
-      </div>
-      <p className="m-0 text-[13px] text-ink-2">Açıkken Fortis veriye bakarak yorumlu cevap verir. Kişisel bilgiler AI'a gönderilmez.</p>
-      <p className="m-0 text-xs text-muted">
-        {on
-          ? 'IBS, APM ve SuccessFactors sorgulanabilir. Her sorgu denetim kaydına yazılır; dönen veri saklanmaz.'
-          : 'Kapalıyken Fortis şirket verisini sadece rapor dosyası veya akış ile işler.'}
-      </p>
-      <label className="flex items-center gap-2 text-xs text-ink-2">
-        <input type="checkbox" checked={settings.data.ai_allow_employee_names} onChange={(e) => save({ ai_allow_employee_names: e.target.checked })} />
-        Çalışan adı ve soyadı (SuccessFactors) AI'a gidebilir
-      </label>
-      {error && (
-        <p role="alert" className="m-0 text-xs text-bad">
-          {error}
-        </p>
-      )}
-    </section>
-  )
-}
-
-function DefaultModel() {
-  const queryClient = useQueryClient()
-  const settings = useQuery({ queryKey: ['ai-settings'], queryFn: usageApi.settings })
-  if (!settings.data) return null
-
-  return (
-    <label className="flex flex-col gap-1.5 border-t border-line pt-3 text-xs font-semibold text-muted">
-      Genel varsayılan model (yeni sohbetler)
-      <select
-        value={settings.data.default_model}
-        onChange={async (e) => {
-          await usageApi.updateSettings({ default_model: e.target.value })
-          queryClient.invalidateQueries({ queryKey: ['ai-settings'] })
-        }}
-        className="h-9 rounded-xl border border-line-strong bg-surface px-2 text-sm text-ink"
-      >
-        {settings.data.models.map((m) => (
-          <option key={m.id} value={m.id}>
-            {m.label} · ${m.input_per_mtok} / ${m.output_per_mtok}
-          </option>
-        ))}
-      </select>
-    </label>
   )
 }

@@ -9,9 +9,12 @@ export type AgentTab = (typeof AGENT_TABS)[number]
 
 /**
  * Hash tabanlı yönlendirme: #/chat (Home), #/chat/12, #/chats, #/agents (Agent Kaydı), #/agents/5[/chat|runs[/12]|config|versions], #/build (yeni agent), #/build/agents/5 (Architect),
- * #/build/flows (akışlar), #/build/flows/12 (editör), #/runs, #/governance, #/inbox, #/inbox/7 …, #/profile, #/admin/users,
+ * #/build/flows (akışlar), #/build/flows/12 (editör), #/runs, #/governance (/usage, /policies, /audit), #/inbox, #/inbox/7 …, #/profile, #/admin/users,
  * #/admin/departments, #/login?next=… . Eski #/usage → #/governance, #/flows/12 → #/build/flows/12.
  */
+export const GOVERNANCE_TABS = ['overview', 'usage', 'policies', 'audit'] as const
+export type GovernanceTab = (typeof GOVERNANCE_TABS)[number]
+
 export type Route =
   | { name: 'chat'; conversationId: number | null }
   | { name: 'chats' }
@@ -22,7 +25,7 @@ export type Route =
   | { name: 'flows' }
   | { name: 'editor'; flowId: number }
   | { name: 'runs'; executionId: string | null }
-  | { name: 'governance'; tab: 'overview' | 'usage' }
+  | { name: 'governance'; tab: GovernanceTab }
   | { name: 'inbox'; itemId: number | null }
   | { name: 'connectors'; key: string | null }
   | { name: 'soon'; screen: SoonScreen }
@@ -63,7 +66,7 @@ export function parseRoute(hash: string): Route {
     case 'connectors':
       return { name: 'connectors', key: parts[1] && /^[a-z_]+$/.test(parts[1]) ? parts[1] : null }
     case 'governance':
-      return { name: 'governance', tab: parts[1] === 'usage' ? 'usage' : 'overview' }
+      return { name: 'governance', tab: (GOVERNANCE_TABS as readonly string[]).includes(parts[1]) ? (parts[1] as GovernanceTab) : 'overview' }
     case 'usage':
       return { name: 'governance', tab: 'usage' }
     case 'profile':
@@ -100,7 +103,7 @@ export function href(route: Route): string {
     case 'runs':
       return route.executionId ? `#/runs/${route.executionId}` : '#/runs'
     case 'governance':
-      return route.tab === 'usage' ? '#/governance/usage' : '#/governance'
+      return route.tab === 'overview' ? '#/governance' : `#/governance/${route.tab}`
     case 'inbox':
       return route.itemId ? `#/inbox/${route.itemId}` : '#/inbox'
     case 'connectors':

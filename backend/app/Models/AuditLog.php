@@ -41,6 +41,12 @@ class AuditLog extends Model
         ];
     }
 
+    /** Ayrıntı Türkçe karakterleriyle saklanır (denetim kaydı ekranında arama için). */
+    protected function asJson($value, $flags = 0)
+    {
+        return parent::asJson($value, $flags | JSON_UNESCAPED_UNICODE);
+    }
+
     protected static function booted(): void
     {
         static::updating(fn () => throw new LogicException('Denetim kaydı değiştirilemez.'));

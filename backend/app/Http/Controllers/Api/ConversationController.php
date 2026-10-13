@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ConversationResource;
 use App\Models\Conversation;
+use App\Services\Settings\AppSettings;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
@@ -39,11 +40,11 @@ class ConversationController extends Controller
         $validated = $request->validate([
             'title' => ['sometimes', 'required', 'string', 'max:255'],
             // İzinli liste dışındaki model 422 döner. "auto" (veya null): ModelRouter her tur için seçer.
-            'model' => ['sometimes', 'nullable', 'string', Rule::in([Conversation::MODEL_AUTO, ...array_keys(config('ai.models'))])],
+            'model' => ['sometimes', 'nullable', 'string', Rule::in([Conversation::MODEL_AUTO, ...array_keys(app(AppSettings::class)->models())])],
             // Kaynak seçici: bu sohbette kapatılan kaynaklar.
             'disabled_sources' => ['sometimes', 'array'],
             'disabled_sources.*' => ['string', Rule::in(array_keys(config('connectors.sources')))],
-        ], ['model.in' => 'Bu model kullanılamaz. İzinli modeller: '.implode(', ', array_keys(config('ai.models'))).'.']);
+        ], ['model.in' => 'Bu model kullanılamaz. İzinli modeller: '.implode(', ', array_keys(app(AppSettings::class)->models())).'.']);
 
         if (($validated['model'] ?? null) === Conversation::MODEL_AUTO) {
             $validated['model'] = null;

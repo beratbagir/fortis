@@ -35,7 +35,7 @@ class AgentTriggers
         self::SKIP_BUDGET => 'Bütçe bu ay doldu ("dolunca durdur" açık); çalışma başlatılmadı.',
     ];
 
-    public function __construct(private readonly AgentRunner $runner) {}
+    public function __construct(private readonly AgentRunner $runner, private readonly Inbox $inbox) {}
 
     public static function message(string $reason): string
     {
@@ -67,7 +67,9 @@ class AgentTriggers
 
                 try {
                     return $this->runner->start($agent, $trigger->input($event), null, false, $trigger);
-                } catch (BudgetExceededException) {
+                } catch (BudgetExceededException $e) {
+                    $this->inbox->budgetSkipAlert($agent, $e->getMessage());
+
                     return self::SKIP_BUDGET;
                 }
             });

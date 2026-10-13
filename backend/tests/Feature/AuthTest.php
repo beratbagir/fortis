@@ -46,7 +46,7 @@ class AuthTest extends TestCase
 
     public function test_login_config_is_public(): void
     {
-        $this->getJson('/api/auth/config')->assertOk()->assertJsonPath('data.driver', 'password');
+        $this->getJson('/api/auth/config')->assertOk()->assertJsonPath('data.driver', 'password')->assertJsonPath('data.show_coming_soon', false);
     }
 
     public function test_user_signs_in_and_sees_their_profile(): void

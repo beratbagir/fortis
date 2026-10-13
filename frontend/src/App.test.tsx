@@ -13,14 +13,14 @@ const user = (overrides: Partial<User> = {}): User => ({
 const json = (body: unknown, status = 200) => Promise.resolve(new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } }))
 
 /** Sahte Laravel: oturum `session.user` ile tutulur. */
-function fakeBackend(session: { user: User | null }) {
+function fakeBackend(session: { user: User | null }, config: { show_coming_soon?: boolean } = {}) {
   const calls: { url: string; method: string; body: unknown }[] = []
   const fetchMock = vi.fn((url: string, init: RequestInit = {}) => {
     const method = init.method ?? 'GET'
     calls.push({ url, method, body: init.body ? JSON.parse(String(init.body)) : null })
 
     if (url === '/sanctum/csrf-cookie') return Promise.resolve(new Response(null, { status: 204 }))
-    if (url === '/api/auth/config') return json({ data: { driver: 'password', locale: 'tr' } })
+    if (url === '/api/auth/config') return json({ data: { driver: 'password', locale: 'tr', ...config } })
     if (url === '/api/auth/me') return session.user ? json({ data: session.user }) : json({ message: 'Unauthenticated.' }, 401)
     if (url === '/api/auth/login') {
       session.user = user()
@@ -97,8 +97,25 @@ describe('tema', () => {
 })
 
 describe('kabuk', () => {
-  it('"Yakında" öğeleri boş durum sayfasını açar', async () => {
+  it('"Yakında" öğeleri varsayılan olarak menüde yok; adresle açılan sayfa boş durumu gösterir', async () => {
     fakeBackend({ user: user() })
+    window.location.hash = '#/chat'
+    renderApp()
+
+    const menu = await screen.findByRole('navigation', { name: 'Ana menü' })
+    expect(within(menu).getByRole('link', { name: /Agentlar/ })).toBeInTheDocument()
+    for (const name of [/Yapılacaklar/, /Çıktılar/, /Paylaşılan agentlar/, /Bellek/, /Bilgi/, /Beceriler/]) {
+      expect(within(menu).queryByRole('link', { name })).not.toBeInTheDocument()
+    }
+    expect(within(menu).queryByText('Yakında')).not.toBeInTheDocument()
+
+    window.location.hash = '#/memory'
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    expect(await screen.findByText('Bu ekran sonraki fazda gelecek.')).toBeInTheDocument()
+  })
+
+  it('ayar açıksa "Yakında" öğeleri boş durum sayfasını açar', async () => {
+    fakeBackend({ user: user() }, { show_coming_soon: true })
     window.location.hash = '#/chat'
     renderApp()
 

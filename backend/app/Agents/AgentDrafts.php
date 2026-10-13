@@ -6,6 +6,7 @@ use App\Models\Agent;
 use App\Models\AgentTrigger;
 use App\Models\User;
 use App\Services\Auth\Audit;
+use App\Services\Settings\AppSettings;
 use Cron\CronExpression;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -53,8 +54,8 @@ class AgentDrafts
         }
 
         $model = (string) ($input['model'] ?? 'auto');
-        if ($model !== 'auto' && ! array_key_exists($model, config('ai.models'))) {
-            $errors[] = "model 'auto' veya izinli modellerden biri olmalı: ".implode(', ', array_keys(config('ai.models'))).'.';
+        if ($model !== 'auto' && ! array_key_exists($model, app(AppSettings::class)->models())) {
+            $errors[] = "model 'auto' veya izinli modellerden biri olmalı: ".implode(', ', array_keys(app(AppSettings::class)->models())).'.';
         }
 
         // Araçlar ve kısıtları
@@ -341,7 +342,7 @@ class AgentDrafts
             foreach ((array) $constraints['recipients'] as $email) {
                 $email = trim((string) $email) === self::OWN_EMAIL_TOKEN ? (string) $owner->email : mb_strtolower(trim((string) $email));
                 if (! filter_var($email, FILTER_VALIDATE_EMAIL) || ! AgentActions::isInternal($email)) {
-                    $errors[] = "alıcı '{$email}' izinli değil; sadece şu alan adları: ".implode(', ', config('agents.allowed_recipient_domains')).'.';
+                    $errors[] = "alıcı '{$email}' izinli değil; sadece şu alan adları: ".implode(', ', app(AppSettings::class)->recipientDomains()).'.';
 
                     continue;
                 }

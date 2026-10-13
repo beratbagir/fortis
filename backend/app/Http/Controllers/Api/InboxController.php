@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Services\Auth\Audit;
 use App\Services\Flows\ExecutionException;
 use App\Services\Flows\ExecutionService;
+use App\Services\Settings\AppSettings;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -247,7 +248,7 @@ class InboxController extends Controller
             'what_happens' => $steps,
             'can_decide' => $this->actions->canDecide($action, $user),
             'editable_recipients' => ! $action->run->agent->isPilot(),
-            'recipient_domains' => config('agents.allowed_recipient_domains'),
+            'recipient_domains' => app(AppSettings::class)->recipientDomains(),
             'allowed_recipients' => $action->run->agent->toolConstraints($action->type)['recipients'] ?? [],
         ];
     }

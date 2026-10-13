@@ -130,7 +130,8 @@ export function Sidebar({ route, compact = false }: { route: Route; compact?: bo
 }
 
 function SidebarBody({ route, narrow, canCollapse, collapsed, onToggle, onCloseDrawer }: { route: Route; narrow: boolean; canCollapse: boolean; collapsed: boolean; onToggle: () => void; onCloseDrawer: () => void }) {
-  const { user } = useAuth()
+  const { user, config } = useAuth()
+  const visible = (item: Item) => !item.soon || config.show_coming_soon === true
   const active = section(route)
   const inboxCount = useQuery({ queryKey: ['inbox', 'count'], queryFn: inboxApi.count, refetchInterval: 60_000 })
   // Telefonda çekmece her zaman geniş; daraltma sadece md ve üstünde.
@@ -168,12 +169,12 @@ function SidebarBody({ route, narrow, canCollapse, collapsed, onToggle, onCloseD
         <span className={hideOnNarrow}>{t('nav.new_chat')}</span>
       </a>
 
-      {mainItems(user?.abilities.build ?? false, inboxCount.data?.action ?? 0).map((item) => (
+      {mainItems(user?.abilities.build ?? false, inboxCount.data?.action ?? 0).filter(visible).map((item) => (
         <NavItem key={item.key} item={item} active={active === item.key} narrow={narrow} />
       ))}
 
       <SectionTitle narrow={narrow}>{t('nav.workspace')}</SectionTitle>
-      {workspaceItems().map((item) => (
+      {workspaceItems().filter(visible).map((item) => (
         <NavItem key={item.key} item={item} active={active === item.key} narrow={narrow} />
       ))}
 

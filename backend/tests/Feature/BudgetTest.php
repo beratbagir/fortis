@@ -105,6 +105,18 @@ class BudgetTest extends TestCase
         $this->assertSame(AgentTriggers::SKIP_BUDGET, app(AgentTriggers::class)->fire($trigger->setRelation('agent', $agent)));
         $this->assertTrue(AuditLog::query()->where('action', 'agent.run.skipped')->where('meta->reason', 'budget')->exists());
         $this->assertSame(0, $agent->runs()->count());
+
+        // Sahibine gün başına tek uyarı (olay tetikleyicisi gün içinde defalarca atlasa da).
+        $event = $agent->triggers()->create(['type' => AgentTrigger::EVENT, 'config' => ['event' => 'flight.delayed'], 'enabled' => true]);
+        $this->assertSame(AgentTriggers::SKIP_BUDGET, app(AgentTriggers::class)->fire($event->setRelation('agent', $agent)));
+        $alerts = InboxItem::query()->where('user_id', $opsUser->id)->get();
+        $this->assertCount(1, $alerts);
+        $this->assertSame('Bütçe dolduğu için bugünkü çalışma atlandı', $alerts[0]->title);
+        $this->assertStringContainsString('Departman bütçesi bu ay doldu', $alerts[0]->body);
+
+        $this->travel(1)->days();
+        app(AgentTriggers::class)->fire($trigger->setRelation('agent', $agent));
+        $this->assertSame(2, InboxItem::query()->where('user_id', $opsUser->id)->count());
     }
 
     public function test_queued_run_does_not_start_but_an_ongoing_run_is_finished(): void

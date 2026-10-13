@@ -1,16 +1,20 @@
 import { useAuth } from '../auth/useAuth'
+import { GovernanceAuditView } from '../governance/AuditLog'
 import { GovernanceOverviewView } from '../governance/Overview'
+import { GovernancePoliciesView } from '../governance/Policies'
 import { GovernanceUsageView } from '../governance/Usage'
-import { href } from '../router'
+import { href, type GovernanceTab } from '../router'
 import { UsagePage } from './UsagePage'
 
 const TABS = [
   { key: 'overview', label: 'Genel bakış' },
   { key: 'usage', label: 'Kullanım' },
+  { key: 'policies', label: 'Politikalar' },
+  { key: 'audit', label: 'Denetim kaydı' },
 ] as const
 
-/** Yönetişim (#/governance): Genel bakış (admin) ve Kullanım. Politikalar ve Denetim kaydı A4.4'te. */
-export function GovernancePage({ tab }: { tab: 'overview' | 'usage' }) {
+/** Yönetişim (#/governance): Genel bakış, Kullanım, Politikalar, Denetim kaydı (admin). Admin olmayan sadece kendi Kullanım ekranını görür. */
+export function GovernancePage({ tab }: { tab: GovernanceTab }) {
   const isAdmin = useAuth().user?.abilities.admin ?? false
 
   return (
@@ -29,7 +33,7 @@ export function GovernancePage({ tab }: { tab: 'overview' | 'usage' }) {
           ))}
         </nav>
       )}
-      {tab === 'overview' ? <GovernanceOverviewView /> : isAdmin ? <GovernanceUsageView /> : <UsagePage />}
+      {!isAdmin ? <UsagePage /> : tab === 'usage' ? <GovernanceUsageView /> : tab === 'policies' ? <GovernancePoliciesView /> : tab === 'audit' ? <GovernanceAuditView /> : <GovernanceOverviewView />}
     </div>
   )
 }

@@ -19,6 +19,7 @@ use App\Models\Department;
 use App\Models\Message;
 use App\Models\User;
 use App\Services\Auth\Audit;
+use App\Services\Settings\AppSettings;
 use App\Services\Usage\Budget;
 use App\Services\Usage\BudgetExceededException;
 use Illuminate\Http\JsonResponse;
@@ -175,8 +176,8 @@ class AgentController extends Controller
         return response()->json(['data' => [
             'tools' => collect(config('agents.tools'))->map(fn (array $t, string $name) => ['name' => $name] + $t)->values(),
             'events' => collect(config('agents.events'))->map(fn (array $e, string $name) => ['name' => $name, 'label' => $e['label'], 'default_min_delay_minutes' => $e['default_min_delay_minutes'] ?? null])->values(),
-            'models' => collect(config('ai.models'))->map(fn (array $m, string $id) => ['id' => $id, 'label' => $m['label']])->values(),
-            'recipient_domains' => config('agents.allowed_recipient_domains'),
+            'models' => collect(app(AppSettings::class)->models())->map(fn (array $m, string $id) => ['id' => $id, 'label' => $m['label']])->values(),
+            'recipient_domains' => app(AppSettings::class)->recipientDomains(),
             'teams_channels' => array_keys(config('agents.teams_channels')),
             'departments' => Department::query()->orderBy('name')->get(['id', 'name']),
             'owners' => $request->user()->isAdmin()

@@ -15,7 +15,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 
-#[Signature('fortis:eval {--only= : Sadece bu soru id\'leri (virgülle)} {--path= : Soru dosyası (varsayılan tests/eval/questions.json)}')]
+#[Signature('fortis:eval {--only= : Sadece bu soru id\'leri (virgülle)} {--path= : Soru dosyası (varsayılan tests/eval/questions.json)} {--max-cost= : Bütçe ($): sıradaki soru bu sınırı aşabilecekse yeni soru başlatılmaz}')]
 #[Description('Değerlendirme setini gerçek modele sorar: doğru araç, gereksiz akış, tablo ve kaynak. Gerçek API çağrısı yapar (ücretli).')]
 class RunEval extends Command
 {
@@ -33,7 +33,16 @@ class RunEval extends Command
         $questions = array_values(array_filter($questions, fn (array $q) => $only === [] || in_array($q['id'], $only, true)));
 
         $results = [];
+        $skipped = [];
+        $maxCost = $this->option('max-cost') !== null ? (float) $this->option('max-cost') : null;
         foreach ($questions as $question) {
+            // Bütçe: harcanan + şimdiye kadarki en pahalı soru (en az $0,60) sınırı aşacaksa kalan sorular atlanır.
+            $spent = array_sum(array_column($results, 'cost_usd'));
+            if ($maxCost !== null && $spent + max(0.6, ...array_column($results, 'cost_usd') ?: [0]) > $maxCost) {
+                $skipped[] = $question['id'];
+
+                continue;
+            }
             $this->line("→ {$question['id']}: {$question['question']}".(isset($question['now']) ? " (şimdi: {$question['now']})" : ''));
             // Gece yarısı gibi saat testleri: soru sabit bir "şimdi" ile sorulur.
             if (isset($question['now'])) {
@@ -60,6 +69,7 @@ class RunEval extends Command
             'passed' => $passed,
             'correct_tool_ratio' => count($graded) ? round($toolHits / count($graded), 3) : null,
             'total_cost_usd' => round(array_sum(array_column($results, 'cost_usd')), 4),
+            'skipped_for_budget' => $skipped,
         ];
 
         $path = 'eval/'.now()->format('Y-m-d_His').'.json';
@@ -67,6 +77,9 @@ class RunEval extends Command
 
         $this->newLine();
         $this->info("{$passed}/{$summary['questions']} geçti · doğru araç oranı %".round(($summary['correct_tool_ratio'] ?? 0) * 100)." · maliyet \${$summary['total_cost_usd']}");
+        if ($skipped !== []) {
+            $this->warn('Bütçe sınırı nedeniyle atlanan sorular ('.count($skipped).'): '.implode(', ', $skipped));
+        }
         $this->line('Rapor: '.Storage::disk('local')->path($path));
 
         return self::SUCCESS;

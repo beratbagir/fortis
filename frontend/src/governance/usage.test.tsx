@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { BudgetsData, UsageReportData } from '../api'
+import { Budgets } from './Budgets'
 import { GovernanceUsageView } from './Usage'
 
 const empty = { chat: 0, agent: 0, title: 0, evaluation: 0, eval: 0, flow: 0 }
@@ -87,15 +88,19 @@ describe('yönetişim kullanım', () => {
   })
 
   it('bütçe değişikliği onaydan sonra kaydedilir', async () => {
-    wrap()
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <Budgets />
+      </QueryClientProvider>,
+    )
     const section = await screen.findByRole('region', { name: /Bütçeler/ })
     expect(within(section).getByText('%80')).toBeInTheDocument()
-    expect(within(section).getByRole('button', { name: 'Kaydet' })).toBeDisabled()
+    expect(within(section).getByRole('button', { name: 'Bütçeleri kaydet' })).toBeDisabled()
 
     fireEvent.change(within(section).getByLabelText('Şirket aylık limit'), { target: { value: '500' } })
     fireEvent.click(within(section).getByLabelText('Şirket dolunca durdur'))
     fireEvent.change(within(section).getByLabelText('Operasyon aylık limit'), { target: { value: '' } })
-    fireEvent.click(within(section).getByRole('button', { name: 'Kaydet' }))
+    fireEvent.click(within(section).getByRole('button', { name: 'Bütçeleri kaydet' }))
 
     const dialog = screen.getByRole('dialog', { name: 'Bütçe değişiklikleri kaydedilsin mi?' })
     expect(dialog).toHaveTextContent('Şirket: $500,00 / ay, uyarı %80, dolunca durdur')

@@ -10,6 +10,7 @@ use App\Models\Report;
 use App\Models\User;
 use App\Services\Auth\Audit;
 use App\Services\Claude\ToolResult;
+use App\Services\Settings\AppSettings;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Throwable;
@@ -101,7 +102,7 @@ class AgentActions
             return $this->refuse($session, $type, 'Bu alıcılar agent için izinli değil: '.implode(', ', $outside).'. İzinli: '.implode(', ', $allowedList).'.');
         }
         $external = array_values(array_filter($recipients, fn (string $email) => ! self::isInternal($email)));
-        if ($external !== [] && ! config('agents.allow_external_recipients')) {
+        if ($external !== [] && ! app(AppSettings::class)->allowExternalRecipients()) {
             return $this->refuse($session, $type, 'Şirket dışı adreslere gönderim kapalı: '.implode(', ', $external).'.');
         }
 
@@ -282,7 +283,7 @@ class AgentActions
     {
         $domain = mb_strtolower((string) substr(strrchr($email, '@') ?: '', 1));
 
-        return $domain !== '' && in_array($domain, array_map('mb_strtolower', config('agents.allowed_recipient_domains')), true);
+        return $domain !== '' && in_array($domain, array_map('mb_strtolower', app(AppSettings::class)->recipientDomains()), true);
     }
 
     /**

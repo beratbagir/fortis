@@ -1129,3 +1129,78 @@ export const governanceUsageApi = {
   budgets: () => sendAgent<BudgetsData>('/governance/budgets'),
   saveBudgets: (budgets: BudgetInput[], creditUsdValue: number | null) => sendAgent<BudgetsData>('/governance/budgets', 'PUT', { budgets, credit_usd_value: creditUsdValue }),
 }
+
+/* ---------- Yönetişim: Politikalar ve denetim kaydı (Faz A4.4) ---------- */
+
+export interface PolicyValues {
+  ai_data_access: 'off' | 'masked'
+  ai_allow_employee_names: boolean
+  allowed_models: string[]
+  default_model: string
+  data_question_model: string
+  fast_model: string
+  budget_blocks_flow_ai_steps: boolean
+  allow_external_recipients: boolean
+  allowed_recipient_domains: string[]
+  max_tool_calls: number
+  max_cost_usd: number
+  max_seconds: number
+}
+
+export interface PoliciesData extends PolicyValues {
+  model_catalog: { id: string; label: string; strength: string | null; input_per_mtok: number; output_per_mtok: number }[]
+  max_rows: number
+  max_chars: number
+  approval_policy: { tool: string; label: string; mode: 'always' }[]
+  company_budget: { monthly_limit_usd: number | null; warn_at_percent: number; hard_stop: boolean }
+}
+
+export const policiesApi = {
+  get: () => sendAgent<PoliciesData>('/governance/policies'),
+  update: (patch: Partial<PolicyValues>) => sendAgent<PoliciesData>('/governance/policies', 'PUT', patch),
+}
+
+export type AuditActor = 'user' | 'agent' | 'system'
+export type AuditResult = 'allowed' | 'blocked' | 'awaiting_approval' | 'failed'
+
+export interface AuditFilters {
+  from?: string
+  to?: string
+  actor?: AuditActor | ''
+  user_id?: string
+  action?: string
+  result?: AuditResult | ''
+  q?: string
+}
+
+export interface AuditLogRow {
+  id: number
+  at: string
+  actor_type: AuditActor
+  actor: string | null
+  action: string
+  subject: string | null
+  system: string | null
+  result: AuditResult
+  cost_usd: number | null
+  meta: Record<string, unknown> | null
+}
+
+export interface AuditLogPage {
+  data: AuditLogRow[]
+  next_cursor: string | null
+  options: { actions: string[]; users: { id: number; name: string }[] }
+}
+
+const auditQuery = (filters: AuditFilters) => new URLSearchParams(Object.entries(filters).filter(([, v]) => v !== undefined && v !== '') as [string, string][]).toString()
+
+export const auditApi = {
+  list: async (filters: AuditFilters, cursor: string | null): Promise<AuditLogPage> => {
+    const query = auditQuery(filters)
+    const response = await apiFetch(`/api/audit-logs?${query}${cursor ? `${query ? '&' : ''}cursor=${encodeURIComponent(cursor)}` : ''}`, { headers: { Accept: 'application/json' } })
+    const json = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(json.message ?? `İstek başarısız (${response.status})`)
+    return json as AuditLogPage
+  },
+  csvUrl: (filters: AuditFilters) => `/api/audit-logs?${auditQuery(filters)}${auditQuery(filters) ? '&' : ''}format=csv`,
+}

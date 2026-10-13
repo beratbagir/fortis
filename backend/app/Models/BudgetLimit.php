@@ -29,7 +29,7 @@ class BudgetLimit extends Model
 
     public static function org(): self
     {
-        return self::query()->firstOrCreate(['scope' => self::ORG, 'scope_id' => null], ['warn_at_percent' => 80, 'hard_stop' => false]);
+        return self::query()->firstOrCreate(['scope' => self::ORG, 'scope_id' => null], ['warn_at_percent' => 80, 'hard_stop' => true]);
     }
 
     public function label(): string

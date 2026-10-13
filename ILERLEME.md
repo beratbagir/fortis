@@ -1353,6 +1353,61 @@ Vitest 70 (yeni `usage.test.tsx` 3: kutular, kırılımlar, filtrenin sorguya ve
 - Bütçe dolunca başlamış agent çalışmaları ve sohbetteki devam eden tur kesilmiyor; sadece yenileri başlamıyor.
 - Önbellek 1 dakika: aynı anda çalışan birkaç sunucu işçisi bütçeyi birkaç sent aşabilir.
 
+## Fortis Aero — Faz A4.4: Politikalar ve denetim kaydı (2026-10-13)
+
+Plan: [docs/fortis-aero-faz-a4.md](docs/fortis-aero-faz-a4.md) §5.3, §5.4, §6 (A4.4). Bitti ölçütü: her politika değişikliği denetim kaydında önceki/yeni değerle görünüyor. `PoliciesTest` ve Playwright'ta (Politikalar → araç sınırı 20 → 12 → Denetim kaydı'nda `before: 20, after: 12`) doğrulandı.
+
+**A4.3 ekleri (kullanıcı isteği)**
+- **Bütçe yüzünden atlanan çalışma uyarısı:** zamanlanmış veya olay tetikleyicisi bütçe dolduğu için çalışmayı atlarsa agent sahibine Inbox uyarısı gider: "Bütçe dolduğu için bugünkü çalışma atlandı". Hangi bütçenin dolduğu da yazar. Her agent için Türkiye günü başına bir uyarı (olay tetikleyicisi gün içinde defalarca atlasa da). `BudgetTest`'e eklendi.
+- **Şirket bütçesinde "dolunca durdur" açık:** migration ve `BudgetLimit::org()` varsayılanı açık; yerel satır da açıldı. **Şu anki şirket limiti: tanımsız (limitsiz).** Yerelde ve yeni kurulumda limit girilene kadar bu ayarın etkisi yok. Bu ayki harcama (aşağıdaki eval dahil) 24,00 $.
+
+**Backend**
+- **`App\Services\Settings\Policies`**: politikaların tek yeri. Değişen her alan ayrı bir `settings.update` denetim kaydına yazılır (`setting`, `before`, `after`, admin). Değişmeyen alan için kayıt açılmaz.
+  - **Veri:** AI veri erişimi (Kapalı/Maskeli), çalışan adı/soyadı. Satır ve karakter sınırı salt okunur (`.env`).
+  - **Modeller:** izinli modeller (katalogdan alt küme, en az bir), genel varsayılan, veri sorusu ve hızlı model. Seçilen modeller izinli listede olmalı. İzinli olmayan model sohbet ve agent model seçiminde 422; Auto sohbetler izinli modele düşer. Maliyet hesabı her zaman bütün katalogla.
+  - **Bütçe:** "bütçe dolunca akış içi AI adımları dursun". Şirket/departman limitleri Bütçeler tablosunda (A4.3 uçları).
+  - **Agentlar:** şirket dışı alıcı (kapalı/onaylı), şirket içi alan adları, çalışma başına araç çağrısı, maliyet ve süre sınırı. Onay politikası salt okunur: pilotta yazan bütün araçlar her zaman onaylı (kodda zorunlu).
+  - Ayar yoksa eski `config`/`.env` değeri geçerli. Kod artık bu değerleri `AppSettings` üzerinden okuyor: ClaudeChat sınırları, AgentActions alıcı kuralı, Architect promptu, ModelRouter, model doğrulamaları.
+- **`GET/PUT /api/governance/policies`** (admin). **Eski `PUT /api/settings/ai`** aynı doğrulama ve kayıttan geçiyor (önceki/yeni değer). Şirket bütçesi değişikliği `budget.org` olarak kayda geçiyor. `GET /api/settings/ai` herkese açık kalıyor (model seçici) ve sadece izinli modelleri döndürüyor.
+- **`GET /api/audit-logs`** (admin, sadece okuma):
+  - Filtreler: tarih (Türkiye günü), aktör türü (kullanıcı/agent/sistem), kullanıcı, olay (tam ad veya `agent.*` gibi ön ek), sonuç, serbest arama (olay, aktör, hedef, sistem, ayrıntı).
+  - İmleçle sayfalama (50 kayıt).
+  - Ayrıntıda gizli değerler `Secrets::scrub` ile temizleniyor. Sorgu metni (`query`/`sql`/`path`) sadece admin ve builder'a.
+  - `?format=csv` ile en çok 50.000 satır; dışa aktarma da `audit.export` olarak kayda geçer.
+  - Güncelleme/silme ucu yok (405). Model zaten engelliyor.
+- Denetim kaydı ayrıntısı artık Türkçe karakterleriyle saklanıyor (`JSON_UNESCAPED_UNICODE`). Arama eski, kaçışlı kayıtları da buluyor. LIKE araması `!` kaçış karakteriyle (SQLite ve MySQL'de aynı).
+- `fortis:eval --max-cost=N`: sıradaki soru bütçeyi aşabilecekse (harcanan + o ana kadarki en pahalı soru, en az 0,60 $) yeni soru başlatılmaz. Atlananlar raporda `skipped_for_budget` olarak yazılır.
+- `FORTIS_SHOW_COMING_SOON` (`config('fortis.show_coming_soon')`, varsayılan kapalı) `GET /api/auth/config` ile arayüze gider.
+
+**Arayüz**
+- Yönetişim sekmeleri: **Genel bakış · Kullanım · Politikalar · Denetim kaydı** (admin). Admin olmayan sekmeleri görmez, sadece kendi Kullanım ekranını görür. Bu ekran artık salt okunur: limit düzenleme, veri erişimi ve varsayılan model seçimi Politikalar'a taşındı; eskiden admin olmayana da düzenleme düğmesi görünüyordu.
+- **Politikalar** (`#/governance/policies`):
+  - Gruplar: Veri, Modeller, Bütçe (+ Bütçeler tablosu, "Bütçeleri kaydet" düğmesi Kullanım'dan buraya taşındı), Agentlar, Bağlantılar.
+  - Bağlantılar grubu, Bağlantılar ekranıyla aynı veriyi kullanıyor; kapatma gerekçe istiyor.
+  - Alttaki sabit çubukta "N kaydedilmemiş değişiklik · Vazgeç · Kaydet". Kaydet önce onay penceresinde her değişikliği "önceki → yeni" olarak gösteriyor; sunucuya sadece değişen alanlar gidiyor.
+- **Denetim kaydı** (`#/governance/audit`): filtreler (olay listesinde `agent.*` gibi ön ekler de var), tablo (zaman mono, aktör, olay, hedef · sistem, sonuç renkli, maliyet), satır başına "Ayrıntı" (JSON), "Daha eski kayıtlar" (imleç), CSV indir. Düzenleme veya silme düğmesi yok.
+- **Kenar çubuğu:** henüz yapılmamış ekranlar (Yapılacaklar, Çıktılar, Paylaşılan agentlar, Bellek, Bilgi, Beceriler) menüden gizlendi. `FORTIS_SHOW_COMING_SOON=true` ile yeniden "Yakında" olarak görünürler. Adresle açılan boş durum sayfası her zaman çalışıyor.
+
+**Testler:** backend 463 (hepsi geçti).
+- Yeni `PoliciesTest` 4: sadece admin; her değişiklik önceki/yeni değerle kayıtta ve etkisi görülüyor (izinli modeller, Auto yönlendirme, alıcı alan adı, araç sınırı, sohbette izinsiz model 422); geçersiz değerler reddediliyor ve hiçbir şey kaydedilmiyor; eski `/api/settings/ai` aynı kurallardan geçiyor.
+- Yeni `AuditLogScreenTest` 3: filtreler, arama, Türkiye günü; imleç ve gizli değer temizliği; CSV (sınır, `audit.export` kaydı) ve güncelleme/silme ucu yok.
+- `BudgetTest`'e atlanan çalışma uyarısı; `RolesTest` yeni kayıt biçimine; `AuthTest`'e `show_coming_soon` eklendi.
+
+Vitest 74 (yeni `policies.test.tsx` 3: değişiklik onayı ve sadece değişen alanların gitmesi; izinsiz modelin seçicilerde görünmemesi; denetim filtresi, ayrıntı ve imleç. `App.test` "Yakında" gizli/açık). Playwright 13: Yönetişim senaryosu Politikalar (bütçe + araç sınırı) → Denetim kaydı ile uzatıldı. Kenar çubuğu değiştiği için bütün görsel temeller (40) yeniden üretildi, yeni Politikalar ve Denetim kaydı temellerine açık/koyu bakıldı.
+
+**Tam eval (A4 sonu, 2026-10-13, `--max-cost=8`, gerçek veri, `masked`):** **20/24 geçti (%83), doğru araç oranı %100, toplam 3,57 $.** Bütçe yüzünden atlanan soru yok. Kalan 4 sorunun hepsi biçim kontrolü; araç ve veri doğru:
+- `apm-top-delays`, `apm-delay-codes`, `sf-finance-joiners`: liste beklenen yerde tablo yok.
+- `ibs-pax-count`: tek sayı sorusunda gereksiz tablo.
+
+Önceki tam çalıştırma (18 soru, 16/18, 6,50 $) ile karşılaştırınca: set 24 soruya çıktı, maliyet yarıya indi. Rapor: `backend/storage/app/private/eval/2026-10-13_104220.json`. Biçim kuralı (soruya göre tablo) A5 öncesi ayrıca ele alınmalı.
+
+**Dokümandan sapmalar ve nedenleri**
+- Onay politikası düzenlenemiyor: pilotta yazan bütün araçlar her zaman onaylı ve bu kural kodda zorunlu (Architect de onaysız mod öneremez). Politikalar'da sadece gösteriliyor.
+- `/api/settings/ai` yönlendirilmedi: herkesin kullandığı model seçici okuması için duruyor. Yazma ucu aynı politika kurallarından geçiyor.
+- Satır/karakter sınırı salt okunur (`.env`); dokümanda da öyle.
+- Departman yöneticisi rolü yok; bütçe uyarıları sadece admine (A4.3).
+- Denetim kaydı ekranı sadece admine açık. Sorgu metni kuralı (admin/builder) yine de kodda uygulanıyor; ekran ileride builder'a açılırsa doğru çalışır.
+
 ## Çalıştırma
 
 ```sh
@@ -1376,8 +1431,11 @@ cd backend && php artisan fortis:user:create ayse@freebird.example --role=builde
 cd backend && php artisan connectors:check
 cd backend && php artisan db:seed --class=DemoSeeder   # sadece APP_ENV=local
 
-# Değerlendirme seti (gerçek API, ücretli; ai.data_access = masked gerekir)
+# Değerlendirme seti (gerçek API, ücretli; ai.data_access = masked gerekir). --max-cost: bütçe sınırı ($)
 cd backend && php artisan fortis:eval --only=apm-top-delays
+cd backend && php artisan fortis:eval --max-cost=8
+
+# Menüde henüz yapılmamış ekranları "Yakında" olarak göstermek için backend/.env: FORTIS_SHOW_COMING_SOON=true
 
 # Testler
 cd backend && php artisan test

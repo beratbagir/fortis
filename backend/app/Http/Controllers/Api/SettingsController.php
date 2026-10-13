@@ -6,13 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Models\BudgetLimit;
 use App\Services\Auth\Audit;
 use App\Services\Settings\AppSettings;
+use App\Services\Settings\Policies;
 use App\Services\Usage\Budget;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 /**
- * AI ayarları: genel varsayılan model, aylık bütçe ve AI veri erişimi. Değiştirmek admin'de.
+ * AI ayarları: izinli modeller, genel varsayılan model, aylık bütçe ve AI veri erişimi. Okumak herkese açık (model
+ * seçici); değiştirmek admin'de. Ayrıntılı politikalar Yönetişim > Politikalar'da (GovernancePolicyController).
  */
 class SettingsController extends Controller
 {
@@ -23,39 +24,26 @@ class SettingsController extends Controller
         return response()->json(['data' => $this->present()]);
     }
 
-    public function update(Request $request): JsonResponse
+    /**
+     * Eski uç (A4.4'ten beri Yönetişim > Politikalar ile aynı kurallar): her değişiklik önceki/yeni değerle kayda geçer.
+     * `monthly_budget_usd` şirket bütçe satırını günceller.
+     */
+    public function update(Request $request, Policies $policies): JsonResponse
     {
-        $validated = $request->validate([
-            'default_model' => ['sometimes', 'string', Rule::in(array_keys($this->settings->models()))],
-            'monthly_budget_usd' => ['sometimes', 'nullable', 'numeric', 'min:0', 'max:1000000'],
-            'budget_blocks_flow_ai_steps' => ['sometimes', 'boolean'],
-            'ai_data_access' => ['sometimes', 'string', Rule::in([AppSettings::DATA_ACCESS_OFF, AppSettings::DATA_ACCESS_MASKED])],
-            'ai_allow_employee_names' => ['sometimes', 'boolean'],
-        ], ['default_model.in' => 'Bu model kullanılamaz. İzinli modeller: '.implode(', ', array_keys($this->settings->models())).'.']);
+        $request->validate(['monthly_budget_usd' => ['sometimes', 'nullable', 'numeric', 'min:0', 'max:1000000']]);
+        $validated = $policies->validate($request->only(['default_model', 'budget_blocks_flow_ai_steps', 'ai_data_access', 'ai_allow_employee_names']));
+        $policies->update($validated, $request->user());
 
-        if (array_key_exists('default_model', $validated)) {
-            $this->settings->set(AppSettings::DEFAULT_MODEL, $validated['default_model']);
+        if ($request->has('monthly_budget_usd')) {
+            $org = BudgetLimit::org();
+            $before = $org->monthly_limit_usd;
+            $after = $request->input('monthly_budget_usd') === null ? null : round((float) $request->input('monthly_budget_usd'), 2);
+            if ($before !== $after) {
+                $org->update(['monthly_limit_usd' => $after, 'warn_sent_month' => null, 'full_sent_month' => null]);
+                Budget::forget();
+                Audit::record('settings.update', meta: ['setting' => 'budget.org', 'before' => ['monthly_limit_usd' => $before], 'after' => ['monthly_limit_usd' => $after]], user: $request->user());
+            }
         }
-
-        if (array_key_exists('monthly_budget_usd', $validated)) {
-            // A4.3: şirket bütçesi budgets tablosunda (Yönetişim > Kullanım > Bütçeler).
-            BudgetLimit::org()->update(['monthly_limit_usd' => $validated['monthly_budget_usd'] === null ? null : (float) $validated['monthly_budget_usd']]);
-            Budget::forget();
-        }
-
-        if (array_key_exists('budget_blocks_flow_ai_steps', $validated)) {
-            $this->settings->set(AppSettings::BLOCKS_FLOW_AI_STEPS, (bool) $validated['budget_blocks_flow_ai_steps']);
-        }
-
-        if (array_key_exists('ai_data_access', $validated)) {
-            $this->settings->set(AppSettings::DATA_ACCESS, $validated['ai_data_access']);
-        }
-
-        if (array_key_exists('ai_allow_employee_names', $validated)) {
-            $this->settings->set(AppSettings::ALLOW_EMPLOYEE_NAMES, (bool) $validated['ai_allow_employee_names']);
-        }
-
-        Audit::record('settings.update', meta: ['changes' => $validated]);
 
         return response()->json(['data' => $this->present()]);
     }

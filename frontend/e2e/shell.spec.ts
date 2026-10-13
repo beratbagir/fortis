@@ -39,6 +39,8 @@ const SCREENS = [
   { name: 'calismalar', hash: '#/runs', heading: 'Çalışmalar' },
   { name: 'yonetisim', hash: '#/governance', heading: 'Yönetişim' },
   { name: 'kullanim', hash: '#/governance/usage', heading: 'Kullanım ve maliyet' },
+  { name: 'politikalar', hash: '#/governance/policies', heading: 'Politikalar' },
+  { name: 'denetim-kaydi', hash: '#/governance/audit', heading: 'Denetim kaydı' },
   { name: 'gelen-kutusu', hash: '#/inbox', heading: 'Gelen kutusu' },
   { name: 'baglantilar', hash: '#/connectors', heading: 'Bağlantılar' },
   { name: 'baglanti-detay', hash: '#/connectors/apm', heading: 'APM' },

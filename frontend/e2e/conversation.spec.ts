@@ -182,7 +182,7 @@ test('Admin: Bağlantılar → APM detay → Kapat (gerekçe) → Home ve sohbet
   await expect(page.getByText('APM açıldı.')).toBeVisible()
 })
 
-test('Admin: Yönetişim → sınırı aşan test çalışması dikkat gerekenlerde → durdur → çözüldü', async ({ page }) => {
+test('Admin: Yönetişim → sınırı aşan test çalışması → durdur → çözüldü → kullanım → politikalar → denetim kaydı', async ({ page }) => {
   await page.clock.setFixedTime(now)
   installFakeBackend(page, { now })
   await page.goto('/#/governance')
@@ -209,14 +209,29 @@ test('Admin: Yönetişim → sınırı aşan test çalışması dikkat gerekenle
   await page.getByLabel('Departman', { exact: true }).selectOption('1')
   await expect(page.getByRole('link', { name: 'CSV indir' })).toHaveAttribute('href', /department_id=1&format=csv$/)
 
-  // Operasyon'a dolunca duran 15 $ bütçe: onaydan sonra kaydedilir, harcama oranı görünür.
+  // Politikalar: Operasyon'a dolunca duran 15 $ bütçe ve araç sınırı; ikisi de onaydan sonra kaydedilir.
+  await page.getByRole('main').getByRole('link', { name: 'Politikalar' }).click()
   const budgets = page.getByRole('region', { name: /Bütçeler/ })
   await budgets.getByLabel('Operasyon aylık limit').fill('15')
   await budgets.getByLabel('Operasyon dolunca durdur').check()
-  await budgets.getByRole('button', { name: 'Kaydet' }).click()
+  await budgets.getByRole('button', { name: 'Bütçeleri kaydet' }).click()
   const confirm = page.getByRole('dialog', { name: 'Bütçe değişiklikleri kaydedilsin mi?' })
   await expect(confirm).toContainText('Operasyon: $15,00 / ay, uyarı %80, dolunca durdur')
   await confirm.getByRole('button', { name: 'Onayla ve kaydet' }).click()
   await expect(page.getByText('Bütçeler kaydedildi.')).toBeVisible()
   await expect(budgets.getByText('%81')).toBeVisible()
+
+  await page.getByRole('region', { name: 'Agentlar' }).getByLabel(/araç çağrısı sınırı/).fill('12')
+  await page.getByRole('button', { name: 'Kaydet', exact: true }).click()
+  const policyConfirm = page.getByRole('dialog', { name: 'Politika değişiklikleri kaydedilsin mi?' })
+  await expect(policyConfirm).toContainText('Çalışma başına araç çağrısı sınırı: 20 → 12')
+  await policyConfirm.getByRole('button', { name: 'Onayla ve kaydet' }).click()
+  await expect(page.getByText('Politikalar kaydedildi.')).toBeVisible()
+
+  // Denetim kaydı: değişiklik önceki/yeni değeriyle görünür.
+  await page.getByRole('link', { name: 'Denetim kaydı' }).click()
+  await page.getByLabel('Olay').selectOption('settings.update')
+  await page.getByRole('button', { name: /ayrıntısı$/ }).first().click()
+  await expect(page.getByText(/"setting": "max_tool_calls"/)).toBeVisible()
+  await expect(page.getByText(/"before": 20,\s*"after": 12/)).toBeVisible()
 })

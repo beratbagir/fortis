@@ -262,8 +262,8 @@ class ClaudeChat
         }
 
         $started = $this->agent->run->started_at;
-        if ($started !== null && $started->diffInSeconds(now()) > (int) config('agents.max_seconds')) {
-            throw new ClaudeException($this->limitHit('time', 'Çalışma süre sınırını ('.intdiv((int) config('agents.max_seconds'), 60).' dakika) aştı.'));
+        if ($started !== null && $started->diffInSeconds(now()) > app(AppSettings::class)->maxSeconds()) {
+            throw new ClaudeException($this->limitHit('time', 'Çalışma süre sınırını ('.intdiv(app(AppSettings::class)->maxSeconds(), 60).' dakika) aştı.'));
         }
     }
 
@@ -286,7 +286,7 @@ class ClaudeChat
         }
 
         $run = $this->agent->run;
-        $max = (int) config('agents.max_tool_calls');
+        $max = app(AppSettings::class)->maxToolCalls();
         $run->increment('tool_calls_count', $calls);
 
         if ($run->tool_calls_count > $max) {
@@ -294,8 +294,8 @@ class ClaudeChat
         }
 
         $cost = (float) AiCall::query()->where('agent_run_id', $run->id)->sum('cost_usd');
-        if ($cost > (float) config('agents.max_cost_usd')) {
-            return $this->limitHit('cost', 'Maliyet sınırı ($'.number_format((float) config('agents.max_cost_usd'), 2).') aşıldı; çalışma durduruldu.');
+        if ($cost > app(AppSettings::class)->maxCostUsd()) {
+            return $this->limitHit('cost', 'Maliyet sınırı ($'.number_format(app(AppSettings::class)->maxCostUsd(), 2).') aşıldı; çalışma durduruldu.');
         }
 
         return null;

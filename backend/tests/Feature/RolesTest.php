@@ -26,7 +26,8 @@ class RolesTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.monthly_budget_usd', 10);
 
-        $this->assertSame(['monthly_budget_usd' => 10], AuditLog::query()->where('action', 'settings.update')->sole()->meta['changes']);
+        $meta = AuditLog::query()->where('action', 'settings.update')->sole()->meta;
+        $this->assertSame(['setting' => 'budget.org', 'before' => ['monthly_limit_usd' => null], 'after' => ['monthly_limit_usd' => 10]], $meta);
     }
 
     public function test_only_admin_manages_users_and_departments(): void

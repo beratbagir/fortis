@@ -6,8 +6,8 @@ use App\Models\BudgetLimit;
 use App\Models\Setting;
 
 /**
- * Uygulama geneli ayarlar: varsayılan model, aylık bütçe ve bütçenin akış içi AI adımlarına etkisi.
- * Model listesi ve fiyatlar config/ai.php'dedir; burada sadece seçimler tutulur.
+ * Uygulama geneli ayarlar (Yönetişim > Politikalar): modeller, veri erişimi, bütçenin akış adımlarına etkisi, agent
+ * sınırları ve alıcı kuralları. Ayar yoksa config/.env değeri geçerli. Model kataloğu ve fiyatlar config/ai.php'dedir.
  */
 class AppSettings
 {
@@ -27,6 +27,23 @@ class AppSettings
     /** SuccessFactors çalışan adı/soyadı Claude'a gidebilir mi. Varsayılan evet. */
     public const ALLOW_EMPLOYEE_NAMES = 'ai.allow_employee_names';
 
+    /** Politikalar (A4.4): ayar yoksa config/.env değeri geçerli. */
+    public const ALLOWED_MODELS = 'ai.allowed_models';
+
+    public const DATA_QUESTION_MODEL = 'ai.data_question_model';
+
+    public const FAST_MODEL = 'ai.fast_model';
+
+    public const ALLOW_EXTERNAL_RECIPIENTS = 'agents.allow_external_recipients';
+
+    public const RECIPIENT_DOMAINS = 'agents.allowed_recipient_domains';
+
+    public const MAX_TOOL_CALLS = 'agents.max_tool_calls';
+
+    public const MAX_COST_USD = 'agents.max_cost_usd';
+
+    public const MAX_SECONDS = 'agents.max_seconds';
+
     /** Bütçe uyarısının gönderildiği son ay (YYYY-MM); ayda bir kez gider. */
     public const BUDGET_ALERT_MONTH = 'budget.alert_sent_month';
 
@@ -40,10 +57,21 @@ class AppSettings
         Setting::query()->updateOrCreate(['key' => $key], ['value' => $value]);
     }
 
-    /** @return array<string, array{label: string, input_per_mtok: float, output_per_mtok: float, cache_write_per_mtok: float, cache_read_per_mtok: float}> */
+    /**
+     * İzinli modeller: config'teki katalog, admin bir alt küme seçtiyse o kadarı. Fiyat hesabı her zaman bütün katalogla.
+     *
+     * @return array<string, array{label: string, input_per_mtok: float, output_per_mtok: float, cache_write_per_mtok: float, cache_read_per_mtok: float}>
+     */
     public function models(): array
     {
-        return config('ai.models');
+        $catalog = config('ai.models');
+        $allowed = $this->get(self::ALLOWED_MODELS);
+        if (! is_array($allowed)) {
+            return $catalog;
+        }
+        $models = array_intersect_key($catalog, array_flip($allowed));
+
+        return $models === [] ? $catalog : $models;
     }
 
     public function isAllowedModel(mixed $model): bool
@@ -64,6 +92,47 @@ class AppSettings
         $budget = BudgetLimit::org()->monthly_limit_usd;
 
         return $budget !== null && $budget > 0 ? (float) $budget : null;
+    }
+
+    /** Veri sorgusundan sonraki turların modeli (Auto). İzinli değilse çağıran genel varsayılana düşer. */
+    public function dataQuestionModel(): string
+    {
+        return (string) ($this->get(self::DATA_QUESTION_MODEL) ?? config('ai.data_question_model'));
+    }
+
+    /** Kısa işlerin modeli (sohbet başlığı). */
+    public function fastModel(): string
+    {
+        return (string) ($this->get(self::FAST_MODEL) ?? config('ai.fast_model'));
+    }
+
+    /** Agentlar şirket dışı alıcıya (onaylı) gönderebilir mi. */
+    public function allowExternalRecipients(): bool
+    {
+        return (bool) ($this->get(self::ALLOW_EXTERNAL_RECIPIENTS) ?? config('agents.allow_external_recipients'));
+    }
+
+    /** @return list<string> Şirket içi sayılan alıcı alan adları */
+    public function recipientDomains(): array
+    {
+        $domains = $this->get(self::RECIPIENT_DOMAINS);
+
+        return array_values(is_array($domains) ? $domains : config('agents.allowed_recipient_domains'));
+    }
+
+    public function maxToolCalls(): int
+    {
+        return (int) ($this->get(self::MAX_TOOL_CALLS) ?? config('agents.max_tool_calls'));
+    }
+
+    public function maxCostUsd(): float
+    {
+        return (float) ($this->get(self::MAX_COST_USD) ?? config('agents.max_cost_usd'));
+    }
+
+    public function maxSeconds(): int
+    {
+        return (int) ($this->get(self::MAX_SECONDS) ?? config('agents.max_seconds'));
     }
 
     public function blocksFlowAiSteps(): bool

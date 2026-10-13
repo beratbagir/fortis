@@ -159,7 +159,7 @@ class ConnectorController extends Controller
         $category = ConnectorRegistry::catalog()[$key]['category'];
         if ($category !== 'data') {
             return ['masked_groups' => [], 'rules' => $category === 'channel'
-                ? ['Gönderimler sadece izinli alıcılara/kanallara ve onaydan sonra.', 'Şirket dışı alıcı '.(config('agents.allow_external_recipients') ? 'onaylı.' : 'kapalı.')]
+                ? ['Gönderimler sadece izinli alıcılara/kanallara ve onaydan sonra.', 'Şirket dışı alıcı '.(app(AppSettings::class)->allowExternalRecipients() ? 'onaylı.' : 'kapalı.')]
                 : []];
         }
 

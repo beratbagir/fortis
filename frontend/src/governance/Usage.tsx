@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts'
 import { governanceUsageApi, type UsageFilters, type UsageType } from '../api'
-import { Budgets } from './Budgets'
 import { credits, usd } from './money'
 
 const TYPE_COLOR: Record<UsageType, string> = {
@@ -25,7 +24,7 @@ const stamp = (iso: string) =>
     minute: '2-digit',
   })
 
-/** Yönetişim > Kullanım (admin): filtreler, günlük harcama (tür), departman/model kırılımı, en çok harcayanlar, satırlar, CSV, bütçeler. */
+/** Yönetişim > Kullanım (admin): filtreler, günlük harcama (tür), departman/model kırılımı, en çok harcayanlar, satırlar, CSV. Bütçeler Politikalar'da. */
 export function GovernanceUsageView() {
   const [filters, setFilters] = useState<UsageFilters>({
     from: monthStart(),
@@ -199,7 +198,9 @@ export function GovernanceUsageView() {
           </>
         )}
 
-        <Budgets />
+        <p className="m-0 text-xs text-muted">
+          Şirket ve departman bütçeleri <a href="#/governance/policies">Politikalar</a> sekmesinde.
+        </p>
       </div>
     </main>
   )

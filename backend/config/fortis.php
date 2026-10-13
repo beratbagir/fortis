@@ -20,4 +20,8 @@ return [
     ],
 
     'password_min_length' => 10,
+
+    // Henüz yapılmamış ekranlar (Yapılacaklar, Çıktılar, Bellek, Beceriler…) menüde "Yakında" olarak görünsün mü.
+    // Pilotta kapalı; tasarım gösterimi için açılabilir. Adresle açılınca boş durum sayfası her zaman çalışır.
+    'show_coming_soon' => (bool) env('FORTIS_SHOW_COMING_SOON', false),
 ];

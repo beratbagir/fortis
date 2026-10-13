@@ -2,6 +2,7 @@
 
 namespace App\Agents;
 
+use App\Models\Agent;
 use App\Models\AgentAction;
 use App\Models\AgentRun;
 use App\Models\AgentTrigger;
@@ -9,6 +10,7 @@ use App\Models\Connector;
 use App\Models\Execution;
 use App\Models\InboxItem;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 
 /**
  * Inbox öğelerini oluşturur ve kapatır. Konu (subject) kapanınca ilgili öğeler "tamamlandı" olur.
@@ -26,6 +28,9 @@ class Inbox
     public const SUBJECT_CONNECTOR = 'connector';
 
     public const SUBJECT_BUDGET = 'budget';
+
+    /** Bütçe dolduğu için atlanan zamanlanmış/olay çalışması (agent başına, Türkiye günü başına bir uyarı). */
+    public const SUBJECT_BUDGET_SKIP = 'agent_budget_skip';
 
     public function approval(User $user, AgentAction $action): InboxItem
     {
@@ -154,6 +159,35 @@ class Inbox
             'subject_id' => $connector->id,
             'source_label' => 'Bağlantılar · '.$source['label'],
             'icon' => $source['abbr'],
+        ]);
+    }
+
+    /**
+     * Bütçe dolduğu için tetikleyici çalışmayı atladı: agent sahibine uyarı. Aynı agent için bugün (Türkiye günü)
+     * uyarı gönderildiyse yenisi açılmaz; olay tetikleyicisi gün içinde defalarca atlasa da sahip tek uyarı görür.
+     */
+    public function budgetSkipAlert(Agent $agent, string $reason): ?InboxItem
+    {
+        $owner = $agent->owner;
+        if ($owner === null) {
+            return null;
+        }
+
+        $today = CarbonImmutable::now('Europe/Istanbul')->startOfDay()->utc();
+        $sent = InboxItem::query()->where('subject_type', self::SUBJECT_BUDGET_SKIP)->where('subject_id', $agent->id)->where('user_id', $owner->id)->where('created_at', '>=', $today)->exists();
+        if ($sent) {
+            return null;
+        }
+
+        return InboxItem::create([
+            'user_id' => $owner->id,
+            'type' => InboxItem::ALERT,
+            'title' => 'Bütçe dolduğu için bugünkü çalışma atlandı',
+            'body' => "{$agent->name}: {$reason} Bütçe artırılınca ya da ay başında çalışmalar kendiliğinden devam eder; bugün başka atlanan çalışma olursa ayrıca uyarı gönderilmez.",
+            'subject_type' => self::SUBJECT_BUDGET_SKIP,
+            'subject_id' => $agent->id,
+            'source_label' => trim($agent->name.($agent->department ? ' · '.$agent->department->name : '')),
+            'icon' => $agent->icon,
         ]);
     }
 

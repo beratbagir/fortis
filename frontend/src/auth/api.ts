@@ -30,6 +30,8 @@ export interface User {
 export interface AuthConfig {
   driver: 'password' | 'entra'
   locale: Locale
+  /** Henüz yapılmamış ekranlar menüde "Yakında" olarak görünsün mü (sunucuda FORTIS_SHOW_COMING_SOON). */
+  show_coming_soon?: boolean
 }
 
 export class HttpError extends Error {
